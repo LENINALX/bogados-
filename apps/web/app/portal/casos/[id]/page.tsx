@@ -1,0 +1,105 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { requireRole } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
+import { AppHeader } from "@/components/AppHeader";
+import { StatusBadge } from "@/components/StatusBadge";
+import { CaseMessages } from "@/components/CaseMessages";
+import { CaseDocuments } from "@/components/CaseDocuments";
+
+type Props = { params: { id: string } };
+
+export default async function PortalCasePage({ params }: Props) {
+  const session = await requireRole("CLIENTE");
+
+  const c = await prisma.case.findFirst({
+    where: {
+      id: params.id,
+      tenantId: session.user.tenantId,
+      clientId: session.user.id,
+    },
+    include: {
+      lawyer: { select: { name: true } },
+      notes: {
+        where: { isInternal: false },
+        include: { author: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+      documents: {
+        where: { sharedWithClient: true },
+        include: { uploadedBy: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+      messages: {
+        include: { sender: { select: { id: true, name: true, role: true } } },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+
+  if (!c) notFound();
+
+  return (
+    <div className="min-h-screen">
+      <AppHeader
+        user={session.user}
+        links={[{ href: "/portal", label: "Mis casos" }]}
+      />
+      <main className="mx-auto max-w-3xl px-4 py-8">
+        <Link href="/portal" className="text-sm text-slate-500 hover:text-brand-700">
+          ← Mis casos
+        </Link>
+        <div className="mt-4 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-brand-900">{c.title}</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Abogado: {c.lawyer?.name ?? "Por asignar"}
+            </p>
+          </div>
+          <StatusBadge status={c.status} />
+        </div>
+        {c.description && (
+          <p className="mt-4 text-sm text-slate-700">{c.description}</p>
+        )}
+
+        <div className="mt-8 space-y-6">
+          <div className="rounded-xl border border-slate-200 bg-white">
+            <div className="border-b px-4 py-3 text-sm font-semibold">Avances</div>
+            <ul className="divide-y">
+              {c.notes.length === 0 && (
+                <li className="px-4 py-6 text-sm text-slate-400">Sin avances publicados</li>
+              )}
+              {c.notes.map((n) => (
+                <li key={n.id} className="px-4 py-3 text-sm">
+                  <div className="flex justify-between text-xs text-slate-500">
+                    <span>{n.author.name}</span>
+                    <span>{n.createdAt.toLocaleString("es-EC")}</span>
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap">{n.body}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <CaseDocuments
+            caseId={c.id}
+            canMarkInternal={false}
+            initial={c.documents.map((d) => ({
+              ...d,
+              createdAt: d.createdAt.toISOString(),
+            }))}
+          />
+
+          <CaseMessages
+            caseId={c.id}
+            currentUserId={session.user.id}
+            initial={c.messages.map((m) => ({
+              ...m,
+              createdAt: m.createdAt.toISOString(),
+            }))}
+          />
+        </div>
+      </main>
+    </div>
+  );
+}
