@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bogados-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bogados
+      POSTGRES_PASSWORD: bogados
+      POSTGRES_DB: bogados
+    ports:
+      - "5432:5432"
+    volumes:
+      - bogados_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bogados -d bogados"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Object storage opcional (S3-compatible). El MVP usa uploads/ local.
+  # Descomenta si quieres MinIO:
+  # minio:
+  #   image: minio/minio:latest
+  #   command: server /data --console-address ":9001"
+  #   ports:
+  #     - "9000:9000"
+  #     - "9001:9001"
+  #   environment:
+  #     MINIO_ROOT_USER: minioadmin
+  #     MINIO_ROOT_PASSWORD: minioadmin
+  #   volumes:
+  #     - bogados_minio:/data
+
+volumes:
+  bogados_pgdata:
+  # bogados_minio:
