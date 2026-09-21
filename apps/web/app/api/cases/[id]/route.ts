@@ -1,18 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiSession, requireApiRole } from "@/lib/api/auth-guard";
-import { CaseStatus } from "@prisma/client";
+import { CaseStatus, Role } from "@prisma/client";
 import { isStaff } from "@/lib/permissions";
+import { getAccessibleCase } from "@/lib/case-access";
 import { z } from "zod";
 
 type Ctx = { params: { id: string } };
 
-async function loadCaseForUser(
-  caseId: string,
-  user: { id: string; role: string; tenantId: string }
-) {
+export async function GET(_req: NextRequest, { params }: Ctx) {
+  const auth = await requireApiSession();
+  if ("error" in auth && auth.error) return auth.error;
+  const { session } = auth as {
+    session: { user: { id: string; role: Role; tenantId: string } };
+  };
+
+  const base = await getAccessibleCase(params.id, session.user);
+  if (!base) return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
+
   const c = await prisma.case.findFirst({
-    where: { id: caseId, tenantId: user.tenantId },
+    where: { id: base.id },
     include: {
       lawyer: { select: { id: true, name: true, email: true } },
       client: { select: { id: true, name: true, email: true } },
@@ -22,29 +29,12 @@ async function loadCaseForUser(
       },
     },
   });
-  if (!c) return null;
+  if (!c) return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
 
-  if (user.role === "CLIENTE" && c.clientId !== user.id) return null;
-  if (user.role === "ABOGADO" && c.lawyerId !== user.id && user.role !== "ADMIN") {
-    // Abogado solo ve sus casos asignados
-    return null;
-  }
-
-  // Filtrar notas internas para cliente
-  if (!isStaff(user.role as "ADMIN" | "ABOGADO" | "CLIENTE")) {
+  if (!isStaff(session.user.role)) {
     c.notes = c.notes.filter((n) => !n.isInternal);
   }
 
-  return c;
-}
-
-export async function GET(_req: NextRequest, { params }: Ctx) {
-  const auth = await requireApiSession();
-  if ("error" in auth && auth.error) return auth.error;
-  const { session } = auth as { session: { user: { id: string; role: string; tenantId: string } } };
-
-  const c = await loadCaseForUser(params.id, session.user);
-  if (!c) return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
   return NextResponse.json({ case: c });
 }
 
@@ -60,15 +50,12 @@ const updateSchema = z.object({
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const auth = await requireApiRole("ADMIN", "ABOGADO");
   if ("error" in auth && auth.error) return auth.error;
-  const { session } = auth as { session: { user: { id: string; role: string; tenantId: string } } };
+  const { session } = auth as {
+    session: { user: { id: string; role: Role; tenantId: string } };
+  };
 
-  const existing = await prisma.case.findFirst({
-    where: { id: params.id, tenantId: session.user.tenantId },
-  });
+  const existing = await getAccessibleCase(params.id, session.user);
   if (!existing) return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
-  if (session.user.role === "ABOGADO" && existing.lawyerId !== session.user.id) {
-    return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
-  }
 
   const body = await req.json().catch(() => null);
   const parsed = updateSchema.safeParse(body);
@@ -77,11 +64,22 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   }
 
   const data = parsed.data;
+  // Solo admin puede reasignar abogado/cliente
+  if (session.user.role !== "ADMIN") {
+    delete (data as { lawyerId?: unknown }).lawyerId;
+    delete (data as { clientId?: unknown }).clientId;
+  }
+
   const updated = await prisma.case.update({
     where: { id: existing.id },
     data: {
       ...data,
-      closedAt: data.status === "cerrado" ? new Date() : data.status ? null : undefined,
+      closedAt:
+        data.status === "cerrado"
+          ? new Date()
+          : data.status
+            ? null
+            : undefined,
     },
     include: {
       lawyer: { select: { id: true, name: true } },
@@ -95,11 +93,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
   const auth = await requireApiRole("ADMIN");
   if ("error" in auth && auth.error) return auth.error;
-  const { session } = auth as { session: { user: { tenantId: string } } };
+  const { session } = auth as { session: { user: { tenantId: string; role: Role; id: string } } };
 
-  const existing = await prisma.case.findFirst({
-    where: { id: params.id, tenantId: session.user.tenantId },
-  });
+  const existing = await getAccessibleCase(params.id, session.user);
   if (!existing) return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
 
   await prisma.case.delete({ where: { id: existing.id } });

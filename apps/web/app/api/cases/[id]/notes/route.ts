@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiRole } from "@/lib/api/auth-guard";
+import { getAccessibleCase } from "@/lib/case-access";
+import { Role } from "@prisma/client";
 import { z } from "zod";
 
 type Ctx = { params: { id: string } };
@@ -13,11 +15,9 @@ const noteSchema = z.object({
 export async function POST(req: NextRequest, { params }: Ctx) {
   const auth = await requireApiRole("ADMIN", "ABOGADO");
   if ("error" in auth && auth.error) return auth.error;
-  const { session } = auth as { session: { user: { id: string; tenantId: string } } };
+  const { session } = auth as { session: { user: { id: string; role: Role; tenantId: string } } };
 
-  const c = await prisma.case.findFirst({
-    where: { id: params.id, tenantId: session.user.tenantId },
-  });
+  const c = await getAccessibleCase(params.id, session.user);
   if (!c) return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
 
   const body = await req.json().catch(() => null);

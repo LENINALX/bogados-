@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiSession } from "@/lib/api/auth-guard";
 import { isStaff } from "@/lib/permissions";
 import { readFile } from "@/lib/storage/local";
+import { getAccessibleCase } from "@/lib/case-access";
 import { Role } from "@prisma/client";
 
 type Ctx = { params: { id: string } };
@@ -14,18 +15,13 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 
   const doc = await prisma.document.findFirst({
     where: { id: params.id, tenantId: session.user.tenantId },
-    include: { case: true },
   });
   if (!doc) return NextResponse.json({ error: "Documento no encontrado" }, { status: 404 });
 
-  const c = doc.case;
-  if (session.user.role === "CLIENTE") {
-    if (c.clientId !== session.user.id || !doc.sharedWithClient) {
-      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
-    }
-  } else if (session.user.role === "ABOGADO" && c.lawyerId !== session.user.id) {
-    return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
-  } else if (!isStaff(session.user.role) && !doc.sharedWithClient) {
+  const c = await getAccessibleCase(doc.caseId, session.user);
+  if (!c) return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+
+  if (!isStaff(session.user.role) && !doc.sharedWithClient) {
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
   }
 

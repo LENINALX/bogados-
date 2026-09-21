@@ -2,10 +2,18 @@ import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 
-const UPLOAD_ROOT = process.env.UPLOAD_DIR || path.join(process.cwd(), "../../uploads");
+function getUploadRoot() {
+  if (process.env.UPLOAD_DIR) {
+    return path.isAbsolute(process.env.UPLOAD_DIR)
+      ? process.env.UPLOAD_DIR
+      : path.resolve(process.cwd(), process.env.UPLOAD_DIR);
+  }
+  // apps/web → monorepo root /uploads
+  return path.resolve(process.cwd(), "../../uploads");
+}
 
 export async function ensureUploadDir(tenantId: string, caseId: string) {
-  const dir = path.join(UPLOAD_ROOT, tenantId, caseId);
+  const dir = path.join(getUploadRoot(), tenantId, caseId);
   await fs.mkdir(dir, { recursive: true });
   return dir;
 }
@@ -26,8 +34,8 @@ export async function saveFile(
 }
 
 export function resolveStoragePath(storagePath: string) {
-  const absolute = path.resolve(UPLOAD_ROOT, storagePath);
-  const root = path.resolve(UPLOAD_ROOT);
+  const root = path.resolve(getUploadRoot());
+  const absolute = path.resolve(root, storagePath);
   if (!absolute.startsWith(root + path.sep) && absolute !== root) {
     throw new Error("Ruta de almacenamiento inválida");
   }
