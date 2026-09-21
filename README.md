@@ -38,9 +38,10 @@ Centraliza expedientes, documentos y comunicación segura entre abogado y client
 git clone https://github.com/LENINALX/bogados-.git
 cd bogados-
 
-# 2) Variables de entorno
+# 2) Variables de entorno (raíz + apps/web para Next.js)
 cp .env.example .env
-# Edita NEXTAUTH_SECRET (openssl rand -base64 32)
+cp .env apps/web/.env
+# Edita NEXTAUTH_SECRET en ambos (openssl rand -base64 32)
 
 # 3) Base de datos
 docker compose up -d
