@@ -2,20 +2,25 @@
   "name": "bogados",
   "version": "0.1.0",
   "private": true,
-  "description": "Bogados — SaaS de gestión legal multi-tenant (MVP)",
+  "description": "Bogados \u2014 SaaS de gesti\u00f3n legal multi-tenant (MVP)",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
     "dev": "npm run dev -w @bogados/web",
-    "build": "npm run build -w @bogados/web",
+    "build": "npm run build -w @bogados/api && npm run build -w @bogados/web",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "dev:web": "npm run dev -w @bogados/web",
+    "dev:api": "npm run start:dev -w @bogados/api",
+    "dev:all": "npm run dev:api & npm run dev:web",
+    "build:api": "npm run build -w @bogados/api",
+    "start:api": "npm run start:prod -w @bogados/api"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

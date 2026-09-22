@@ -45,3 +45,6 @@ next-env.d.ts
 coverage/
 .turbo/
 dist/
+
+# nest
+apps/api/dist/

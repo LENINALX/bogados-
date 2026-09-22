@@ -33,6 +33,7 @@ model Tenant {
   documents Document[]
   messages  Message[]
   notes     CaseNote[]
+  activityEvents ActivityEvent[]
 }
 
 model User {
@@ -52,6 +53,7 @@ model User {
   documentsUploaded   Document[] @relation("DocumentUploader")
   messagesSent        Message[]  @relation("MessageSender")
   notesAuthored       CaseNote[] @relation("NoteAuthor")
+  activityEvents      ActivityEvent[] @relation("ActivityActor")
 
   @@unique([tenantId, email])
   @@index([tenantId, role])
@@ -77,6 +79,7 @@ model Case {
   documents Document[]
   messages  Message[]
   notes     CaseNote[]
+  activityEvents ActivityEvent[]
 
   @@index([tenantId, status])
   @@index([tenantId, lawyerId])
@@ -131,6 +134,24 @@ model CaseNote {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
   author User   @relation("NoteAuthor", fields: [authorId], references: [id])
+
+  @@index([tenantId, caseId, createdAt])
+}
+
+/// Eventos de auditoría / timeline por caso
+model ActivityEvent {
+  id        String   @id @default(cuid())
+  tenantId  String
+  caseId    String
+  actorId   String?
+  type      String
+  summary   String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actor  User?  @relation("ActivityActor", fields: [actorId], references: [id])
 
   @@index([tenantId, caseId, createdAt])
 }
