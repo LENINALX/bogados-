@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { Role } from "@prisma/client";
@@ -14,7 +15,7 @@ export async function requireApiSession() {
 export async function requireApiRole(...roles: Role[]) {
   const result = await requireApiSession();
   if ("error" in result && result.error) return result;
-  const { session } = result as { session: NonNullable<Awaited<ReturnType<typeof getServerSession>>> };
+  const { session } = result as { session: Session };
   if (!session?.user || !roles.includes(session.user.role)) {
     return { error: NextResponse.json({ error: "Sin permiso" }, { status: 403 }) };
   }

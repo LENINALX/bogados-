@@ -25,6 +25,7 @@ export function CaseDocuments({
   const [docs, setDocs] = useState(initial);
   const [shared, setShared] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   async function onUpload(e: FormEvent<HTMLFormElement>) {
@@ -33,6 +34,7 @@ export function CaseDocuments({
     const fd = new FormData(form);
     if (canMarkInternal) fd.set("sharedWithClient", shared ? "true" : "false");
     setLoading(true);
+    setError(null);
     try {
       const document = await nestFetch<Doc>(`/cases/${caseId}/documents`, {
         method: "POST",
@@ -43,13 +45,7 @@ export function CaseDocuments({
       form.reset();
       router.refresh();
     } catch {
-      const res = await fetch(`/api/cases/${caseId}/documents`, { method: "POST", body: fd });
-      if (res.ok) {
-        const data = await res.json();
-        setDocs((d) => [data.document, ...d]);
-        form.reset();
-        router.refresh();
-      }
+      setError("No se pudo subir el documento. Inténtalo de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -68,7 +64,7 @@ export function CaseDocuments({
               <button
                 type="button"
                 onClick={() => nestDownloadBlob(d.id, d.fileName).catch(() => {
-                  window.location.href = `/api/documents/${d.id}`;
+                  setError("No se pudo descargar el documento.");
                 })}
                 className="font-medium text-brand-700 hover:underline"
               >
@@ -106,6 +102,7 @@ export function CaseDocuments({
           {loading ? "Subiendo…" : "Subir archivo"}
         </button>
       </form>
+      {error && <p className="px-3 pb-3 text-sm text-red-600">{error}</p>}
     </div>
   );
 }

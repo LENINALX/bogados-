@@ -3,7 +3,7 @@
 import { signIn } from "next-auth/react";
 import { FormEvent, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { nestLogin } from "@/lib/nest-api";
+import { clearNestToken, NestApiError, nestLogin } from "@/lib/nest-api";
 
 function LoginForm() {
   const router = useRouter();
@@ -20,9 +20,13 @@ function LoginForm() {
     try {
       // Nest JWT (fuente de verdad API) + NextAuth (sesión SSR)
       await nestLogin(email, password);
-    } catch {
+    } catch (error) {
       setLoading(false);
-      setError("Credenciales inválidas (API)");
+      setError(
+        error instanceof NestApiError && error.status === 401
+          ? "Credenciales inválidas (API)"
+          : "No se pudo conectar con la API. Verifica que esté activa en el puerto 3001.",
+      );
       return;
     }
     const res = await signIn("credentials", {
@@ -32,6 +36,7 @@ function LoginForm() {
     });
     setLoading(false);
     if (res?.error) {
+      clearNestToken();
       setError("Credenciales inválidas");
       return;
     }

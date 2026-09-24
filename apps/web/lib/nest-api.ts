@@ -9,6 +9,16 @@ const API_BASE =
 
 export const NEST_TOKEN_KEY = "bogados_nest_token";
 
+export class NestApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status?: number,
+  ) {
+    super(message);
+    this.name = "NestApiError";
+  }
+}
+
 export function getNestToken(): string | null {
   if (typeof window === "undefined") return null;
   return sessionStorage.getItem(NEST_TOKEN_KEY);
@@ -30,7 +40,7 @@ export async function nestLogin(email: string, password: string) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Login Nest falló");
+    throw new NestApiError(err.error || "Login Nest falló", res.status);
   }
   const json = await res.json();
   const payload = json.data ?? json;

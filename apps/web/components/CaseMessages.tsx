@@ -22,6 +22,7 @@ export function CaseMessages({
 }) {
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState(initial);
   const router = useRouter();
 
@@ -29,6 +30,7 @@ export function CaseMessages({
     e.preventDefault();
     if (!body.trim()) return;
     setLoading(true);
+    setError(null);
     try {
       const message = await nestFetch<Msg>(`/cases/${caseId}/messages`, {
         method: "POST",
@@ -38,17 +40,7 @@ export function CaseMessages({
       setBody("");
       router.refresh();
     } catch {
-      const res = await fetch(`/api/cases/${caseId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMessages((m) => [...m, { ...data.message, createdAt: data.message.createdAt }]);
-        setBody("");
-        router.refresh();
-      }
+      setError("No se pudo enviar el mensaje. Inténtalo de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -91,6 +83,7 @@ export function CaseMessages({
           Enviar
         </button>
       </form>
+      {error && <p className="px-3 pb-3 text-sm text-red-600">{error}</p>}
     </div>
   );
 }

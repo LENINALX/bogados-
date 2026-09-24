@@ -8,27 +8,25 @@ export function CaseNoteForm({ caseId }: { caseId: string }) {
   const [body, setBody] = useState("");
   const [isInternal, setIsInternal] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!body.trim()) return;
     setLoading(true);
+    setError(null);
     try {
       await nestFetch(`/cases/${caseId}/notes`, {
         method: "POST",
         body: JSON.stringify({ body, isInternal }),
       });
+      setBody("");
+      router.refresh();
     } catch {
-      await fetch(`/api/cases/${caseId}/notes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body, isInternal }),
-      });
+      setError("No se pudo guardar la nota. Inténtalo de nuevo.");
     }
     setLoading(false);
-    setBody("");
-    router.refresh();
   }
 
   return (
@@ -56,6 +54,7 @@ export function CaseNoteForm({ caseId }: { caseId: string }) {
       >
         Guardar nota
       </button>
+      {error && <p className="text-sm text-red-600">{error}</p>}
     </form>
   );
 }
