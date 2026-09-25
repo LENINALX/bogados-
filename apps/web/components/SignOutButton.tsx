@@ -1,19 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { signOut } from "next-auth/react";
 import { clearNestToken } from "@/lib/nest-api";
+import { Spinner } from "./ui";
 
 export function SignOutButton() {
+  const [pending, setPending] = useState(false);
   return (
     <button
       type="button"
+      disabled={pending}
       onClick={() => {
+        setPending(true);
         clearNestToken();
         signOut({ callbackUrl: "/login" });
       }}
-      className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+      className="btn-secondary btn-sm"
     >
-      Salir
+      {pending && <Spinner className="h-3 w-3" />}
+      {pending ? "Saliendo…" : "Salir"}
     </button>
   );
 }

@@ -6,6 +6,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CaseMessages } from "@/components/CaseMessages";
 import { CaseDocuments } from "@/components/CaseDocuments";
+import { CaseTimeline } from "@/components/CaseTimeline";
+import { toTimelineEvents, toTimelineNotes } from "@/lib/timeline";
 
 type Props = { params: { id: string } };
 
@@ -34,61 +36,53 @@ export default async function PortalCasePage({ params }: Props) {
         include: { sender: { select: { id: true, name: true, role: true } } },
         orderBy: { createdAt: "asc" },
       },
+      activityEvents: {
+        include: { actor: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
   if (!c) notFound();
 
+  // Notas ya filtradas (isInternal=false); eventos por lista blanca de cliente
+  const timeline = [
+    ...toTimelineNotes(c.notes),
+    ...toTimelineEvents(c.activityEvents, "client"),
+  ];
+
   return (
     <div className="min-h-screen">
-      <AppHeader
-        user={session.user}
-        links={[{ href: "/portal", label: "Mis casos" }]}
-      />
-      <main className="mx-auto max-w-3xl px-4 py-8">
-        <Link href="/portal" className="text-sm text-slate-500 hover:text-brand-700">
-          ← Mis casos
-        </Link>
-        <div className="mt-4 flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-brand-900">{c.title}</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Abogado: {c.lawyer?.name ?? "Por asignar"}
+      <AppHeader user={session.user} links={[{ href: "/portal", label: "Mis casos" }]} />
+      <main className="page max-w-3xl">
+        <nav aria-label="Ruta" className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+          <Link href="/portal" className="hover:text-brand-700 hover:underline">
+            Mis casos
+          </Link>
+          <span aria-hidden>/</span>
+          <span className="truncate text-slate-700">{c.title}</span>
+        </nav>
+
+        <div className="card mb-6 p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="page-title">{c.title}</h1>
+              <p className="page-subtitle">
+                Tu abogado:{" "}
+                <span className="font-medium text-slate-700">{c.lawyer?.name ?? "Por asignar"}</span>
+              </p>
+            </div>
+            <StatusBadge status={c.status} />
+          </div>
+          {c.description && (
+            <p className="mt-4 whitespace-pre-wrap border-t border-slate-100 pt-4 text-sm leading-relaxed text-slate-700">
+              {c.description}
             </p>
-          </div>
-          <StatusBadge status={c.status} />
+          )}
         </div>
-        {c.description && (
-          <p className="mt-4 text-sm text-slate-700">{c.description}</p>
-        )}
 
-        <div className="mt-8 space-y-6">
-          <div className="rounded-xl border border-slate-200 bg-white">
-            <div className="border-b px-4 py-3 text-sm font-semibold">Avances</div>
-            <ul className="divide-y">
-              {c.notes.length === 0 && (
-                <li className="px-4 py-6 text-sm text-slate-400">Sin avances publicados</li>
-              )}
-              {c.notes.map((n) => (
-                <li key={n.id} className="px-4 py-3 text-sm">
-                  <div className="flex justify-between text-xs text-slate-500">
-                    <span>{n.author.name}</span>
-                    <span>{n.createdAt.toLocaleString("es-EC")}</span>
-                  </div>
-                  <p className="mt-1 whitespace-pre-wrap">{n.body}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <CaseDocuments
-            caseId={c.id}
-            canMarkInternal={false}
-            initial={c.documents.map((d) => ({
-              ...d,
-              createdAt: d.createdAt.toISOString(),
-            }))}
-          />
+        <div className="space-y-6">
+          <CaseTimeline title="Avances del caso" items={timeline} audience="client" />
 
           <CaseMessages
             caseId={c.id}
@@ -96,6 +90,15 @@ export default async function PortalCasePage({ params }: Props) {
             initial={c.messages.map((m) => ({
               ...m,
               createdAt: m.createdAt.toISOString(),
+            }))}
+          />
+
+          <CaseDocuments
+            caseId={c.id}
+            canMarkInternal={false}
+            initial={c.documents.map((d) => ({
+              ...d,
+              createdAt: d.createdAt.toISOString(),
             }))}
           />
         </div>

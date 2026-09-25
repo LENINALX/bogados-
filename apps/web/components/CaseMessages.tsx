@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { nestFetch } from "@/lib/nest-api";
+import { FormMessage, Spinner, errorMessage } from "./ui";
 
 type Msg = {
   id: string;
@@ -24,11 +25,16 @@ export function CaseMessages({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState(initial);
+  const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!body.trim()) return;
+  // Mantener visible el último mensaje
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+  }, [messages.length]);
+
+  async function send() {
+    if (!body.trim() || loading) return;
     setLoading(true);
     setError(null);
     try {
@@ -39,51 +45,80 @@ export function CaseMessages({
       setMessages((m) => [...m, message]);
       setBody("");
       router.refresh();
-    } catch {
-      setError("No se pudo enviar el mensaje. Inténtalo de nuevo.");
+    } catch (err) {
+      setError(errorMessage(err, "No se pudo enviar el mensaje. Tu texto sigue en el cuadro; inténtalo de nuevo."));
     } finally {
       setLoading(false);
     }
   }
 
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    send();
+  }
+
+  // Enter envía, Shift+Enter hace salto de línea
+  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  }
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white">
-      <div className="border-b px-4 py-3 text-sm font-semibold text-slate-800">Mensajes</div>
-      <div className="max-h-80 space-y-3 overflow-y-auto p-4">
-        {messages.length === 0 && (
-          <p className="text-sm text-slate-400">Sin mensajes aún</p>
-        )}
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`rounded-lg px-3 py-2 text-sm ${
-              m.sender.id === currentUserId ? "bg-brand-50 ml-8" : "bg-slate-50 mr-8"
-            }`}
-          >
-            <div className="mb-1 flex justify-between text-xs text-slate-500">
-              <span className="font-medium text-slate-700">{m.sender.name}</span>
-              <span>{new Date(m.createdAt).toLocaleString("es-EC")}</span>
-            </div>
-            <p className="whitespace-pre-wrap text-slate-800">{m.body}</p>
-          </div>
-        ))}
+    <section className="card flex flex-col">
+      <div className="card-header">
+        <h2 className="card-title">Mensajes</h2>
+        <span className="text-xs text-slate-400">{messages.length}</span>
       </div>
-      <form onSubmit={onSubmit} className="flex gap-2 border-t p-3">
-        <input
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Escribe un mensaje…"
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          Enviar
-        </button>
+      <div ref={listRef} className="max-h-96 min-h-[10rem] space-y-3 overflow-y-auto bg-slate-50/60 p-4">
+        {messages.length === 0 && (
+          <div className="flex h-full min-h-[8rem] flex-col items-center justify-center text-center">
+            <p className="text-sm font-medium text-slate-600">Aún no hay mensajes</p>
+            <p className="mt-1 text-xs text-slate-400">Escribe abajo para iniciar la conversación.</p>
+          </div>
+        )}
+        {messages.map((m) => {
+          const mine = m.sender.id === currentUserId;
+          return (
+            <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm shadow-sm ${
+                  mine ? "rounded-br-sm bg-brand-700 text-white" : "rounded-bl-sm border border-slate-200 bg-white text-slate-800"
+                }`}
+              >
+                <div className={`mb-0.5 flex gap-2 text-[11px] ${mine ? "text-brand-100" : "text-slate-500"}`}>
+                  <span className="font-semibold">{mine ? "Tú" : m.sender.name}</span>
+                  <span>{new Date(m.createdAt).toLocaleString("es-EC", { dateStyle: "short", timeStyle: "short" })}</span>
+                </div>
+                <p className="whitespace-pre-wrap break-words">{m.body}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <form onSubmit={onSubmit} className="space-y-2 border-t border-slate-100 p-3">
+        <div className="flex items-end gap-2">
+          <label htmlFor={`msg-${caseId}`} className="sr-only">
+            Escribe un mensaje
+          </label>
+          <textarea
+            id={`msg-${caseId}`}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            onKeyDown={onKeyDown}
+            rows={1}
+            placeholder="Escribe un mensaje…"
+            className="input max-h-32 min-h-[2.5rem] flex-1 resize-y"
+          />
+          <button type="submit" disabled={loading || !body.trim()} className="btn-primary">
+            {loading && <Spinner />}
+            {loading ? "Enviando…" : "Enviar"}
+          </button>
+        </div>
+        <p className="text-[11px] text-slate-400">Enter para enviar · Shift + Enter para salto de línea</p>
+        {error && <FormMessage type="error">{error}</FormMessage>}
       </form>
-      {error && <p className="px-3 pb-3 text-sm text-red-600">{error}</p>}
-    </div>
+    </section>
   );
 }

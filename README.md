@@ -19,6 +19,17 @@ Centraliza expedientes, documentos y comunicación segura entre abogado y client
 | **Portal cliente** | Login, estado del caso, docs compartidos, mensajes |
 | **API dedicada** | NestJS + JWT + Swagger + helmet (`apps/api`) |
 
+### Pantallas web (staff)
+
+| Ruta | Qué muestra |
+|------|-------------|
+| `/dashboard` | KPIs, casos por estado, próximos plazos (7 días), carga por abogado (admin), listado de casos |
+| `/casos/nuevo` | Alta de caso con cliente existente o invitación de cliente nuevo |
+| `/casos/[id]` | Documentos, notas, **timeline unificado** (notas + eventos), **tareas y plazos**, mensajes |
+| `/tareas` | "Mis plazos": pendientes, vencidas, próximos 3 días, completadas (admin: toda la firma) |
+| `/admin/usuarios` | Solo admin: invitar usuarios, cambiar rol, activar/desactivar |
+| Header | Campana de notificaciones con contador y "marcar todas como leídas" |
+
 **Diferido:** facturación, e-firma, calendarios, app nativa, IA.
 
 ## Stack
