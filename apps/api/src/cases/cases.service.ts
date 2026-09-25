@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import { getAccessibleCase } from '../common/utils/case-access';
 import { isStaff } from '../common/utils/permissions';
+import { ActivityService } from '../activity/activity.service';
 import {
   AssignLawyerDto,
   CreateCaseDto,
@@ -18,7 +19,10 @@ const caseInclude = {
 
 @Injectable()
 export class CasesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private activity: ActivityService,
+  ) {}
 
   async findAll(
     user: JwtPayloadUser,
@@ -78,6 +82,15 @@ export class CasesService {
       include: caseInclude,
     });
 
+    await this.activity.log({
+      tenantId: user.tenantId,
+      caseId: created.id,
+      actorId: user.id,
+      type: 'CASE_CREATED',
+      summary: `Caso creado: ${created.title}`,
+      meta: { status: created.status },
+    });
+
     return created;
   }
 
@@ -106,6 +119,14 @@ export class CasesService {
     });
 
     if (data.status && data.status !== prevStatus) {
+      await this.activity.log({
+        tenantId: user.tenantId,
+        caseId: updated.id,
+        actorId: user.id,
+        type: 'STATUS_CHANGED',
+        summary: `Estado: ${prevStatus} → ${data.status}`,
+        meta: { from: prevStatus, to: data.status },
+      });
     }
 
     return updated;
@@ -121,29 +142,27 @@ export class CasesService {
       where: {
         id: dto.lawyerId,
         tenantId: user.tenantId,
-        role: Role.ABOGADO,
+        role: { in: [Role.ABOGADO, Role.ADMIN] },
         active: true,
       },
     });
     if (!lawyer) {
-      // allow ADMIN as lawyer too
-      const adminLawyer = await this.prisma.user.findFirst({
-        where: {
-          id: dto.lawyerId,
-          tenantId: user.tenantId,
-          role: { in: [Role.ABOGADO, Role.ADMIN] },
-          active: true,
-        },
-      });
-      if (!adminLawyer) {
-        throw new BadRequestException('Abogado no válido');
-      }
+      throw new BadRequestException('Abogado no válido');
     }
 
     const updated = await this.prisma.case.update({
       where: { id: existing.id },
       data: { lawyerId: dto.lawyerId },
       include: caseInclude,
+    });
+
+    await this.activity.log({
+      tenantId: user.tenantId,
+      caseId: updated.id,
+      actorId: user.id,
+      type: 'ASSIGNED',
+      summary: `Abogado asignado: ${updated.lawyer?.name ?? dto.lawyerId}`,
+      meta: { lawyerId: dto.lawyerId },
     });
 
     return updated;
