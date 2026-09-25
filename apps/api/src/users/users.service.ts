@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -87,6 +88,14 @@ export class UsersService {
 
   async update(id: string, dto: UpdateUserDto, actor: JwtPayloadUser) {
     await this.findOne(id, actor);
+    if (id === actor.id) {
+      if (dto.role !== undefined && dto.role !== actor.role) {
+        throw new BadRequestException('No puedes cambiar tu propio rol');
+      }
+      if (dto.active === false) {
+        throw new BadRequestException('No puedes desactivar tu propia cuenta');
+      }
+    }
     const data: Record<string, unknown> = {};
     if (dto.email) data.email = dto.email.toLowerCase().trim();
     if (dto.name) data.name = dto.name;
@@ -103,6 +112,9 @@ export class UsersService {
 
   async remove(id: string, actor: JwtPayloadUser) {
     await this.findOne(id, actor);
+    if (id === actor.id) {
+      throw new BadRequestException('No puedes desactivar tu propia cuenta');
+    }
     await this.prisma.user.update({
       where: { id },
       data: { active: false },

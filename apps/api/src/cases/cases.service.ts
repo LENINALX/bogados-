@@ -81,6 +81,30 @@ export class CasesService {
     const lawyerId =
       user.role === Role.ABOGADO ? user.id : dto.lawyerId ?? user.id;
 
+    if (lawyerId !== user.id) {
+      const lawyer = await this.prisma.user.findFirst({
+        where: {
+          id: lawyerId,
+          tenantId: user.tenantId,
+          role: { in: [Role.ABOGADO, Role.ADMIN] },
+          active: true,
+        },
+      });
+      if (!lawyer) throw new BadRequestException('Abogado no válido');
+    }
+
+    if (dto.clientId) {
+      const client = await this.prisma.user.findFirst({
+        where: {
+          id: dto.clientId,
+          tenantId: user.tenantId,
+          role: Role.CLIENTE,
+          active: true,
+        },
+      });
+      if (!client) throw new BadRequestException('Cliente no válido');
+    }
+
     const created = await this.prisma.case.create({
       data: {
         tenantId: user.tenantId,
