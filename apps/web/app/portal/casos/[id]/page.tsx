@@ -6,6 +6,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CaseMessages } from "@/components/CaseMessages";
 import { CaseDocuments } from "@/components/CaseDocuments";
+import { CaseTimeline } from "@/components/CaseTimeline";
+import { toTimelineEvents, toTimelineNotes } from "@/lib/timeline";
 
 type Props = { params: { id: string } };
 
@@ -34,10 +36,20 @@ export default async function PortalCasePage({ params }: Props) {
         include: { sender: { select: { id: true, name: true, role: true } } },
         orderBy: { createdAt: "asc" },
       },
+      activityEvents: {
+        include: { actor: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
   if (!c) notFound();
+
+  // Notas ya filtradas (isInternal=false); eventos por lista blanca de cliente
+  const timeline = [
+    ...toTimelineNotes(c.notes),
+    ...toTimelineEvents(c.activityEvents, "client"),
+  ];
 
   return (
     <div className="min-h-screen">
@@ -63,23 +75,7 @@ export default async function PortalCasePage({ params }: Props) {
         )}
 
         <div className="mt-8 space-y-6">
-          <div className="rounded-xl border border-slate-200 bg-white">
-            <div className="border-b px-4 py-3 text-sm font-semibold">Avances</div>
-            <ul className="divide-y">
-              {c.notes.length === 0 && (
-                <li className="px-4 py-6 text-sm text-slate-400">Sin avances publicados</li>
-              )}
-              {c.notes.map((n) => (
-                <li key={n.id} className="px-4 py-3 text-sm">
-                  <div className="flex justify-between text-xs text-slate-500">
-                    <span>{n.author.name}</span>
-                    <span>{n.createdAt.toLocaleString("es-EC")}</span>
-                  </div>
-                  <p className="mt-1 whitespace-pre-wrap">{n.body}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <CaseTimeline title="Avances del caso" items={timeline} audience="client" />
 
           <CaseDocuments
             caseId={c.id}
