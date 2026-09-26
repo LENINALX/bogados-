@@ -1,5 +1,5 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
 
 @ApiTags('health')
@@ -18,7 +18,10 @@ export class HealthController {
   async ready() {
     const db = await this.prisma.isReady();
     if (!db) {
-      return { status: 'not_ready', database: false };
+      throw new ServiceUnavailableException({
+        status: 'not_ready',
+        database: false,
+      });
     }
     return { status: 'ready', database: true };
   }
