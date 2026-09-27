@@ -1,4 +1,5 @@
 import { AppHeader } from "./AppHeader";
+import { AppFooter } from "./AppFooter";
 
 type Props = {
   user: { name: string; role: string };
@@ -11,6 +12,7 @@ export function StaffLayout({ user, links, children }: Props) {
     <div className="min-h-screen">
       <AppHeader user={user} links={links} />
       {children}
+      <AppFooter />
     </div>
   );
 }
