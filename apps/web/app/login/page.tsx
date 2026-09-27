@@ -1,9 +1,9 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { nestLogin } from "@/lib/nest-api";
 
 function LoginForm() {
   const router = useRouter();
@@ -17,6 +17,14 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    try {
+      // Nest JWT (fuente de verdad API) + NextAuth (sesión SSR)
+      await nestLogin(email, password);
+    } catch {
+      setLoading(false);
+      setError("Credenciales inválidas (API)");
+      return;
+    }
     const res = await signIn("credentials", {
       email,
       password,

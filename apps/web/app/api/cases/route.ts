@@ -1,3 +1,4 @@
+/** LEGACY — preferir NestJS apps/api en NEXT_PUBLIC_API_URL (/api/v1/...). */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiSession, requireApiRole } from "@/lib/api/auth-guard";

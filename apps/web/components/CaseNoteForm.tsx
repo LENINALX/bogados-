@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { nestFetch } from "@/lib/nest-api";
 
 export function CaseNoteForm({ caseId }: { caseId: string }) {
   const [body, setBody] = useState("");
@@ -13,11 +14,18 @@ export function CaseNoteForm({ caseId }: { caseId: string }) {
     e.preventDefault();
     if (!body.trim()) return;
     setLoading(true);
-    await fetch(`/api/cases/${caseId}/notes`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body, isInternal }),
-    });
+    try {
+      await nestFetch(`/cases/${caseId}/notes`, {
+        method: "POST",
+        body: JSON.stringify({ body, isInternal }),
+      });
+    } catch {
+      await fetch(`/api/cases/${caseId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body, isInternal }),
+      });
+    }
     setLoading(false);
     setBody("");
     router.refresh();

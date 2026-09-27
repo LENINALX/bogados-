@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { CASE_STATUSES, CASE_STATUS_LABELS, CaseStatus } from "@bogados/shared";
+import { nestFetch } from "@/lib/nest-api";
 
 export function CaseStatusForm({
   caseId,
@@ -13,11 +14,19 @@ export function CaseStatusForm({
   const router = useRouter();
 
   async function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    await fetch(`/api/cases/${caseId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: e.target.value }),
-    });
+    try {
+      await nestFetch(`/cases/${caseId}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: e.target.value }),
+      });
+    } catch {
+      // fallback legado Next route handlers
+      await fetch(`/api/cases/${caseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: e.target.value }),
+      });
+    }
     router.refresh();
   }
 

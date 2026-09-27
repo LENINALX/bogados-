@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { nestFetch, nestDownloadBlob } from "@/lib/nest-api";
 
 type Doc = {
   id: string;
@@ -32,13 +33,25 @@ export function CaseDocuments({
     const fd = new FormData(form);
     if (canMarkInternal) fd.set("sharedWithClient", shared ? "true" : "false");
     setLoading(true);
-    const res = await fetch(`/api/cases/${caseId}/documents`, { method: "POST", body: fd });
-    setLoading(false);
-    if (res.ok) {
-      const data = await res.json();
-      setDocs((d) => [data.document, ...d]);
+    try {
+      const document = await nestFetch<Doc>(`/cases/${caseId}/documents`, {
+        method: "POST",
+        formData: fd,
+        body: fd,
+      });
+      setDocs((d) => [document, ...d]);
       form.reset();
       router.refresh();
+    } catch {
+      const res = await fetch(`/api/cases/${caseId}/documents`, { method: "POST", body: fd });
+      if (res.ok) {
+        const data = await res.json();
+        setDocs((d) => [data.document, ...d]);
+        form.reset();
+        router.refresh();
+      }
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -52,12 +65,15 @@ export function CaseDocuments({
         {docs.map((d) => (
           <li key={d.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
             <div>
-              <a
-                href={`/api/documents/${d.id}`}
+              <button
+                type="button"
+                onClick={() => nestDownloadBlob(d.id, d.fileName).catch(() => {
+                  window.location.href = `/api/documents/${d.id}`;
+                })}
                 className="font-medium text-brand-700 hover:underline"
               >
                 {d.fileName}
-              </a>
+              </button>
               <div className="text-xs text-slate-400">
                 {d.uploadedBy.name} · {(d.sizeBytes / 1024).toFixed(1)} KB
                 {canMarkInternal && (

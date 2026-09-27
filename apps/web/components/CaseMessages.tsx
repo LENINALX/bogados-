@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { nestFetch } from "@/lib/nest-api";
 
 type Msg = {
   id: string;
@@ -28,17 +29,28 @@ export function CaseMessages({
     e.preventDefault();
     if (!body.trim()) return;
     setLoading(true);
-    const res = await fetch(`/api/cases/${caseId}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body }),
-    });
-    setLoading(false);
-    if (res.ok) {
-      const data = await res.json();
-      setMessages((m) => [...m, { ...data.message, createdAt: data.message.createdAt }]);
+    try {
+      const message = await nestFetch<Msg>(`/cases/${caseId}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ body }),
+      });
+      setMessages((m) => [...m, message]);
       setBody("");
       router.refresh();
+    } catch {
+      const res = await fetch(`/api/cases/${caseId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMessages((m) => [...m, { ...data.message, createdAt: data.message.createdAt }]);
+        setBody("");
+        router.refresh();
+      }
+    } finally {
+      setLoading(false);
     }
   }
 
