@@ -21,6 +21,11 @@ export function InviteUserForm() {
     setLoading(true);
     setError(null);
     setDone(null);
+      if (String(fd.get("password")) !== String(fd.get("passwordConfirm"))) {
+        setError("Las contraseñas no coinciden.");
+        setLoading(false);
+        return;
+      }
     try {
       const user = await nestFetch<{ name: string; email: string }>("/users", {
         method: "POST",
@@ -61,7 +66,7 @@ export function InviteUserForm() {
           Cerrar
         </button>
       </div>
-      <div className="grid gap-2 sm:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-5">
         <input name="name" required minLength={2} maxLength={120} placeholder="Nombre" className={input} />
         <input name="email" type="email" required placeholder="Email" className={input} />
         <select name="role" defaultValue="ABOGADO" className={input} aria-label="Rol">
@@ -75,6 +80,15 @@ export function InviteUserForm() {
           minLength={6}
           placeholder="Contraseña temporal"
           autoComplete="off"
+          className={input}
+        />
+        <input
+          name="passwordConfirm"
+          type="password"
+          required
+          minLength={6}
+          placeholder="Repite la contraseña"
+          autoComplete="new-password"
           className={input}
         />
       </div>

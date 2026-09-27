@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { AppHeader } from "@/components/AppHeader";
+import { PortalLayout } from "@/components/PortalLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CaseMessages } from "@/components/CaseMessages";
 import { CaseDocuments } from "@/components/CaseDocuments";
@@ -52,8 +52,7 @@ export default async function PortalCasePage({ params }: Props) {
   ];
 
   return (
-    <div className="min-h-screen">
-      <AppHeader user={session.user} links={[{ href: "/portal", label: "Mis casos" }]} />
+    <PortalLayout user={session.user}>
       <main className="page max-w-3xl">
         <nav aria-label="Ruta" className="mb-4 flex items-center gap-2 text-sm text-slate-500">
           <Link href="/portal" className="hover:text-brand-700 hover:underline">
@@ -103,6 +102,6 @@ export default async function PortalCasePage({ params }: Props) {
           />
         </div>
       </main>
-    </div>
+    </PortalLayout>
   );
 }

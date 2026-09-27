@@ -108,6 +108,7 @@ export function CaseMessages({
             onChange={(e) => setBody(e.target.value)}
             onKeyDown={onKeyDown}
             rows={1}
+            maxLength={5000}
             placeholder="Escribe un mensaje…"
             className="input max-h-32 min-h-[2.5rem] flex-1 resize-y"
           />
@@ -116,7 +117,9 @@ export function CaseMessages({
             {loading ? "Enviando…" : "Enviar"}
           </button>
         </div>
-        <p className="text-[11px] text-slate-400">Enter para enviar · Shift + Enter para salto de línea</p>
+        <p className="text-[11px] text-slate-400" aria-live="polite">
+          {body.length}/5000 · Enter para enviar · Shift + Enter para salto de línea
+        </p>
         {error && <FormMessage type="error">{error}</FormMessage>}
       </form>
     </section>

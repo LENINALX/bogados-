@@ -4,7 +4,7 @@ import { ROLE_LABELS, USER_ROLES } from "@bogados/shared";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { staffLinks } from "@/lib/nav";
-import { AppHeader } from "@/components/AppHeader";
+import { StaffLayout } from "@/components/StaffLayout";
 import { InviteUserForm, UserRowControls } from "@/components/UserAdmin";
 
 export default async function UsersAdminPage({
@@ -56,8 +56,7 @@ export default async function UsersAdminPage({
   };
 
   return (
-    <div className="min-h-screen">
-      <AppHeader user={session.user} links={staffLinks("ADMIN")} />
+    <StaffLayout user={session.user} links={staffLinks("ADMIN")}>
       <main className="page">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -162,6 +161,6 @@ export default async function UsersAdminPage({
           </table>
         </div>
       </main>
-    </div>
+    </StaffLayout>
   );
 }

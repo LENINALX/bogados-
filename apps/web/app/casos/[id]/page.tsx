@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { AppHeader } from "@/components/AppHeader";
+import { StaffLayout } from "@/components/StaffLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CaseMessages } from "@/components/CaseMessages";
 import { CaseDocuments } from "@/components/CaseDocuments";
@@ -67,8 +67,7 @@ export default async function CaseDetailPage({ params }: Props) {
   const sectionLabel = role === "ADMIN" ? "Casos" : "Mis casos";
 
   return (
-    <div className="min-h-screen">
-      <AppHeader user={session.user} links={staffLinks(role)} />
+    <StaffLayout user={session.user} links={staffLinks(role)}>
       <main className="page">
         <nav aria-label="Ruta" className="mb-4 flex items-center gap-2 text-sm text-slate-500">
           <Link href="/dashboard" className="hover:text-brand-700 hover:underline">
@@ -148,6 +147,6 @@ export default async function CaseDetailPage({ params }: Props) {
           </div>
         </div>
       </main>
-    </div>
+    </StaffLayout>
   );
 }

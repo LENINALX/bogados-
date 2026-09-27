@@ -51,6 +51,8 @@ export function CaseNoteForm({ caseId }: { caseId: string }) {
             if (message?.type === "success") setMessage(null);
           }}
           rows={3}
+          maxLength={5000}
+          required
           className="input resize-y"
           placeholder="Escribe un avance o una nota interna…"
         />

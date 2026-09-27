@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { AppHeader } from "@/components/AppHeader";
+import { PortalLayout } from "@/components/PortalLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/ui";
 
@@ -16,8 +16,7 @@ export default async function PortalPage() {
   const firstName = session.user.name.split(" ")[0];
 
   return (
-    <div className="min-h-screen">
-      <AppHeader user={session.user} links={[{ href: "/portal", label: "Mis casos" }]} />
+    <PortalLayout user={session.user}>
       <main className="page max-w-3xl">
         <div className="mb-6">
           <h1 className="page-title">Hola, {firstName}</h1>
@@ -59,6 +58,6 @@ export default async function PortalPage() {
           </ul>
         )}
       </main>
-    </div>
+    </PortalLayout>
   );
 }

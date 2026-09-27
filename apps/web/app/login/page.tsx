@@ -11,6 +11,7 @@ function LoginForm() {
   const params = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [tenantSlug, setTenantSlug] = useState("firma-demo");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +21,7 @@ function LoginForm() {
     setError(null);
     try {
       // Nest JWT (fuente de verdad API) + NextAuth (sesión SSR)
-      await nestLogin(email, password);
+      await nestLogin(email, password, tenantSlug);
     } catch (error) {
       setLoading(false);
       setError(
@@ -33,6 +34,7 @@ function LoginForm() {
     const res = await signIn("credentials", {
       email,
       password,
+      tenantSlug,
       redirect: false,
     });
     if (res?.error) {
@@ -72,6 +74,21 @@ function LoginForm() {
 
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
+              <label htmlFor="tenantSlug" className="label">
+                Código de firma
+              </label>
+              <input
+                id="tenantSlug"
+                type="text"
+                required
+                autoComplete="organization"
+                value={tenantSlug}
+                onChange={(e) => setTenantSlug(e.target.value)}
+                className="input mt-1"
+                placeholder="firma-demo"
+              />
+            </div>
+            <div>
               <label htmlFor="email" className="label">
                 Email
               </label>
@@ -109,7 +126,9 @@ function LoginForm() {
         </div>
 
         <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white/60 px-4 py-3 text-center text-xs text-slate-500">
-          <span className="font-semibold text-slate-600">Cuentas de demo:</span> admin@demo.bogados ·
+          <span className="font-semibold text-slate-600">Firma demo:</span> código `firma-demo` ·
+          <br />
+          <span className="font-semibold text-slate-600">Cuentas:</span> admin@demo.bogados ·
           abogado@demo.bogados · cliente@demo.bogados
           <br />
           Contraseña: <code className="rounded bg-slate-100 px-1">demo1234</code>

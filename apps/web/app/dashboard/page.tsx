@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { staffLinks } from "@/lib/nav";
 import { dueState, formatDue } from "@/lib/tasks";
-import { AppHeader } from "@/components/AppHeader";
+import { StaffLayout } from "@/components/StaffLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DueBadge } from "@/components/DueBadge";
 import { EmptyState } from "@/components/ui";
@@ -126,8 +126,7 @@ export default async function DashboardPage({
     }`;
 
   return (
-    <div className="min-h-screen">
-      <AppHeader user={session.user} links={staffLinks(role)} />
+    <StaffLayout user={session.user} links={staffLinks(role)}>
       <main className="page">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -324,6 +323,6 @@ export default async function DashboardPage({
           )}
         </div>
       </main>
-    </div>
+    </StaffLayout>
   );
 }

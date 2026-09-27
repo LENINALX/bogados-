@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { staffLinks } from "@/lib/nav";
-import { AppHeader } from "@/components/AppHeader";
+import { StaffLayout } from "@/components/StaffLayout";
 import { NewCaseForm } from "@/components/NewCaseForm";
 
 export default async function NewCasePage() {
@@ -25,8 +25,7 @@ export default async function NewCasePage() {
   ]);
 
   return (
-    <div className="min-h-screen">
-      <AppHeader user={session.user} links={staffLinks(role)} />
+    <StaffLayout user={session.user} links={staffLinks(role)}>
       <main className="page max-w-3xl">
         <Link href="/dashboard" className="text-sm text-slate-500 hover:text-brand-700">
           ← Volver
@@ -39,6 +38,6 @@ export default async function NewCasePage() {
           currentUserId={userId}
         />
       </main>
-    </div>
+    </StaffLayout>
   );
 }

@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { PrismaClient, Role, CaseStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { promises as fs } from "fs";

@@ -41,6 +41,11 @@ export function CaseDocuments({
     e.preventDefault();
     const form = e.currentTarget;
     const fd = new FormData(form);
+    const file = fd.get("file");
+    if (!(file instanceof File) || file.size > 10 * 1024 * 1024) {
+      setMessage({ type: "error", text: "El archivo debe existir y pesar como máximo 10 MB." });
+      return;
+    }
     if (canMarkInternal) fd.set("sharedWithClient", shared ? "true" : "false");
     setLoading(true);
     setMessage(null);
@@ -129,6 +134,7 @@ export function CaseDocuments({
             name="file"
             type="file"
             required
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.txt"
             className="sr-only"
             onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
           />
@@ -140,7 +146,7 @@ export function CaseDocuments({
               Compartir con el cliente
             </label>
           ) : (
-            <span />
+            <span className="text-xs text-slate-500">El archivo se compartirá con tu abogado.</span>
           )}
           <button type="submit" disabled={loading || !fileName} className="btn-primary btn-sm">
             {loading && <Spinner className="h-3 w-3" />}

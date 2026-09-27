@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { staffLinks } from "@/lib/nav";
 import { DUE_STYLES, SOON_MS, dueState, formatDue } from "@/lib/tasks";
-import { AppHeader } from "@/components/AppHeader";
+import { StaffLayout } from "@/components/StaffLayout";
 import { DueBadge } from "@/components/DueBadge";
 import { TaskDoneToggle } from "@/components/TaskDoneToggle";
 
@@ -60,8 +60,7 @@ export default async function TasksPage({
     `/tareas?f=${f}${scope ? "&scope=firma" : ""}`;
 
   return (
-    <div className="min-h-screen">
-      <AppHeader user={session.user} links={staffLinks(role)} />
+    <StaffLayout user={session.user} links={staffLinks(role)}>
       <main className="page">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -162,6 +161,6 @@ export default async function TasksPage({
           </table>
         </div>
       </main>
-    </div>
+    </StaffLayout>
   );
 }

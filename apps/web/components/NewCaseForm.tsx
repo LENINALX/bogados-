@@ -38,6 +38,9 @@ export function NewCaseForm({
       let clientId: string | undefined;
       if (clientMode === "existing") clientId = str("clientId") || undefined;
       if (clientMode === "new") {
+        if (str("clientPassword").length < 6) {
+          throw new Error("La contraseña temporal debe tener al menos 6 caracteres.");
+        }
         const created = await nestFetch<{ id: string }>("/auth/register-client", {
           method: "POST",
           body: JSON.stringify({
@@ -151,7 +154,7 @@ export function NewCaseForm({
             </div>
             <div>
               <label className={label} htmlFor="clientPassword">Contraseña temporal *</label>
-              <input id="clientPassword" name="clientPassword" type="text" required minLength={6} className={input} autoComplete="off" />
+              <input id="clientPassword" name="clientPassword" type="password" required minLength={6} className={input} autoComplete="new-password" />
             </div>
             <p className="text-xs text-slate-500 sm:col-span-3">
               Comparte la contraseña temporal con el cliente para que acceda al portal.

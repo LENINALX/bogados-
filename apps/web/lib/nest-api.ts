@@ -32,11 +32,11 @@ export function clearNestToken() {
   sessionStorage.removeItem(NEST_TOKEN_KEY);
 }
 
-export async function nestLogin(email: string, password: string) {
+export async function nestLogin(email: string, password: string, tenantSlug: string) {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, tenantSlug }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

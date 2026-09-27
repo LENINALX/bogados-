@@ -12,14 +12,25 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Contraseña", type: "password" },
+        tenantSlug: { label: "Código de firma", type: "text" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.email || !credentials?.password || !credentials.tenantSlug) return null;
 
-        const user = await prisma.user.findFirst({
-          where: { email: credentials.email.toLowerCase().trim(), active: true },
+        const tenant = await prisma.tenant.findUnique({
+          where: { slug: credentials.tenantSlug.toLowerCase().trim() },
         });
-        if (!user) return null;
+        if (!tenant) return null;
+
+        const user = await prisma.user.findUnique({
+          where: {
+            tenantId_email: {
+              tenantId: tenant.id,
+              email: credentials.email.toLowerCase().trim(),
+            },
+          },
+        });
+        if (!user?.active) return null;
 
         const ok = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!ok) return null;
