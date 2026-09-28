@@ -4,6 +4,7 @@ import { Role } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterClientDto } from './dto/register-client.dto';
+import { LoginThrottlerGuard } from './login-throttle';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -15,7 +16,8 @@ export class AuthController {
   constructor(private auth: AuthService) {}
 
   @Post('login')
-  @ApiOperation({ summary: 'Login con email/contraseña → JWT' })
+  @UseGuards(LoginThrottlerGuard)
+  @ApiOperation({ summary: 'Login con email/contraseña → JWT (máx. 10 intentos / 15 min por cuenta)' })
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
   }

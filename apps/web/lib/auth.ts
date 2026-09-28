@@ -2,6 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { Role } from "@prisma/client";
 import { prisma } from "./prisma";
+import { API_UNAVAILABLE, TOO_MANY_ATTEMPTS } from "./auth-errors";
 
 /** URL de la API Nest vista desde el servidor de Next (en Docker puede diferir de la pública). */
 const NEST_API_URL = (
@@ -9,9 +10,6 @@ const NEST_API_URL = (
   process.env.NEXT_PUBLIC_API_URL ||
   "http://localhost:3001/api/v1"
 ).replace(/\/$/, "");
-
-/** Error que `signIn()` devuelve al cliente cuando la API no responde. */
-export const API_UNAVAILABLE = "API_UNAVAILABLE";
 
 type NestLoginResponse = {
   accessToken: string;
@@ -58,6 +56,7 @@ export const authOptions: NextAuthOptions = {
 
         // 400 (datos mal formados) y 401 (credenciales) → "CredentialsSignin"
         if (res.status === 400 || res.status === 401) return null;
+        if (res.status === 429) throw new Error(TOO_MANY_ATTEMPTS);
         if (!res.ok) throw new Error(API_UNAVAILABLE);
 
         const json = await res.json();

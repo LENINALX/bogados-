@@ -4,6 +4,7 @@ import { signIn } from "next-auth/react";
 import { FormEvent, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { clearNestToken } from "@/lib/nest-api";
+import { TOO_MANY_ATTEMPTS } from "@/lib/auth-errors";
 import { FormMessage, Spinner } from "@/components/ui";
 
 const PARAM_ERRORS: Record<string, string> = {
@@ -37,7 +38,9 @@ function LoginForm() {
       setError(
         res?.error === "CredentialsSignin"
           ? "El código de firma, el email o la contraseña no son correctos. Revísalos e inténtalo de nuevo."
-          : "No pudimos conectar con el servidor. Comprueba tu conexión o inténtalo en unos minutos.",
+          : res?.error === TOO_MANY_ATTEMPTS
+            ? "Demasiados intentos con esta cuenta. Espera 15 minutos e inténtalo de nuevo."
+            : "No pudimos conectar con el servidor. Comprueba tu conexión o inténtalo en unos minutos.",
       );
       return;
     }

@@ -109,7 +109,7 @@ Los listados paginados aceptan `page` (default 1) y `pageSize` (default 20, máx
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/auth/login` | Login (`email`, `password`, `tenantSlug` obligatorios) → JWT Bearer |
+| POST | `/auth/login` | Login (`email`, `password`, `tenantSlug` obligatorios) → JWT Bearer. Máx. 10 intentos / 15 min por cuenta (429) |
 | GET | `/auth/me` | Usuario actual |
 | POST | `/auth/register-client` | Admin/Abogado crea usuario CLIENTE (opcional `caseId`) |
 | GET | `/dashboard/stats` | Conteos tenant-scoped (casos, docs, msgs, roles, tareas) |
