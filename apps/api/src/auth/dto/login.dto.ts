@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsEmail, IsString, MinLength } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({ example: 'admin@demo.bogados' })
@@ -12,11 +13,11 @@ export class LoginDto {
   password!: string;
 
   @ApiProperty({
-    required: false,
-    description: 'Slug del tenant (opcional si el email es único)',
+    description: 'Slug (código) de la firma; el email solo es único dentro de cada firma',
     example: 'firma-demo',
   })
-  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
   @IsString()
-  tenantSlug?: string;
+  @MinLength(1)
+  tenantSlug!: string;
 }

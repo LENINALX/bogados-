@@ -24,6 +24,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import { PaginationQueryDto } from '../common/dto/pagination.dto';
+import { documentUploadOptions } from './upload.config';
 
 @ApiTags('documents')
 @ApiBearerAuth()
@@ -43,7 +44,7 @@ export class DocumentsController {
   }
 
   @Post('cases/:caseId/documents')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', documentUploadOptions))
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {

@@ -19,6 +19,7 @@ import {
   PaginationQueryDto,
   toPaginated,
 } from '../common/dto/pagination.dto';
+import { isAllowedUpload, MAX_UPLOAD_BYTES } from './upload.config';
 
 @Injectable()
 export class DocumentsService {
@@ -58,10 +59,14 @@ export class DocumentsService {
     sharedWithClientRaw: string | undefined,
     user: JwtPayloadUser,
   ) {
+    // Multer ya aplica estos límites (upload.config.ts); se repiten por si el
+    // servicio se invoca sin pasar por el interceptor.
     if (!file) throw new BadRequestException('Archivo requerido');
-    const maxBytes = 10 * 1024 * 1024;
-    if (file.size > maxBytes) {
+    if (file.size > MAX_UPLOAD_BYTES) {
       throw new BadRequestException('Archivo demasiado grande (máx. 10 MB)');
+    }
+    if (!isAllowedUpload(file.originalname)) {
+      throw new BadRequestException('Tipo de archivo no permitido');
     }
 
     const c = await getAccessibleCase(this.prisma, caseId, user);
@@ -136,6 +141,11 @@ export class DocumentsService {
 
     if (!isStaff(user.role) && !doc.sharedWithClient) {
       throw new ForbiddenException('Sin permiso para este documento');
+    }
+
+    // Sin esta comprobación, StreamableFile responde 400 con el mensaje de ENOENT (incluye la ruta)
+    if (!(await this.storage.exists(doc.storagePath))) {
+      throw new NotFoundException('Archivo no disponible');
     }
 
     const stream = createReadStream(this.storage.resolvePath(doc.storagePath));

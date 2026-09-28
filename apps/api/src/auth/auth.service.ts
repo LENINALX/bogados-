@@ -22,21 +22,16 @@ export class AuthService {
   async login(dto: LoginDto) {
     const email = dto.email.toLowerCase().trim();
 
-    let user = null as Awaited<ReturnType<typeof this.prisma.user.findFirst>>;
-
-    if (dto.tenantSlug) {
-      const tenant = await this.prisma.tenant.findUnique({
-        where: { slug: dto.tenantSlug },
-      });
-      if (!tenant) throw new UnauthorizedException('Credenciales inválidas');
-      user = await this.prisma.user.findUnique({
-        where: {
-          tenantId_email: { tenantId: tenant.id, email },
-        },
-      });
-    } else {
-      user = await this.prisma.user.findFirst({ where: { email } });
-    }
+    // El email solo es único por tenant, así que siempre se resuelve la firma primero
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug: dto.tenantSlug },
+    });
+    if (!tenant) throw new UnauthorizedException('Credenciales inválidas');
+    const user = await this.prisma.user.findUnique({
+      where: {
+        tenantId_email: { tenantId: tenant.id, email },
+      },
+    });
 
     if (!user || !user.active) {
       throw new UnauthorizedException('Credenciales inválidas');

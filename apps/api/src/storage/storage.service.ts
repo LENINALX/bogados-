@@ -3,16 +3,23 @@ import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
+import { resolveUploadDir } from '../config/paths';
 
 @Injectable()
 export class StorageService {
   private readonly root: string;
 
   constructor(private config: ConfigService) {
-    this.root = path.resolve(
-      process.cwd(),
-      this.config.get<string>('uploadDir', './uploads'),
-    );
+    this.root = resolveUploadDir(this.config.get<string>('uploadDir', './uploads'));
+  }
+
+  async exists(storagePath: string): Promise<boolean> {
+    try {
+      await fs.access(this.resolvePath(storagePath));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async save(

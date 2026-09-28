@@ -109,7 +109,7 @@ Los listados paginados aceptan `page` (default 1) y `pageSize` (default 20, máx
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/auth/login` | Login → JWT Bearer |
+| POST | `/auth/login` | Login (`email`, `password`, `tenantSlug` obligatorios) → JWT Bearer |
 | GET | `/auth/me` | Usuario actual |
 | POST | `/auth/register-client` | Admin/Abogado crea usuario CLIENTE (opcional `caseId`) |
 | GET | `/dashboard/stats` | Conteos tenant-scoped (casos, docs, msgs, roles, tareas) |
@@ -119,7 +119,7 @@ Los listados paginados aceptan `page` (default 1) y `pageSize` (default 20, máx
 | PATCH | `/cases/:id/status` | Transición de estado (+ notificación) |
 | PATCH | `/cases/:id/assign` | Asignar abogado (admin) |
 | GET/POST | `/cases/:caseId/notes` | Notas (clientes sin internas) |
-| GET/POST | `/cases/:caseId/documents` | Listar (paginado) / subir (multipart) |
+| GET/POST | `/cases/:caseId/documents` | Listar (paginado) / subir (multipart, máx. 10 MB: pdf, doc(x), xls(x), png, jpg, txt) |
 | GET | `/documents/:id/download` | Descarga con ACL |
 | GET/POST | `/cases/:caseId/messages` | Mensajes del caso (paginado) |
 | GET | `/cases/:caseId/activity` | Timeline / auditoría |
@@ -170,6 +170,7 @@ bogados-/
 ```bash
 npm run dev          # Next.js en :3000
 npm run dev:api      # NestJS en :3001 (watch)
+npm run dev:all      # API + web en paralelo (una sola terminal)
 npm run build:api    # Compilar API
 npm run test:api     # Tests unitarios Jest (auth + cases + roles)
 npm run db:seed      # Datos demo (incluye tareas y notificaciones)
@@ -188,6 +189,8 @@ docker compose --profile full up -d
 - **Admin** ve todo el tenant.
 - Global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`) + **helmet**.
 - No hay secretos en el repositorio: usa `.env` local (ignorado por git).
+- Con `NODE_ENV=production` la API no arranca sin `JWT_SECRET`.
+- `UPLOAD_DIR` relativo se resuelve desde la raíz del monorepo (misma carpeta para la API y el seed).
 
 ## Licencia
 
