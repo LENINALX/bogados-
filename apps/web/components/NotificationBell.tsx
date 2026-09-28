@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getNestToken, nestFetch } from "@/lib/nest-api";
+import { nestFetch } from "@/lib/nest-api";
 
 type Notification = {
   id: string;
@@ -26,7 +26,6 @@ export function NotificationBell({ role }: { role: string }) {
   const router = useRouter();
 
   const load = useCallback(async () => {
-    if (!getNestToken()) return;
     try {
       const [latest, unreadPage] = await Promise.all([
         nestFetch<Page<Notification>>("/notifications?pageSize=10"),

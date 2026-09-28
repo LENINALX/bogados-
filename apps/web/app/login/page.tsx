@@ -3,8 +3,14 @@
 import { signIn } from "next-auth/react";
 import { FormEvent, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { clearNestToken, NestApiError, nestLogin } from "@/lib/nest-api";
+import { clearNestToken } from "@/lib/nest-api";
 import { FormMessage, Spinner } from "@/components/ui";
+
+const PARAM_ERRORS: Record<string, string> = {
+  forbidden: "No tienes permiso para entrar en esa sección. Inicia sesión con otra cuenta.",
+  expired: "Tu sesión ha caducado. Vuelve a iniciar sesión.",
+  revoked: "Tu cuenta está desactivada. Contacta con el administrador de tu firma.",
+};
 
 function LoginForm() {
   const router = useRouter();
@@ -19,36 +25,29 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    try {
-      // Nest JWT (fuente de verdad API) + NextAuth (sesión SSR)
-      await nestLogin(email, password, tenantSlug);
-    } catch (error) {
-      setLoading(false);
-      setError(
-        error instanceof NestApiError && error.status === 401
-          ? "El email o la contraseña no son correctos. Revísalos e inténtalo de nuevo."
-          : "No pudimos conectar con el servidor. Comprueba tu conexión o inténtalo en unos minutos.",
-      );
-      return;
-    }
+    // NextAuth valida contra la API Nest y guarda su JWT en la sesión
     const res = await signIn("credentials", {
       email,
       password,
       tenantSlug,
       redirect: false,
-    });
-    if (res?.error) {
+    }).catch(() => null);
+    if (!res || res.error) {
       setLoading(false);
-      clearNestToken();
-      setError("El email o la contraseña no son correctos. Revísalos e inténtalo de nuevo.");
+      setError(
+        res?.error === "CredentialsSignin"
+          ? "El código de firma, el email o la contraseña no son correctos. Revísalos e inténtalo de nuevo."
+          : "No pudimos conectar con el servidor. Comprueba tu conexión o inténtalo en unos minutos.",
+      );
       return;
     }
+    clearNestToken(); // descartar un token en caché de una sesión anterior
     // Se mantiene el indicador de carga mientras se navega
     router.push("/");
     router.refresh();
   }
 
-  const forbidden = params.get("error") === "forbidden";
+  const paramError = PARAM_ERRORS[params.get("error") ?? ""];
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-brand-50 to-slate-50 px-4 py-10">
@@ -64,11 +63,9 @@ function LoginForm() {
         <div className="card p-6 sm:p-8">
           <h2 className="mb-5 text-lg font-semibold text-slate-800">Inicia sesión</h2>
 
-          {(forbidden || error) && (
+          {(paramError || error) && (
             <div className="mb-4">
-              <FormMessage type="error">
-                {error || "No tienes permiso para entrar en esa sección. Inicia sesión con otra cuenta."}
-              </FormMessage>
+              <FormMessage type="error">{error || paramError}</FormMessage>
             </div>
           )}
 

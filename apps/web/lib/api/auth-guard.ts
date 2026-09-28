@@ -1,12 +1,11 @@
-import { getServerSession } from "next-auth";
 import type { Session } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { Role } from "@prisma/client";
 
 export async function requireApiSession() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const session = await getSession();
+  if (!session) {
     return { error: NextResponse.json({ error: "No autenticado" }, { status: 401 }) };
   }
   return { session };

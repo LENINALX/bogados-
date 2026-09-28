@@ -2,6 +2,9 @@ import { Role } from "@prisma/client";
 import "next-auth";
 import "next-auth/jwt";
 
+/** revoked: usuario desactivado · expired: el JWT de la API Nest caducó o falta */
+type SessionError = "revoked" | "expired";
+
 declare module "next-auth" {
   interface Session {
     user: {
@@ -11,6 +14,9 @@ declare module "next-auth" {
       role: Role;
       tenantId: string;
     };
+    /** JWT de la API Nest; ausente si hay `error`. */
+    accessToken?: string;
+    error?: SessionError;
   }
 
   interface User {
@@ -19,6 +25,8 @@ declare module "next-auth" {
     name: string;
     role: Role;
     tenantId: string;
+    accessToken: string;
+    accessTokenExpires: number;
   }
 }
 
@@ -27,5 +35,8 @@ declare module "next-auth/jwt" {
     id: string;
     role: Role;
     tenantId: string;
+    accessToken?: string;
+    accessTokenExpires?: number;
+    error?: SessionError;
   }
 }

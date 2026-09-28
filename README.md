@@ -39,7 +39,7 @@ Centraliza expedientes, documentos y comunicación segura entre abogado y client
 | **apps/web** | Next.js 14 (App Router) + TypeScript + Tailwind — UI y NextAuth |
 | **apps/api** | **NestJS** + TypeScript + Prisma — backend REST versionado |
 | **Prisma** | PostgreSQL (esquema compartido en `prisma/`) |
-| **Auth** | NextAuth (sesión web) + **JWT Nest** (fuente de verdad API) |
+| **Auth** | NextAuth valida contra la API Nest y guarda su **JWT** en la sesión (cookie cifrada) |
 | **Docker Compose** | Postgres (+ perfil `full` con contenedor API) |
 
 ## Puertos
@@ -184,6 +184,8 @@ docker compose --profile full up -d
 ## Seguridad / permisos
 
 - Toda consulta filtra por `tenantId` del JWT Nest / sesión.
+- Login: NextAuth llama a `POST /auth/login` de Nest (la API es la única que valida credenciales) y guarda el JWT en su sesión. El navegador lo obtiene con `getSession()`, así funciona en pestañas nuevas; ante un 401 se cierra la sesión.
+- En cada lectura de la sesión web se comprueba que el usuario siga activo y se refresca su rol: desactivar una cuenta corta el acceso al momento.
 - **Cliente** solo ve sus casos, notas no internas y documentos compartidos.
 - **Abogado** solo gestiona casos donde es el abogado asignado.
 - **Admin** ve todo el tenant.

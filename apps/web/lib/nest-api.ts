@@ -1,13 +1,13 @@
 /**
  * Cliente hacia el backend NestJS (fuente de verdad para casos/docs/mensajes/usuarios).
- * El JWT de Nest se guarda en sessionStorage tras el login (dual con NextAuth).
+ * El JWT de Nest vive en la sesión de NextAuth (cookie); se obtiene con getSession()
+ * y se cachea en memoria de la pestaña.
  */
+import { getSession, signOut } from "next-auth/react";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
   "http://localhost:3001/api/v1";
-
-export const NEST_TOKEN_KEY = "bogados_nest_token";
 
 export class NestApiError extends Error {
   constructor(
@@ -19,33 +19,46 @@ export class NestApiError extends Error {
   }
 }
 
-export function getNestToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(NEST_TOKEN_KEY);
-}
+let tokenPromise: Promise<string | null> | null = null;
+let signingOut = false;
 
-export function setNestToken(token: string) {
-  sessionStorage.setItem(NEST_TOKEN_KEY, token);
+async function getNestToken(): Promise<string | null> {
+  if (!tokenPromise) {
+    tokenPromise = getSession()
+      .then((s) => (s && !s.error ? s.accessToken ?? null : null))
+      .catch(() => null);
+  }
+  const token = await tokenPromise;
+  if (!token) tokenPromise = null; // no cachear la ausencia: reintentar en la próxima llamada
+  return token;
 }
 
 export function clearNestToken() {
-  sessionStorage.removeItem(NEST_TOKEN_KEY);
+  tokenPromise = null;
 }
 
-export async function nestLogin(email: string, password: string, tenantSlug: string) {
-  const res = await fetch(`${API_BASE}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, tenantSlug }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new NestApiError(err.error || "Login Nest falló", res.status);
+/** Sesión caducada, revocada o rechazada por la API: volver al login una sola vez. */
+function sessionExpired(): never {
+  clearNestToken();
+  if (!signingOut) {
+    signingOut = true;
+    signOut({ callbackUrl: "/login?error=expired" });
   }
-  const json = await res.json();
-  const payload = json.data ?? json;
-  if (payload.accessToken) setNestToken(payload.accessToken);
-  return payload;
+  throw new NestApiError("Tu sesión ha caducado. Vuelve a iniciar sesión.", 401);
+}
+
+async function authorizedFetch(path: string, init: RequestInit = {}) {
+  const token = await getNestToken();
+  if (!token) sessionExpired();
+
+  const headers = new Headers(init.headers || {});
+  headers.set("Authorization", `Bearer ${token}`);
+  const res = await fetch(`${API_BASE}${path.startsWith("/") ? path : `/${path}`}`, {
+    ...init,
+    headers,
+  });
+  if (res.status === 401) sessionExpired();
+  return res;
 }
 
 type NestOptions = RequestInit & { formData?: FormData };
@@ -54,9 +67,7 @@ export async function nestFetch<T = unknown>(
   path: string,
   options: NestOptions = {},
 ): Promise<T> {
-  const token = getNestToken();
   const headers = new Headers(options.headers || {});
-  if (token) headers.set("Authorization", `Bearer ${token}`);
 
   let body = options.body;
   if (options.formData) {
@@ -66,15 +77,11 @@ export async function nestFetch<T = unknown>(
     headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(`${API_BASE}${path.startsWith("/") ? path : `/${path}`}`, {
-    ...options,
-    headers,
-    body,
-  });
+  const res = await authorizedFetch(path, { ...options, headers, body });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `Error API ${res.status}`);
+    throw new NestApiError(err.error || `Error API ${res.status}`, res.status);
   }
 
   const contentType = res.headers.get("content-type") || "";
@@ -85,18 +92,9 @@ export async function nestFetch<T = unknown>(
   return res as unknown as T;
 }
 
-export function nestDocumentDownloadUrl(documentId: string) {
-  const token = getNestToken();
-  // Download needs Authorization header — components use nestDownloadBlob instead for ACL
-  return `${API_BASE}/documents/${documentId}/download${token ? `?t=1` : ""}`;
-}
-
 export async function nestDownloadBlob(documentId: string, fileName: string) {
-  const token = getNestToken();
-  const res = await fetch(`${API_BASE}/documents/${documentId}/download`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) throw new Error("No se pudo descargar");
+  const res = await authorizedFetch(`/documents/${documentId}/download`);
+  if (!res.ok) throw new NestApiError("No se pudo descargar", res.status);
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
