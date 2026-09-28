@@ -8,6 +8,7 @@ import { CaseMessages } from "@/components/CaseMessages";
 import { CaseDocuments } from "@/components/CaseDocuments";
 import { CaseTimeline } from "@/components/CaseTimeline";
 import { toTimelineEvents, toTimelineNotes } from "@/lib/timeline";
+import { documentFields, messageFields } from "@/lib/client-fields";
 
 type Props = { params: { id: string } };
 
@@ -27,13 +28,14 @@ export default async function PortalCasePage({ params }: Props) {
         include: { author: { select: { name: true } } },
         orderBy: { createdAt: "desc" },
       },
+      // select explícito: storagePath, tenantId, etc. no deben llegar al navegador
       documents: {
         where: { sharedWithClient: true },
-        include: { uploadedBy: { select: { name: true } } },
+        select: documentFields,
         orderBy: { createdAt: "desc" },
       },
       messages: {
-        include: { sender: { select: { id: true, name: true, role: true } } },
+        select: messageFields,
         orderBy: { createdAt: "asc" },
       },
       activityEvents: {

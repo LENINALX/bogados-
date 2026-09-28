@@ -3,6 +3,7 @@ import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import { getAccessibleCase } from '../common/utils/case-access';
+import { documentPublicSelect } from '../documents/documents.service';
 
 @Injectable()
 export class ClientsService {
@@ -39,7 +40,7 @@ export class ClientsService {
         },
         documents: {
           where: { sharedWithClient: true },
-          include: { uploadedBy: { select: { id: true, name: true } } },
+          select: documentPublicSelect,
           orderBy: { createdAt: 'desc' },
         },
       },

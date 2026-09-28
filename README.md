@@ -137,7 +137,7 @@ Los listados paginados aceptan `page` (default 1) y `pageSize` (default 20, máx
 
 **ACL:** Cliente no lee notas `isInternal` ni documentos con `sharedWithClient=false`.
 
-Las Route Handlers de Next en `apps/web/app/api/cases|documents|messages` quedan como **legado**; el frontend cliente usa `NEXT_PUBLIC_API_URL` hacia Nest.
+Toda escritura y descarga pasa por la API Nest (`NEXT_PUBLIC_API_URL`). Next solo expone `/api/auth/*` (NextAuth); las páginas del servidor leen Prisma directamente para renderizar.
 
 ## Estructura del monorepo
 
@@ -161,6 +161,7 @@ bogados-/
 ├── packages/shared/          # Constantes de dominio
 ├── prisma/                   # Esquema + migraciones compartidas
 ├── uploads/
+├── .github/workflows/ci.yml  # Tests + build de API y web en cada push/PR
 ├── docker-compose.yml
 └── package.json
 ```

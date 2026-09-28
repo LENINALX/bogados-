@@ -21,6 +21,18 @@ import {
 } from '../common/dto/pagination.dto';
 import { isAllowedUpload, MAX_UPLOAD_BYTES } from './upload.config';
 
+/** Campos de Document que se devuelven al cliente (sin storagePath ni tenantId). */
+export const documentPublicSelect = {
+  id: true,
+  caseId: true,
+  fileName: true,
+  mimeType: true,
+  sizeBytes: true,
+  sharedWithClient: true,
+  createdAt: true,
+  uploadedBy: { select: { id: true, name: true } },
+} satisfies Prisma.DocumentSelect;
+
 @Injectable()
 export class DocumentsService {
   constructor(
@@ -43,7 +55,7 @@ export class DocumentsService {
       this.prisma.document.count({ where }),
       this.prisma.document.findMany({
         where,
-        include: { uploadedBy: { select: { id: true, name: true } } },
+        select: documentPublicSelect,
         orderBy: { createdAt: 'desc' },
         skip,
         take,
@@ -92,7 +104,7 @@ export class DocumentsService {
         sharedWithClient,
         uploadedById: user.id,
       },
-      include: { uploadedBy: { select: { id: true, name: true } } },
+      select: documentPublicSelect,
     });
 
     await this.activity.log({

@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Valores ficticios: ni los tests ni el build se conectan a la base de datos
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+      NEXTAUTH_SECRET: ci-only-secret
+      NEXTAUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+      JWT_SECRET: ci-only-jwt-secret
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npx prisma generate
+
+      - name: API — tests
+        run: npm run test:api
+      - name: API — build
+        run: npm run build:api
+
+      # next build incluye el chequeo de tipos
+      - name: Web — build
+        run: npm run build -w @bogados/web
