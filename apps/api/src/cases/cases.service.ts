@@ -81,29 +81,8 @@ export class CasesService {
     const lawyerId =
       user.role === Role.ABOGADO ? user.id : dto.lawyerId ?? user.id;
 
-    if (lawyerId !== user.id) {
-      const lawyer = await this.prisma.user.findFirst({
-        where: {
-          id: lawyerId,
-          tenantId: user.tenantId,
-          role: { in: [Role.ABOGADO, Role.ADMIN] },
-          active: true,
-        },
-      });
-      if (!lawyer) throw new BadRequestException('Abogado no válido');
-    }
-
-    if (dto.clientId) {
-      const client = await this.prisma.user.findFirst({
-        where: {
-          id: dto.clientId,
-          tenantId: user.tenantId,
-          role: Role.CLIENTE,
-          active: true,
-        },
-      });
-      if (!client) throw new BadRequestException('Cliente no válido');
-    }
+    if (lawyerId !== user.id) await this.assertValidLawyer(lawyerId, user.tenantId);
+    if (dto.clientId) await this.assertValidClient(dto.clientId, user.tenantId);
 
     const created = await this.prisma.case.create({
       data: {
@@ -138,6 +117,9 @@ export class CasesService {
       delete data.lawyerId;
       delete data.clientId;
     }
+    // null desasigna; un id debe ser un usuario activo del tenant con el rol adecuado
+    if (data.lawyerId) await this.assertValidLawyer(data.lawyerId, user.tenantId);
+    if (data.clientId) await this.assertValidClient(data.clientId, user.tenantId);
 
     const prevStatus = existing.status;
     const updated = await this.prisma.case.update({
@@ -188,17 +170,7 @@ export class CasesService {
 
   async assignLawyer(id: string, dto: AssignLawyerDto, user: JwtPayloadUser) {
     const existing = await getAccessibleCase(this.prisma, id, user);
-    const lawyer = await this.prisma.user.findFirst({
-      where: {
-        id: dto.lawyerId,
-        tenantId: user.tenantId,
-        role: { in: [Role.ABOGADO, Role.ADMIN] },
-        active: true,
-      },
-    });
-    if (!lawyer) {
-      throw new BadRequestException('Abogado no válido');
-    }
+    await this.assertValidLawyer(dto.lawyerId, user.tenantId);
 
     const updated = await this.prisma.case.update({
       where: { id: existing.id },
@@ -231,5 +203,29 @@ export class CasesService {
     const existing = await getAccessibleCase(this.prisma, id, user);
     await this.prisma.case.delete({ where: { id: existing.id } });
     return { ok: true };
+  }
+
+  private async assertValidLawyer(lawyerId: string, tenantId: string) {
+    const lawyer = await this.prisma.user.findFirst({
+      where: {
+        id: lawyerId,
+        tenantId,
+        role: { in: [Role.ABOGADO, Role.ADMIN] },
+        active: true,
+      },
+    });
+    if (!lawyer) throw new BadRequestException('Abogado no válido');
+  }
+
+  private async assertValidClient(clientId: string, tenantId: string) {
+    const client = await this.prisma.user.findFirst({
+      where: {
+        id: clientId,
+        tenantId,
+        role: Role.CLIENTE,
+        active: true,
+      },
+    });
+    if (!client) throw new BadRequestException('Cliente no válido');
   }
 }

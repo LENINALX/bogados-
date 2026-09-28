@@ -9,6 +9,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsInt, Max, Min } from 'class-validator';
+import { ToBoolean } from '../../common/decorators/to-boolean.decorator';
 
 export class CreateTaskDto {
   @ApiProperty()
@@ -79,13 +80,13 @@ export class ListTasksQueryDto {
 
   @ApiPropertyOptional({ description: 'solo vencidas sin completar' })
   @IsOptional()
+  @ToBoolean()
   @IsBoolean()
-  @Type(() => Boolean)
   overdue?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()
+  @ToBoolean()
   @IsBoolean()
-  @Type(() => Boolean)
   done?: boolean;
 }

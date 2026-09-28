@@ -1,29 +1,31 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateTenantDto, UpdateTenantDto } from './dto/tenant.dto';
+import { UpdateTenantDto } from './dto/tenant.dto';
+import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 
+/**
+ * Todas las operaciones quedan acotadas al tenant del usuario autenticado.
+ * No existe (aún) un rol de administrador de plataforma, así que el alta de
+ * nuevas firmas no se expone por API.
+ */
 @Injectable()
 export class TenantsService {
   constructor(private prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.tenant.findMany({ orderBy: { createdAt: 'desc' } });
+  findAll(actor: JwtPayloadUser) {
+    return this.prisma.tenant.findMany({ where: { id: actor.tenantId } });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actor: JwtPayloadUser) {
+    // Otro tenant se trata como inexistente para no revelar ids válidos
+    if (id !== actor.tenantId) throw new NotFoundException('Tenant no encontrado');
     const t = await this.prisma.tenant.findUnique({ where: { id } });
     if (!t) throw new NotFoundException('Tenant no encontrado');
     return t;
   }
 
-  async create(dto: CreateTenantDto) {
-    const exists = await this.prisma.tenant.findUnique({ where: { slug: dto.slug } });
-    if (exists) throw new ConflictException('Slug ya en uso');
-    return this.prisma.tenant.create({ data: dto });
-  }
-
-  async update(id: string, dto: UpdateTenantDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateTenantDto, actor: JwtPayloadUser) {
+    await this.findOne(id, actor);
     if (dto.slug) {
       const exists = await this.prisma.tenant.findFirst({
         where: { slug: dto.slug, NOT: { id } },

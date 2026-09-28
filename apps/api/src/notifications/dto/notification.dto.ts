@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { ToBoolean } from '../../common/decorators/to-boolean.decorator';
 
 export class ListNotificationsQueryDto {
   @ApiPropertyOptional({ default: 1 })
@@ -20,7 +21,7 @@ export class ListNotificationsQueryDto {
 
   @ApiPropertyOptional({ description: 'Filtrar solo no leídas' })
   @IsOptional()
-  @Type(() => Boolean)
+  @ToBoolean()
   @IsBoolean()
   unreadOnly?: boolean;
 }

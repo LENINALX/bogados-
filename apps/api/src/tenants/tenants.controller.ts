@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { TenantsService } from './tenants.service';
-import { CreateTenantDto, UpdateTenantDto } from './dto/tenant.dto';
+import { UpdateTenantDto } from './dto/tenant.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -18,31 +18,29 @@ export class TenantsController {
   @Get('me')
   @ApiOperation({ summary: 'Tenant del usuario autenticado' })
   me(@CurrentUser() user: JwtPayloadUser) {
-    return this.tenants.findOne(user.tenantId);
+    return this.tenants.findOne(user.tenantId, user);
   }
 
   @Get()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Listar tenants (admin plataforma — MVP: admin del tenant)' })
-  findAll() {
-    return this.tenants.findAll();
+  @ApiOperation({ summary: 'Listar tenants (solo el propio)' })
+  findAll(@CurrentUser() user: JwtPayloadUser) {
+    return this.tenants.findAll(user);
   }
 
   @Get(':id')
   @Roles(Role.ADMIN)
-  findOne(@Param('id') id: string) {
-    return this.tenants.findOne(id);
-  }
-
-  @Post()
-  @Roles(Role.ADMIN)
-  create(@Body() dto: CreateTenantDto) {
-    return this.tenants.create(dto);
+  findOne(@Param('id') id: string, @CurrentUser() user: JwtPayloadUser) {
+    return this.tenants.findOne(id, user);
   }
 
   @Patch(':id')
   @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @Body() dto: UpdateTenantDto) {
-    return this.tenants.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateTenantDto,
+    @CurrentUser() user: JwtPayloadUser,
+  ) {
+    return this.tenants.update(id, dto, user);
   }
 }
