@@ -28,12 +28,13 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users     User[]
-  cases     Case[]
-  documents Document[]
-  messages  Message[]
-  notes     CaseNote[]
+  users          User[]
+  cases          Case[]
+  documents      Document[]
+  messages       Message[]
+  notes          CaseNote[]
   activityEvents ActivityEvent[]
+  tasks          CaseTask[]
 }
 
 model User {
@@ -47,13 +48,15 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tenant              Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  casesAsLawyer       Case[]     @relation("CaseLawyer")
-  casesAsClient       Case[]     @relation("CaseClient")
-  documentsUploaded   Document[] @relation("DocumentUploader")
-  messagesSent        Message[]  @relation("MessageSender")
-  notesAuthored       CaseNote[] @relation("NoteAuthor")
-  activityEvents      ActivityEvent[] @relation("ActivityActor")
+  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  casesAsLawyer     Case[]         @relation("CaseLawyer")
+  casesAsClient     Case[]         @relation("CaseClient")
+  documentsUploaded Document[]     @relation("DocumentUploader")
+  messagesSent      Message[]      @relation("MessageSender")
+  notesAuthored     CaseNote[]     @relation("NoteAuthor")
+  activityEvents    ActivityEvent[] @relation("ActivityActor")
+  tasksAssigned     CaseTask[]     @relation("TaskAssignee")
+  notifications     Notification[]
 
   @@unique([tenantId, email])
   @@index([tenantId, role])
@@ -73,13 +76,14 @@ model Case {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  lawyer    User?      @relation("CaseLawyer", fields: [lawyerId], references: [id])
-  client    User?      @relation("CaseClient", fields: [clientId], references: [id])
-  documents Document[]
-  messages  Message[]
-  notes     CaseNote[]
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lawyer         User?           @relation("CaseLawyer", fields: [lawyerId], references: [id])
+  client         User?           @relation("CaseClient", fields: [clientId], references: [id])
+  documents      Document[]
+  messages       Message[]
+  notes          CaseNote[]
   activityEvents ActivityEvent[]
+  tasks          CaseTask[]
 
   @@index([tenantId, status])
   @@index([tenantId, lawyerId])
@@ -87,17 +91,17 @@ model Case {
 }
 
 model Document {
-  id           String   @id @default(cuid())
-  tenantId     String
-  caseId       String
-  fileName     String
-  mimeType     String
-  sizeBytes    Int
-  storagePath  String
-  sharedWithClient Boolean @default(false)
-  uploadedById String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id               String   @id @default(cuid())
+  tenantId         String
+  caseId           String
+  fileName         String
+  mimeType         String
+  sizeBytes        Int
+  storagePath      String
+  sharedWithClient Boolean  @default(false)
+  uploadedById     String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   case       Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
@@ -154,4 +158,40 @@ model ActivityEvent {
   actor  User?  @relation("ActivityActor", fields: [actorId], references: [id])
 
   @@index([tenantId, caseId, createdAt])
+}
+
+/// Tareas / plazos asociados a un caso
+model CaseTask {
+  id         String   @id @default(cuid())
+  tenantId   String
+  caseId     String
+  title      String
+  dueAt      DateTime
+  done       Boolean  @default(false)
+  assigneeId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case     Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assignee User?  @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  @@index([tenantId, caseId])
+  @@index([tenantId, dueAt, done])
+  @@index([tenantId, assigneeId])
+}
+
+/// Notificaciones in-app por usuario
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
 }
