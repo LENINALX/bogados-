@@ -19,8 +19,9 @@ export type NotifyInput = {
 export class NotificationsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(input: NotifyInput) {
-    return this.prisma.notification.create({
+  /** `db`: cliente de una transacción en curso, para notificar junto con la acción. */
+  async create(input: NotifyInput, db: Prisma.TransactionClient = this.prisma) {
+    return db.notification.create({
       data: {
         userId: input.userId,
         title: input.title,
@@ -30,15 +31,23 @@ export class NotificationsService {
     });
   }
 
-  /** Crea notificaciones para varios destinatarios (omite nulos/duplicados). */
-  async notifyMany(userIds: Array<string | null | undefined>, input: Omit<NotifyInput, 'userId'>) {
+  /** Crea notificaciones para varios destinatarios (omite nulos/duplicados). Devuelve cuántas. */
+  async notifyMany(
+    userIds: Array<string | null | undefined>,
+    input: Omit<NotifyInput, 'userId'>,
+    db: Prisma.TransactionClient = this.prisma,
+  ): Promise<number> {
     const unique = [...new Set(userIds.filter((id): id is string => Boolean(id)))];
-    if (unique.length === 0) return [];
-    return Promise.all(
-      unique.map((userId) =>
-        this.create({ userId, title: input.title, body: input.body, meta: input.meta }),
-      ),
-    );
+    if (unique.length === 0) return 0;
+    const { count } = await db.notification.createMany({
+      data: unique.map((userId) => ({
+        userId,
+        title: input.title,
+        body: input.body,
+        meta: input.meta ?? undefined,
+      })),
+    });
+    return count;
   }
 
   async list(user: JwtPayloadUser, query: ListNotificationsQueryDto) {

@@ -42,39 +42,49 @@ export class MessagesService {
 
   async create(caseId: string, dto: CreateMessageDto, user: JwtPayloadUser) {
     const c = await getAccessibleCase(this.prisma, caseId, user);
-    const message = await this.prisma.message.create({
-      data: {
-        tenantId: user.tenantId,
-        caseId: c.id,
-        senderId: user.id,
-        body: dto.body,
-      },
-      include: { sender: { select: { id: true, name: true, role: true } } },
-    });
-
-    await this.activity.log({
-      tenantId: user.tenantId,
-      caseId: c.id,
-      actorId: user.id,
-      type: 'MESSAGE_SENT',
-      summary: 'Mensaje enviado',
-      meta: { messageId: message.id },
-    });
-
     const recipients = [c.lawyerId, c.clientId].filter(
       (id): id is string => Boolean(id) && id !== user.id,
     );
     const preview = dto.body.length > 120 ? `${dto.body.slice(0, 117)}...` : dto.body;
-    await this.notifications.notifyMany(recipients, {
-      title: 'Nuevo mensaje',
-      body: `${user.name}: ${preview}`,
-      meta: {
-        type: 'NEW_MESSAGE',
-        caseId: c.id,
-        messageId: message.id,
-      },
-    });
 
-    return message;
+    return this.prisma.$transaction(async (tx) => {
+      const message = await tx.message.create({
+        data: {
+          tenantId: user.tenantId,
+          caseId: c.id,
+          senderId: user.id,
+          body: dto.body,
+        },
+        include: { sender: { select: { id: true, name: true, role: true } } },
+      });
+
+      await this.activity.log(
+        {
+          tenantId: user.tenantId,
+          caseId: c.id,
+          actorId: user.id,
+          type: 'MESSAGE_SENT',
+          summary: 'Mensaje enviado',
+          meta: { messageId: message.id },
+        },
+        tx,
+      );
+
+      await this.notifications.notifyMany(
+        recipients,
+        {
+          title: 'Nuevo mensaje',
+          body: `${user.name}: ${preview}`,
+          meta: {
+            type: 'NEW_MESSAGE',
+            caseId: c.id,
+            messageId: message.id,
+          },
+        },
+        tx,
+      );
+
+      return message;
+    });
   }
 }

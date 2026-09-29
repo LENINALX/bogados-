@@ -41,6 +41,31 @@ services:
     profiles:
       - full
 
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # URL de la API vista desde el navegador (se incrusta al compilar)
+        NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+    container_name: bogados-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://bogados:bogados@postgres:5432/bogados?schema=public
+      NEXTAUTH_SECRET: cambia-este-secreto-en-docker
+      NEXTAUTH_URL: http://localhost:3000
+      # URL de la API vista desde el servidor de Next (red interna de Docker)
+      NEST_API_URL: http://api:3001/api/v1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    profiles:
+      - full
+
 volumes:
   bogados_pgdata:
   bogados_uploads:

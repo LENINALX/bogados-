@@ -38,6 +38,11 @@ export class StorageService {
     return { storagePath: relative };
   }
 
+  /** Borra el archivo si existe; nunca lanza (se usa al deshacer una subida). */
+  async remove(storagePath: string): Promise<void> {
+    await fs.rm(this.resolvePath(storagePath), { force: true }).catch(() => undefined);
+  }
+
   async read(storagePath: string): Promise<Buffer> {
     const full = path.join(this.root, storagePath);
     return fs.readFile(full);

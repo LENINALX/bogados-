@@ -40,7 +40,7 @@ Centraliza expedientes, documentos y comunicación segura entre abogado y client
 | **apps/api** | **NestJS** + TypeScript + Prisma — backend REST versionado |
 | **Prisma** | PostgreSQL (esquema compartido en `prisma/`) |
 | **Auth** | NextAuth valida contra la API Nest y guarda su **JWT** en la sesión (cookie cifrada) |
-| **Docker Compose** | Postgres (+ perfil `full` con contenedor API) |
+| **Docker Compose** | Postgres (+ perfil `full` con contenedores API y web) |
 
 ## Puertos
 
@@ -175,13 +175,15 @@ npm run dev          # Next.js en :3000
 npm run dev:api      # NestJS en :3001 (watch)
 npm run dev:all      # API + web en paralelo (una sola terminal)
 npm run build:api    # Compilar API
-npm run test:api     # Tests unitarios Jest (auth + cases + roles)
+npm run test:api     # Tests unitarios Jest de la API
+npm run lint -w @bogados/api   # ESLint de la API (lint:fix para corregir)
 npm run db:seed      # Datos demo (incluye tareas y notificaciones)
 npm run db:studio    # Prisma Studio
 npx prisma migrate dev
 docker compose up -d postgres
-# API en Docker (opcional):
-docker compose --profile full up -d
+# Todo en Docker (Postgres + API + web). La API aplica las migraciones al arrancar:
+docker compose --profile full up -d --build
+docker compose exec api sh -c "cd /app && node_modules/.bin/tsx prisma/seed.ts"   # opcional: datos demo
 ```
 
 ## Seguridad / permisos

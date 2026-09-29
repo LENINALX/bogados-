@@ -5,7 +5,6 @@ import {
   Post,
   Query,
   Req,
-  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -18,7 +17,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+import { Request } from 'express';
 import { DocumentsService } from './documents.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -68,16 +67,8 @@ export class DocumentsController {
 
   @Get('documents/:id/download')
   @ApiOperation({ summary: 'Descargar documento con ACL' })
-  async download(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayloadUser,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const { file, doc } = await this.documents.download(id, user);
-    res.set({
-      'Content-Type': doc.mimeType,
-      'Content-Disposition': `attachment; filename="${encodeURIComponent(doc.fileName)}"`,
-    });
-    return file;
+  download(@Param('id') id: string, @CurrentUser() user: JwtPayloadUser) {
+    // StreamableFile ya fija Content-Type, Content-Disposition y Content-Length
+    return this.documents.download(id, user);
   }
 }

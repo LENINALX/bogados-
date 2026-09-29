@@ -34,26 +34,31 @@ export class NotesService {
       throw new ForbiddenException('Los clientes no pueden crear notas internas');
     }
     const c = await getAccessibleCase(this.prisma, caseId, user);
-    const note = await this.prisma.caseNote.create({
-      data: {
-        tenantId: user.tenantId,
-        caseId: c.id,
-        authorId: user.id,
-        body: dto.body,
-        isInternal: dto.isInternal ?? true,
-      },
-      include: { author: { select: { id: true, name: true } } },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const note = await tx.caseNote.create({
+        data: {
+          tenantId: user.tenantId,
+          caseId: c.id,
+          authorId: user.id,
+          body: dto.body,
+          isInternal: dto.isInternal ?? true,
+        },
+        include: { author: { select: { id: true, name: true } } },
+      });
 
-    await this.activity.log({
-      tenantId: user.tenantId,
-      caseId: c.id,
-      actorId: user.id,
-      type: 'NOTE_ADDED',
-      summary: note.isInternal ? 'Nota interna agregada' : 'Nota visible al cliente',
-      meta: { noteId: note.id, isInternal: note.isInternal },
-    });
+      await this.activity.log(
+        {
+          tenantId: user.tenantId,
+          caseId: c.id,
+          actorId: user.id,
+          type: 'NOTE_ADDED',
+          summary: note.isInternal ? 'Nota interna agregada' : 'Nota visible al cliente',
+          meta: { noteId: note.id, isInternal: note.isInternal },
+        },
+        tx,
+      );
 
-    return note;
+      return note;
+    });
   }
 }

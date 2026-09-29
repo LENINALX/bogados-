@@ -19,10 +19,11 @@ export const loginThrottlerOptions: ThrottlerModuleOptions = {
  */
 @Injectable()
 export class LoginThrottlerGuard extends ThrottlerGuard {
-  protected async getTracker(req: Record<string, any>): Promise<string> {
+  protected async getTracker(req: Record<string, unknown>): Promise<string> {
+    const body = (req.body ?? {}) as { email?: unknown; tenantSlug?: unknown };
     const normalize = (v: unknown) => (typeof v === 'string' ? v.toLowerCase().trim() : '');
-    const email = normalize(req.body?.email);
+    const email = normalize(body.email);
     if (!email) return super.getTracker(req);
-    return `login:${normalize(req.body?.tenantSlug)}:${email}`;
+    return `login:${normalize(body.tenantSlug)}:${email}`;
   }
 }

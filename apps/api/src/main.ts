@@ -50,9 +50,7 @@ async function bootstrap() {
 
   const port = config.get<number>('PORT', 3001);
   await app.listen(port);
-  // eslint-disable-next-line no-console
   console.log(`Bogados API escuchando en http://localhost:${port}`);
-  // eslint-disable-next-line no-console
   console.log(`Swagger: http://localhost:${port}/api/docs`);
 }
 

@@ -1,0 +1,20 @@
+# Dependencias y builds: se instalan/generan dentro de la imagen (binarios Linux)
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/*.tsbuildinfo
+
+# Secretos: se pasan como variables de entorno, nunca dentro de la imagen
+**/.env
+**/.env.*
+!**/.env.example
+
+# Datos locales y ruido
+uploads
+.git
+.github
+.vscode
+.idea
+.qodo
+**/*.log

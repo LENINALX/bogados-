@@ -95,7 +95,10 @@ describe('CasesService.update (validación de lawyerId/clientId)', () => {
   let prisma: {
     case: { findFirst: jest.Mock; update: jest.Mock };
     user: { findFirst: jest.Mock };
+    $transaction: jest.Mock;
   };
+  let activity: { log: jest.Mock };
+  let notifications: { notifyMany: jest.Mock; create: jest.Mock };
   let service: CasesService;
 
   const admin: JwtPayloadUser = {
@@ -132,7 +135,14 @@ describe('CasesService.update (validación de lawyerId/clientId)', () => {
           lawyerId: 'law1',
           clientId: null,
         }),
-        update: jest.fn(async ({ data }) => ({ id: 'c1', title: 'Caso', ...data })),
+        // Como Prisma: devuelve el caso completo con los cambios aplicados
+        update: jest.fn(async ({ data }) => ({
+          id: 'c1',
+          title: 'Caso',
+          lawyerId: 'law1',
+          clientId: null,
+          ...data,
+        })),
       },
       user: {
         findFirst: jest.fn(async ({ where }) => {
@@ -148,12 +158,30 @@ describe('CasesService.update (validación de lawyerId/clientId)', () => {
           );
         }),
       },
+      // Transacción interactiva: el callback recibe el propio mock como `tx`
+      $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
     };
-    service = new CasesService(
-      prisma as never,
-      { log: jest.fn() } as never,
-      { notifyMany: jest.fn(), create: jest.fn() } as never,
+    activity = { log: jest.fn() };
+    notifications = { notifyMany: jest.fn(), create: jest.fn() };
+    service = new CasesService(prisma as never, activity as never, notifications as never);
+  });
+
+  it('cambio de estado: actividad y notificaciones van en la misma transacción', async () => {
+    await service.update('c1', { status: CaseStatus.cerrado }, admin);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(activity.log).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'STATUS_CHANGED' }),
+      prisma,
     );
+    expect(notifications.notifyMany).toHaveBeenCalledWith(['law1'], expect.anything(), prisma);
+  });
+
+  it('si falla el registro de actividad, el error se propaga (la transacción se revierte)', async () => {
+    activity.log.mockRejectedValueOnce(new Error('db caída'));
+    await expect(service.update('c1', { status: CaseStatus.cerrado }, admin)).rejects.toThrow(
+      'db caída',
+    );
+    expect(notifications.notifyMany).not.toHaveBeenCalled();
   });
 
   it('admin puede asignar abogado y cliente válidos del tenant', async () => {

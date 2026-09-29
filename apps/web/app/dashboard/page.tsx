@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
@@ -18,11 +19,12 @@ import { CASE_STATUSES, CASE_STATUS_LABELS, CaseStatus } from "@bogados/shared";
 
 const ACTIVE_STATUSES = ["intake", "abierto", "en_pausa"] as const satisfies readonly CaseStatus[];
 const UPCOMING_DAYS = 7;
+const PAGE_SIZE = 20;
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { status?: string; q?: string };
+  searchParams: { status?: string; q?: string; page?: string };
 }) {
   const session = await requireRole("ADMIN", "ABOGADO");
   const { tenantId, role, id: userId } = session.user;
@@ -31,6 +33,7 @@ export default async function DashboardPage({
   const status = searchParams.status as CaseStatus | undefined;
   const validStatus = status && CASE_STATUSES.includes(status) ? status : undefined;
   const q = searchParams.q?.trim();
+  const page = Math.max(1, Number.parseInt(searchParams.page ?? "", 10) || 1);
 
   const scope: Prisma.CaseWhereInput = isAdmin ? { tenantId } : { tenantId, lawyerId: userId };
   const where: Prisma.CaseWhereInput = { ...scope };
@@ -48,7 +51,8 @@ export default async function DashboardPage({
   const now = new Date();
   const horizon = new Date(now.getTime() + UPCOMING_DAYS * 24 * 60 * 60 * 1000);
 
-  const [cases, counts, openTasks, overdueTasks, documents, upcoming] = await Promise.all([
+  const [casesTotal, cases, counts, openTasks, overdueTasks, documents, upcoming] = await Promise.all([
+    prisma.case.count({ where }),
     prisma.case.findMany({
       where,
       include: {
@@ -56,6 +60,8 @@ export default async function DashboardPage({
         lawyer: { select: { name: true } },
       },
       orderBy: { updatedAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
     prisma.case.groupBy({ by: ["status"], where: scope, _count: true }),
     prisma.caseTask.count({ where: { ...taskScope, done: false } }),
@@ -109,14 +115,20 @@ export default async function DashboardPage({
       .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   }
 
-  const href = (params: { status?: string; q?: string }) => {
+  // Cambiar filtros vuelve a la página 1 (no se pasa `page`)
+  const href = (params: { status?: string; q?: string; page?: number }) => {
     const sp = new URLSearchParams();
     if (params.status) sp.set("status", params.status);
     if (params.q) sp.set("q", params.q);
+    if (params.page && params.page > 1) sp.set("page", String(params.page));
     const s = sp.toString();
     return `/dashboard${s ? `?${s}` : ""}`;
   };
   const filtered = Boolean(validStatus || q);
+
+  const totalPages = Math.max(1, Math.ceil(casesTotal / PAGE_SIZE));
+  if (page > totalPages) redirect(href({ status: validStatus, q, page: totalPages }));
+  const pageHref = (p: number) => href({ status: validStatus, q, page: p });
 
   const chip = (active: boolean) =>
     `inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
@@ -235,7 +247,7 @@ export default async function DashboardPage({
 
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-base font-semibold text-slate-900">
-            {cases.length} caso{cases.length === 1 ? "" : "s"}
+            {casesTotal} caso{casesTotal === 1 ? "" : "s"}
             {validStatus && <> · {CASE_STATUS_LABELS[validStatus]}</>}
             {q && <> · “{q}”</>}
           </h2>
@@ -322,6 +334,28 @@ export default async function DashboardPage({
             </>
           )}
         </div>
+
+        {totalPages > 1 && (
+          <nav aria-label="Paginación de casos" className="mt-4 flex items-center justify-between gap-3 text-sm">
+            {page > 1 ? (
+              <Link href={pageHref(page - 1)} className="btn-secondary btn-sm" rel="prev">
+                ← Anterior
+              </Link>
+            ) : (
+              <span />
+            )}
+            <span className="text-slate-500">
+              Página {page} de {totalPages}
+            </span>
+            {page < totalPages ? (
+              <Link href={pageHref(page + 1)} className="btn-secondary btn-sm" rel="next">
+                Siguiente →
+              </Link>
+            ) : (
+              <span />
+            )}
+          </nav>
+        )}
       </main>
     </StaffLayout>
   );

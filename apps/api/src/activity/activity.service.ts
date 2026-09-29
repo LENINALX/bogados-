@@ -18,8 +18,9 @@ export type ActivityLogInput = {
 export class ActivityService {
   constructor(private prisma: PrismaService) {}
 
-  async log(input: ActivityLogInput) {
-    return this.prisma.activityEvent.create({
+  /** `db`: cliente de una transacción en curso, para registrar junto con la acción. */
+  async log(input: ActivityLogInput, db: Prisma.TransactionClient = this.prisma) {
+    return db.activityEvent.create({
       data: {
         tenantId: input.tenantId,
         caseId: input.caseId,

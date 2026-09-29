@@ -84,29 +84,34 @@ export class CasesService {
     if (lawyerId !== user.id) await this.assertValidLawyer(lawyerId, user.tenantId);
     if (dto.clientId) await this.assertValidClient(dto.clientId, user.tenantId);
 
-    const created = await this.prisma.case.create({
-      data: {
-        tenantId: user.tenantId,
-        title: dto.title,
-        description: dto.description,
-        matterType: dto.matterType,
-        status: dto.status ?? CaseStatus.intake,
-        lawyerId,
-        clientId: dto.clientId ?? null,
-      },
-      include: caseInclude,
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.case.create({
+        data: {
+          tenantId: user.tenantId,
+          title: dto.title,
+          description: dto.description,
+          matterType: dto.matterType,
+          status: dto.status ?? CaseStatus.intake,
+          lawyerId,
+          clientId: dto.clientId ?? null,
+        },
+        include: caseInclude,
+      });
 
-    await this.activity.log({
-      tenantId: user.tenantId,
-      caseId: created.id,
-      actorId: user.id,
-      type: 'CASE_CREATED',
-      summary: `Caso creado: ${created.title}`,
-      meta: { status: created.status },
-    });
+      await this.activity.log(
+        {
+          tenantId: user.tenantId,
+          caseId: created.id,
+          actorId: user.id,
+          type: 'CASE_CREATED',
+          summary: `Caso creado: ${created.title}`,
+          meta: { status: created.status },
+        },
+        tx,
+      );
 
-    return created;
+      return created;
+    });
   }
 
   async update(id: string, dto: UpdateCaseDto, user: JwtPayloadUser) {
@@ -122,46 +127,52 @@ export class CasesService {
     if (data.clientId) await this.assertValidClient(data.clientId, user.tenantId);
 
     const prevStatus = existing.status;
-    const updated = await this.prisma.case.update({
-      where: { id: existing.id },
-      data: {
-        ...data,
-        closedAt:
-          data.status === CaseStatus.cerrado
-            ? new Date()
-            : data.status
-              ? null
-              : undefined,
-      },
-      include: caseInclude,
-    });
-
-    if (data.status && data.status !== prevStatus) {
-      await this.activity.log({
-        tenantId: user.tenantId,
-        caseId: updated.id,
-        actorId: user.id,
-        type: 'STATUS_CHANGED',
-        summary: `Estado: ${prevStatus} → ${data.status}`,
-        meta: { from: prevStatus, to: data.status },
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.case.update({
+        where: { id: existing.id },
+        data: {
+          ...data,
+          closedAt:
+            data.status === CaseStatus.cerrado
+              ? new Date()
+              : data.status
+                ? null
+                : undefined,
+        },
+        include: caseInclude,
       });
 
-      await this.notifications.notifyMany(
-        [updated.lawyerId, updated.clientId].filter((id) => id && id !== user.id),
-        {
-          title: 'Cambio de estado del caso',
-          body: `"${updated.title}": ${prevStatus} → ${data.status}`,
-          meta: {
-            type: 'CASE_STATUS',
+      if (data.status && data.status !== prevStatus) {
+        await this.activity.log(
+          {
+            tenantId: user.tenantId,
             caseId: updated.id,
-            from: prevStatus,
-            to: data.status,
+            actorId: user.id,
+            type: 'STATUS_CHANGED',
+            summary: `Estado: ${prevStatus} → ${data.status}`,
+            meta: { from: prevStatus, to: data.status },
           },
-        },
-      );
-    }
+          tx,
+        );
 
-    return updated;
+        await this.notifications.notifyMany(
+          [updated.lawyerId, updated.clientId].filter((id) => id && id !== user.id),
+          {
+            title: 'Cambio de estado del caso',
+            body: `"${updated.title}": ${prevStatus} → ${data.status}`,
+            meta: {
+              type: 'CASE_STATUS',
+              caseId: updated.id,
+              from: prevStatus,
+              to: data.status,
+            },
+          },
+          tx,
+        );
+      }
+
+      return updated;
+    });
   }
 
   async patchStatus(id: string, dto: PatchStatusDto, user: JwtPayloadUser) {
@@ -172,31 +183,39 @@ export class CasesService {
     const existing = await getAccessibleCase(this.prisma, id, user);
     await this.assertValidLawyer(dto.lawyerId, user.tenantId);
 
-    const updated = await this.prisma.case.update({
-      where: { id: existing.id },
-      data: { lawyerId: dto.lawyerId },
-      include: caseInclude,
-    });
-
-    await this.activity.log({
-      tenantId: user.tenantId,
-      caseId: updated.id,
-      actorId: user.id,
-      type: 'ASSIGNED',
-      summary: `Abogado asignado: ${updated.lawyer?.name ?? dto.lawyerId}`,
-      meta: { lawyerId: dto.lawyerId },
-    });
-
-    if (dto.lawyerId !== user.id) {
-      await this.notifications.create({
-        userId: dto.lawyerId,
-        title: 'Caso asignado',
-        body: `Se te asignó el caso "${updated.title}"`,
-        meta: { type: 'CASE_ASSIGNED', caseId: updated.id },
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.case.update({
+        where: { id: existing.id },
+        data: { lawyerId: dto.lawyerId },
+        include: caseInclude,
       });
-    }
 
-    return updated;
+      await this.activity.log(
+        {
+          tenantId: user.tenantId,
+          caseId: updated.id,
+          actorId: user.id,
+          type: 'ASSIGNED',
+          summary: `Abogado asignado: ${updated.lawyer?.name ?? dto.lawyerId}`,
+          meta: { lawyerId: dto.lawyerId },
+        },
+        tx,
+      );
+
+      if (dto.lawyerId !== user.id) {
+        await this.notifications.create(
+          {
+            userId: dto.lawyerId,
+            title: 'Caso asignado',
+            body: `Se te asignó el caso "${updated.title}"`,
+            meta: { type: 'CASE_ASSIGNED', caseId: updated.id },
+          },
+          tx,
+        );
+      }
+
+      return updated;
+    });
   }
 
   async remove(id: string, user: JwtPayloadUser) {

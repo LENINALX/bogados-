@@ -20,6 +20,7 @@ import {
   toPaginated,
 } from '../common/dto/pagination.dto';
 import { isAllowedUpload, MAX_UPLOAD_BYTES } from './upload.config';
+import { attachmentDisposition } from '../common/utils/content-disposition';
 
 /** Campos de Document que se devuelven al cliente (sin storagePath ni tenantId). */
 export const documentPublicSelect = {
@@ -93,54 +94,64 @@ export class DocumentsService {
       file.buffer,
     );
 
-    const doc = await this.prisma.document.create({
-      data: {
-        tenantId: user.tenantId,
-        caseId: c.id,
-        fileName: file.originalname,
-        mimeType: file.mimetype || 'application/octet-stream',
-        sizeBytes: file.size,
-        storagePath,
-        sharedWithClient,
-        uploadedById: user.id,
-      },
-      select: documentPublicSelect,
-    });
+    // El staff que comparte avisa al cliente; lo que sube el cliente o lo
+    // interno avisa al abogado del caso. Nunca se notifica a quien sube.
+    const notifyClient = user.role !== Role.CLIENTE && sharedWithClient;
+    const recipientId = notifyClient ? c.clientId : c.lawyerId;
 
-    await this.activity.log({
-      tenantId: user.tenantId,
-      caseId: c.id,
-      actorId: user.id,
-      type: 'DOC_UPLOADED',
-      summary: `Documento: ${doc.fileName}`,
-      meta: { documentId: doc.id, sharedWithClient },
-    });
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const doc = await tx.document.create({
+          data: {
+            tenantId: user.tenantId,
+            caseId: c.id,
+            fileName: file.originalname,
+            mimeType: file.mimetype || 'application/octet-stream',
+            sizeBytes: file.size,
+            storagePath,
+            sharedWithClient,
+            uploadedById: user.id,
+          },
+          select: documentPublicSelect,
+        });
 
-    if (sharedWithClient && c.clientId && c.clientId !== user.id) {
-      await this.notifications.create({
-        userId: c.clientId,
-        title: 'Documento compartido',
-        body: `Se compartió "${doc.fileName}" en el caso "${c.title}"`,
-        meta: {
-          type: 'DOC_SHARED',
-          caseId: c.id,
-          documentId: doc.id,
-        },
+        await this.activity.log(
+          {
+            tenantId: user.tenantId,
+            caseId: c.id,
+            actorId: user.id,
+            type: 'DOC_UPLOADED',
+            summary: `Documento: ${doc.fileName}`,
+            meta: { documentId: doc.id, sharedWithClient },
+          },
+          tx,
+        );
+
+        if (recipientId && recipientId !== user.id) {
+          await this.notifications.create(
+            {
+              userId: recipientId,
+              title: notifyClient ? 'Documento compartido' : 'Nuevo documento',
+              body: notifyClient
+                ? `Se compartió "${doc.fileName}" en el caso "${c.title}"`
+                : `Se subió "${doc.fileName}" en el caso "${c.title}"`,
+              meta: {
+                type: notifyClient ? 'DOC_SHARED' : 'DOC_UPLOADED',
+                caseId: c.id,
+                documentId: doc.id,
+              },
+            },
+            tx,
+          );
+        }
+
+        return doc;
       });
-    } else if (!sharedWithClient && c.lawyerId && c.lawyerId !== user.id) {
-      await this.notifications.create({
-        userId: c.lawyerId,
-        title: 'Nuevo documento',
-        body: `Se subió "${doc.fileName}" en el caso "${c.title}"`,
-        meta: {
-          type: 'DOC_UPLOADED',
-          caseId: c.id,
-          documentId: doc.id,
-        },
-      });
+    } catch (err) {
+      // Sin registro en BD el archivo quedaría huérfano en disco
+      await this.storage.remove(storagePath);
+      throw err;
     }
-
-    return doc;
   }
 
   async download(documentId: string, user: JwtPayloadUser) {
@@ -161,13 +172,10 @@ export class DocumentsService {
     }
 
     const stream = createReadStream(this.storage.resolvePath(doc.storagePath));
-    return {
-      file: new StreamableFile(stream, {
-        type: doc.mimeType,
-        disposition: `attachment; filename="${encodeURIComponent(doc.fileName)}"`,
-        length: doc.sizeBytes,
-      }),
-      doc,
-    };
+    return new StreamableFile(stream, {
+      type: doc.mimeType,
+      disposition: attachmentDisposition(doc.fileName),
+      length: doc.sizeBytes,
+    });
   }
 }

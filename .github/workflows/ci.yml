@@ -31,6 +31,8 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
 
+      - name: API — lint
+        run: npm run lint -w @bogados/api
       - name: API — tests
         run: npm run test:api
       - name: API — build
