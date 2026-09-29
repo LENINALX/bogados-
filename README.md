@@ -183,6 +183,8 @@ npx prisma migrate dev
 docker compose up -d postgres
 # Todo en Docker (Postgres + API + web). La API aplica las migraciones al arrancar:
 docker compose --profile full up -d --build
+# Si tu red bloquea dl-cdn.alpinelinux.org ("unable to select packages"), usa un mirror:
+#   PowerShell: $env:ALPINE_MIRROR="https://mirrors.edge.kernel.org/alpine"   · bash: export ALPINE_MIRROR=...
 docker compose exec api sh -c "cd /app && node_modules/.bin/tsx prisma/seed.ts"   # opcional: datos demo
 ```
 

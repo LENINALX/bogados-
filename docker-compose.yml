@@ -21,6 +21,8 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      args:
+        ALPINE_MIRROR: ${ALPINE_MIRROR:-}
     container_name: bogados-api
     restart: unless-stopped
     ports:
@@ -46,6 +48,7 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
+        ALPINE_MIRROR: ${ALPINE_MIRROR:-}
         # URL de la API vista desde el navegador (se incrusta al compilar)
         NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
     container_name: bogados-web

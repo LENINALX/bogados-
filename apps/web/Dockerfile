@@ -1,7 +1,13 @@
 # Construir desde la raíz del monorepo: docker build -f apps/web/Dockerfile .
 FROM node:20-alpine AS base
+# Mirror alternativo de Alpine para redes que bloquean dl-cdn.alpinelinux.org
+# (p. ej. ALPINE_MIRROR=https://mirrors.edge.kernel.org/alpine). Vacío = CDN oficial.
+ARG ALPINE_MIRROR=
 # Prisma necesita OpenSSL para elegir y cargar su motor en Alpine
-RUN apk add --no-cache openssl libc6-compat
+RUN if [ -n "$ALPINE_MIRROR" ]; then \
+      sed -i "s#https\?://dl-cdn.alpinelinux.org/alpine#${ALPINE_MIRROR}#" /etc/apk/repositories; \
+    fi \
+ && apk add --no-cache openssl libc6-compat
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
