@@ -128,9 +128,9 @@ export default async function DashboardPage({
   return (
     <StaffLayout user={session.user} links={staffLinks(role)}>
       <main className="page">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="page-title">{isAdmin ? "Panel de la firma" : "Mis expedientes"}</h1>
+            <h1 className="page-title sm:text-3xl">{isAdmin ? "Panel de la firma" : "Mis expedientes"}</h1>
             <p className="page-subtitle">
               Resumen al {now.toLocaleDateString("es-EC")}
               {!isAdmin && " · casos asignados a ti"}
@@ -141,19 +141,19 @@ export default async function DashboardPage({
           </Link>
         </div>
 
-        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatTile label="Casos activos" value={activeCases} hint={`${byStatus.cerrado} cerrados`} />
           <StatTile label="Tareas abiertas" value={openTasks} href="/tareas" />
           <StatTile label="Tareas vencidas" value={overdueTasks} tone="critical" href="/tareas?f=vencidas" />
           <StatTile label="Documentos" value={documents} />
         </div>
 
-        <div className="mb-8 grid gap-6 lg:grid-cols-2">
+        <div className="mb-10 grid gap-6 lg:grid-cols-2">
           <CasesByStatusChart counts={byStatus} statuses={CASE_STATUSES} />
 
-          <section className="card">
-            <div className="card-header">
-              <h2 className="card-title">Próximos plazos</h2>
+          <section className="card rounded-2xl">
+            <div className="card-header py-4 sm:px-6">
+              <h2 className="text-base font-semibold text-slate-900">Próximos plazos</h2>
               <Link href="/tareas" className="text-xs font-medium text-brand-700 hover:underline">
                 Ver todos →
               </Link>
@@ -166,7 +166,7 @@ export default async function DashboardPage({
             ) : (
               <ul className="divide-y divide-slate-100">
                 {upcoming.map((t) => (
-                  <li key={t.id} className="flex items-start justify-between gap-3 px-4 py-2.5 text-sm sm:px-5">
+                  <li key={t.id} className="flex items-start justify-between gap-3 px-4 py-3 text-sm sm:px-6">
                     <div className="min-w-0">
                       <div className="truncate text-slate-800">{t.title}</div>
                       <Link href={`/casos/${t.case.id}`} className="block truncate text-xs text-brand-700 hover:underline">
@@ -190,7 +190,7 @@ export default async function DashboardPage({
           )}
         </div>
 
-        <div className="card mb-6 space-y-4 p-4 sm:p-5">
+        <div className="card mb-8 space-y-4 rounded-2xl p-4 sm:p-6">
           <nav aria-label="Filtrar por estado" className="flex flex-wrap gap-2">
             <Link href={href({ q })} className={chip(!validStatus)} aria-current={!validStatus ? "true" : undefined}>
               Todos <span className="opacity-70">{total}</span>
@@ -233,8 +233,8 @@ export default async function DashboardPage({
           </form>
         </div>
 
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-sm font-semibold text-slate-700">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-base font-semibold text-slate-900">
             {cases.length} caso{cases.length === 1 ? "" : "s"}
             {validStatus && <> · {CASE_STATUS_LABELS[validStatus]}</>}
             {q && <> · “{q}”</>}
@@ -246,7 +246,7 @@ export default async function DashboardPage({
           )}
         </div>
 
-        <div className="card overflow-hidden">
+        <div className="card overflow-hidden rounded-2xl">
           {cases.length === 0 ? (
             filtered ? (
               <EmptyState

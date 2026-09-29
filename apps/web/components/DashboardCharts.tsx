@@ -39,8 +39,8 @@ export function StatTile({
 }) {
   const body = (
     <>
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-1 flex items-baseline gap-2">
+      <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="mt-2 flex flex-wrap items-baseline gap-2">
         <span className="text-3xl font-bold tabular-nums text-slate-900">{value}</span>
         {tone === "critical" && value > 0 && (
           <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-800">
@@ -51,9 +51,9 @@ export function StatTile({
       {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
     </>
   );
-  const cls = `block rounded-xl border bg-white p-4 ${
-    tone === "critical" && value > 0 ? "border-red-200" : "border-slate-200"
-  } ${href ? "transition hover:border-brand-500" : ""}`;
+  const cls = `block rounded-2xl border p-5 shadow-sm ${
+    tone === "critical" && value > 0 ? "border-red-200 bg-red-50/40" : "border-slate-200 bg-white"
+  } ${href ? "transition hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-md" : ""}`;
   return href ? (
     <Link href={href} className={cls}>
       {body}
@@ -75,9 +75,9 @@ export function CasesByStatusChart({
   const total = statuses.reduce((a, s) => a + counts[s], 0);
 
   return (
-    <div className="card p-4">
-      <div className="mb-4 flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold text-slate-800">Casos por estado</h2>
+    <div className="card rounded-2xl p-5 sm:p-6">
+      <div className="mb-5 flex items-baseline justify-between">
+        <h2 className="text-base font-semibold text-slate-900">Casos por estado</h2>
         <span className="text-xs text-slate-500">{total} en total</span>
       </div>
       <ul className="space-y-3">
@@ -137,9 +137,9 @@ export function LawyerLoadChart({
   const max = Math.max(1, ...totals);
 
   return (
-    <div className="card p-4">
+    <div className="card rounded-2xl p-5 sm:p-6">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold text-slate-800">Carga por abogado</h2>
+        <h2 className="text-base font-semibold text-slate-900">Carga por abogado</h2>
         <span className="text-xs text-slate-500">Casos activos (sin cerrados)</span>
       </div>
       <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
