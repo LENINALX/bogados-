@@ -93,11 +93,13 @@ Abre [http://localhost:3000](http://localhost:3000) y la documentación en [http
 
 ### Usuarios demo
 
-| Rol | Email | Contraseña |
-|-----|-------|------------|
-| Admin | `admin@demo.bogados` | `demo1234` |
-| Abogado | `abogado@demo.bogados` | `demo1234` |
-| Cliente | `cliente@demo.bogados` | `demo1234` |
+En la pantalla de login, además del email y la contraseña, escribe el **Código de firma**: `firma-demo`.
+
+| Rol | Código de firma | Email | Contraseña |
+|-----|-----------------|-------|------------|
+| Admin | `firma-demo` | `admin@demo.bogados` | `demo1234` |
+| Abogado | `firma-demo` | `abogado@demo.bogados` | `demo1234` |
+| Cliente | `firma-demo` | `cliente@demo.bogados` | `demo1234` |
 
 ## API Nest — endpoints (`/api/v1`)
 
