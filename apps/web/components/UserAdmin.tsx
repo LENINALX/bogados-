@@ -7,9 +7,20 @@ import { nestFetch } from "@/lib/nest-api";
 
 const input = "rounded-lg border border-slate-300 px-3 py-2 text-sm";
 
+/** Mensaje tras crear un usuario o cliente, según cómo recibirá el acceso. */
+export function createdUserMessage(
+  user: { name: string; email: string; invitationSent: boolean },
+  manualPassword: boolean,
+) {
+  if (manualPassword) return `${user.name} creado. Comparte con él/ella la contraseña temporal.`;
+  if (user.invitationSent) return `Invitación enviada a ${user.email}.`;
+  return `${user.name} creado, pero no se pudo enviar el email. Usa «Reenviar invitación».`;
+}
+
 export function InviteUserForm() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [manual, setManual] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -18,26 +29,26 @@ export function InviteUserForm() {
     e.preventDefault();
     const form = e.currentTarget;
     const fd = new FormData(form);
-    setLoading(true);
     setError(null);
     setDone(null);
-      if (String(fd.get("password")) !== String(fd.get("passwordConfirm"))) {
-        setError("Las contraseñas no coinciden.");
-        setLoading(false);
-        return;
-      }
+    if (manual && String(fd.get("password")) !== String(fd.get("passwordConfirm"))) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
+    setLoading(true);
     try {
-      const user = await nestFetch<{ name: string; email: string }>("/users", {
+      const user = await nestFetch<{ name: string; email: string; invitationSent: boolean }>("/users", {
         method: "POST",
         body: JSON.stringify({
           name: String(fd.get("name")).trim(),
           email: String(fd.get("email")).trim(),
           role: fd.get("role"),
-          password: String(fd.get("password")),
+          // Sin contraseña, la API envía una invitación por email
+          password: manual ? String(fd.get("password")) : undefined,
         }),
       });
       form.reset();
-      setDone(`${user.name} (${user.email}) creado. Comparte la contraseña temporal.`);
+      setDone(createdUserMessage(user, manual));
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear el usuario.");
@@ -66,7 +77,7 @@ export function InviteUserForm() {
           Cerrar
         </button>
       </div>
-      <div className="grid gap-2 sm:grid-cols-5">
+      <div className="grid gap-2 sm:grid-cols-3">
         <input name="name" required minLength={2} maxLength={120} placeholder="Nombre" className={input} />
         <input name="email" type="email" required placeholder="Email" className={input} />
         <select name="role" defaultValue="ABOGADO" className={input} aria-label="Rol">
@@ -74,31 +85,44 @@ export function InviteUserForm() {
             <option key={r} value={r}>{ROLE_LABELS[r]}</option>
           ))}
         </select>
-        <input
-          name="password"
-          required
-          minLength={6}
-          placeholder="Contraseña temporal"
-          autoComplete="off"
-          className={input}
-        />
-        <input
-          name="passwordConfirm"
-          type="password"
-          required
-          minLength={6}
-          placeholder="Repite la contraseña"
-          autoComplete="new-password"
-          className={input}
-        />
       </div>
+      <label className="flex items-center gap-2 text-xs text-slate-600">
+        <input type="checkbox" checked={manual} onChange={(e) => setManual(e.target.checked)} />
+        Asignar una contraseña temporal en lugar de enviar invitación por email
+      </label>
+      {manual ? (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <input
+            name="password"
+            type="password"
+            required
+            minLength={6}
+            placeholder="Contraseña temporal"
+            autoComplete="new-password"
+            className={input}
+          />
+          <input
+            name="passwordConfirm"
+            type="password"
+            required
+            minLength={6}
+            placeholder="Repite la contraseña"
+            autoComplete="new-password"
+            className={input}
+          />
+        </div>
+      ) : (
+        <p className="text-xs text-slate-500">
+          Recibirá un email con un enlace (válido 7 días) para elegir su contraseña.
+        </p>
+      )}
       <div className="flex items-center gap-3">
         <button
           type="submit"
           disabled={loading}
           className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
         >
-          {loading ? "Creando…" : "Crear usuario"}
+          {loading ? "Creando…" : manual ? "Crear usuario" : "Enviar invitación"}
         </button>
         {done && <span className="text-sm text-emerald-700">{done}</span>}
         {error && <span className="text-sm text-red-600">{error}</span>}
@@ -122,6 +146,21 @@ export function UserRowControls({
   const [current, setCurrent] = useState({ role, active });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inviteSent, setInviteSent] = useState(false);
+
+  async function resendInvite() {
+    setPending(true);
+    setError(null);
+    setInviteSent(false);
+    try {
+      await nestFetch(`/users/${userId}/invite`, { method: "POST" });
+      setInviteSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo enviar la invitación.");
+    } finally {
+      setPending(false);
+    }
+  }
 
   async function patch(data: Partial<typeof current>) {
     const prev = current;
@@ -169,6 +208,18 @@ export function UserRowControls({
           {current.active ? "Desactivar" : "Activar"}
         </button>
       </div>
+      {!isSelf && current.active && (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={resendInvite}
+          title="Envía un enlace para que elija una contraseña nueva"
+          className="text-xs font-medium text-brand-700 hover:underline disabled:opacity-40"
+        >
+          Reenviar invitación
+        </button>
+      )}
+      {inviteSent && <span className="text-xs text-emerald-700">Invitación enviada.</span>}
       {error && <span className="text-xs text-red-600">{error}</span>}
     </div>
   );

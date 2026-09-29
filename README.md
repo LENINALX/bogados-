@@ -17,6 +17,7 @@ Centraliza expedientes, documentos y comunicación segura entre abogado y client
 | **Notificaciones** | In-app al cambiar estado, nuevo mensaje o doc compartido |
 | **Dashboard** | Conteos por estado, docs, mensajes, roles, tareas |
 | **Portal cliente** | Login, estado del caso, docs compartidos, mensajes |
+| **Cuentas** | Invitación por email (el usuario elige su contraseña), recuperar contraseña; cambiarla cierra las demás sesiones |
 | **API dedicada** | NestJS + JWT + Swagger + helmet (`apps/api`) |
 
 ### Pantallas web (staff)
@@ -27,8 +28,9 @@ Centraliza expedientes, documentos y comunicación segura entre abogado y client
 | `/casos/nuevo` | Alta de caso con cliente existente o invitación de cliente nuevo |
 | `/casos/[id]` | Documentos, notas, **timeline unificado** (notas + eventos), **tareas y plazos**, mensajes |
 | `/tareas` | "Mis plazos": pendientes, vencidas, próximos 3 días, completadas (admin: toda la firma) |
-| `/admin/usuarios` | Solo admin: invitar usuarios, cambiar rol, activar/desactivar |
+| `/admin/usuarios` | Solo admin: invitar usuarios por email, reenviar invitación, cambiar rol, activar/desactivar |
 | Header | Campana de notificaciones con contador y "marcar todas como leídas" |
+| `/recuperar` · `/restablecer` | Públicas: pedir enlace de recuperación · definir contraseña (invitación o recuperación) |
 
 **Diferido:** facturación, e-firma, calendarios, app nativa, IA.
 
@@ -50,6 +52,7 @@ Centraliza expedientes, documentos y comunicación segura entre abogado y client
 | **API NestJS** | [http://localhost:3001](http://localhost:3001) |
 | Swagger / OpenAPI | [http://localhost:3001/api/docs](http://localhost:3001/api/docs) |
 | Health | `GET /api/v1/health` · Ready `GET /api/v1/health/ready` |
+| Mailpit (emails de prueba) | [http://localhost:8025](http://localhost:8025) · SMTP en `:1025` |
 
 ## Requisitos
 
@@ -71,8 +74,8 @@ cp apps/api/.env.example apps/api/.env
 # Edita NEXTAUTH_SECRET y JWT_SECRET (openssl rand -base64 32)
 # NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
 
-# 3) Base de datos
-docker compose up -d postgres
+# 3) Base de datos y buzón de pruebas (los emails se ven en http://localhost:8025)
+docker compose up -d postgres mailpit
 
 # 4) Dependencias
 npm install
@@ -113,9 +116,13 @@ Los listados paginados aceptan `page` (default 1) y `pageSize` (default 20, máx
 |--------|------|-------------|
 | POST | `/auth/login` | Login (`email`, `password`, `tenantSlug` obligatorios) → JWT Bearer. Máx. 10 intentos / 15 min por cuenta (429) |
 | GET | `/auth/me` | Usuario actual |
-| POST | `/auth/register-client` | Admin/Abogado crea usuario CLIENTE (opcional `caseId`) |
+| POST | `/auth/register-client` | Admin/Abogado crea usuario CLIENTE (opcional `caseId`). Sin `password` → invitación por email |
+| POST | `/auth/forgot-password` | `tenantSlug` + `email` → enlace de recuperación (1 h). Responde igual exista o no la cuenta |
+| GET | `/auth/token-info?token=` | Datos de un enlace de invitación/recuperación vigente |
+| POST | `/auth/reset-password` | `token` + `password` (mín. 8) → fija la contraseña e invalida las sesiones abiertas |
+| POST | `/users/:id/invite` | Admin reenvía la invitación (enlace de 7 días) |
 | GET | `/dashboard/stats` | Conteos tenant-scoped (casos, docs, msgs, roles, tareas) |
-| CRUD | `/users` | Usuarios (admin) — listado paginado + filtro `role`/`q` |
+| CRUD | `/users` | Usuarios (admin) — listado paginado + filtro `role`/`q`. Crear sin `password` → invitación |
 | GET/POST | `/cases` | Listar (paginado, `status`/`q`) / crear casos |
 | GET/PATCH/DELETE | `/cases/:id` | Detalle / actualizar / borrar |
 | PATCH | `/cases/:id/status` | Transición de estado (+ notificación) |
@@ -177,7 +184,10 @@ npm run dev:all      # API + web en paralelo (una sola terminal)
 npm run build:api    # Compilar API
 npm run test:api     # Tests unitarios Jest de la API
 npm run lint -w @bogados/api   # ESLint de la API (lint:fix para corregir)
+npm run test:web     # Tests unitarios Vitest de la web (sesión, timeline, cliente API, plazos)
+npm run lint -w @bogados/web   # ESLint de la web (next lint)
 npm run db:seed      # Datos demo (incluye tareas y notificaciones)
+npm run db:fix-doc-names [-- --apply]   # Corrige nombres de documentos con tildes corrompidas (simula sin --apply)
 npm run db:studio    # Prisma Studio
 npx prisma migrate dev
 docker compose up -d postgres
@@ -199,6 +209,7 @@ docker compose exec api sh -c "cd /app && node_modules/.bin/tsx prisma/seed.ts" 
 - Global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`) + **helmet**.
 - No hay secretos en el repositorio: usa `.env` local (ignorado por git).
 - Con `NODE_ENV=production` la API no arranca sin `JWT_SECRET`.
+- Enlaces de invitación/recuperación: de un solo uso, con caducidad, y en BD solo se guarda su hash SHA-256. En producción hace falta `SMTP_URL` (sin él no se envían; nunca se escriben en logs).
 - `UPLOAD_DIR` relativo se resuelve desde la raíz del monorepo (misma carpeta para la API y el seed).
 
 ## Licencia

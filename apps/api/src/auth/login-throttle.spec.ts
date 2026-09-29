@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { AccountTokensService } from './account-tokens.service';
 import { LOGIN_THROTTLE, LOGIN_THROTTLE_MESSAGE, loginThrottlerOptions } from './login-throttle';
 import { HttpExceptionFilter } from '../common/filters/http-exception.filter';
 
@@ -15,7 +16,10 @@ describe('Límite de intentos en POST /auth/login', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [ThrottlerModule.forRoot(loginThrottlerOptions)],
       controllers: [AuthController],
-      providers: [{ provide: AuthService, useValue: { login } }],
+      providers: [
+        { provide: AuthService, useValue: { login } },
+        { provide: AccountTokensService, useValue: {} },
+      ],
     }).compile();
 
     app = moduleRef.createNestApplication();

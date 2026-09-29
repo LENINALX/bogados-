@@ -29,10 +29,14 @@ export class CreateUserDto {
   @IsEnum(Role)
   role!: Role;
 
-  @ApiProperty({ minLength: 6 })
+  @ApiPropertyOptional({
+    minLength: 6,
+    description: 'Contraseña temporal. Si se omite, se envía una invitación por email.',
+  })
+  @IsOptional()
   @IsString()
   @MinLength(6)
-  password!: string;
+  password?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

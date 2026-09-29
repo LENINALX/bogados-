@@ -61,6 +61,18 @@ async function authorizedFetch(path: string, init: RequestInit = {}) {
   return res;
 }
 
+/** Llamada sin sesión (recuperar contraseña, activar cuenta). Lanza NestApiError si falla. */
+export async function nestPublicFetch<T = unknown>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: body === undefined ? "GET" : "POST",
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new NestApiError(json.error || `Error API ${res.status}`, res.status);
+  return (json.data !== undefined ? json.data : json) as T;
+}
+
 type NestOptions = RequestInit & { formData?: FormData };
 
 export async function nestFetch<T = unknown>(

@@ -14,6 +14,7 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:fix-doc-names": "tsx prisma/fix-document-names.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "dev:web": "npm run dev -w @bogados/web",
@@ -21,7 +22,8 @@
     "dev:all": "node scripts/dev-all.mjs",
     "build:api": "npm run build -w @bogados/api",
     "start:api": "npm run start:prod -w @bogados/api",
-    "test:api": "npm run test -w @bogados/api"
+    "test:api": "npm run test -w @bogados/api",
+    "test:web": "npm run test -w @bogados/web"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
+import { MailModule } from './mail/mail.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { TenantsModule } from './tenants/tenants.module';
@@ -25,6 +26,7 @@ import { NotificationsModule } from './notifications/notifications.module';
       envFilePath: ['.env', '../../.env', 'apps/api/.env'],
     }),
     PrismaModule,
+    MailModule,
     StorageModule,
     HealthModule,
     AuthModule,

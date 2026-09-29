@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { FormEvent, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { clearNestToken } from "@/lib/nest-api";
 import { TOO_MANY_ATTEMPTS } from "@/lib/auth-errors";
+import { AuthShell } from "@/components/AuthShell";
 import { FormMessage, Spinner } from "@/components/ui";
 
 const PARAM_ERRORS: Record<string, string> = {
@@ -16,9 +18,10 @@ const PARAM_ERRORS: Record<string, string> = {
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const [email, setEmail] = useState("");
+  // /restablecer redirige aquí con ?firma=&email= para no tener que reescribirlos
+  const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
-  const [tenantSlug, setTenantSlug] = useState("firma-demo");
+  const [tenantSlug, setTenantSlug] = useState(params.get("firma") ?? "firma-demo");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -51,80 +54,14 @@ function LoginForm() {
   }
 
   const paramError = PARAM_ERRORS[params.get("error") ?? ""];
+  const passwordSaved = params.get("ok") === "password";
+  const prefilled = Boolean(params.get("email"));
+  const recoverHref = `/recuperar?${new URLSearchParams({ firma: tenantSlug, email }).toString()}`;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-brand-50 to-slate-50 px-4 py-10">
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-700 text-lg font-bold text-white shadow-sm">
-            B
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-brand-900">Bogados</h1>
-          <p className="mt-1 text-sm text-slate-500">Gestión legal para tu firma</p>
-        </div>
-
-        <div className="card p-6 sm:p-8">
-          <h2 className="mb-5 text-lg font-semibold text-slate-800">Inicia sesión</h2>
-
-          {(paramError || error) && (
-            <div className="mb-4">
-              <FormMessage type="error">{error || paramError}</FormMessage>
-            </div>
-          )}
-
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="tenantSlug" className="label">
-                Código de firma
-              </label>
-              <input
-                id="tenantSlug"
-                type="text"
-                required
-                autoComplete="organization"
-                value={tenantSlug}
-                onChange={(e) => setTenantSlug(e.target.value)}
-                className="input mt-1"
-                placeholder="firma-demo"
-              />
-            </div>
-            <div>
-              <label htmlFor="email" className="label">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                autoFocus
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="input mt-1"
-                placeholder="tu@firma.com"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="label">
-                Contraseña
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input mt-1"
-              />
-            </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
-              {loading && <Spinner />}
-              {loading ? "Entrando…" : "Iniciar sesión"}
-            </button>
-          </form>
-        </div>
-
+    <AuthShell
+      title="Inicia sesión"
+      footer={
         <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white/60 px-4 py-3 text-center text-xs text-slate-500">
           <span className="font-semibold text-slate-600">Firma demo:</span> código `firma-demo` ·
           <br />
@@ -133,8 +70,77 @@ function LoginForm() {
           <br />
           Contraseña: <code className="rounded bg-slate-100 px-1">demo1234</code>
         </div>
-      </div>
-    </div>
+      }
+    >
+      {(paramError || error) && (
+        <div className="mb-4">
+          <FormMessage type="error">{error || paramError}</FormMessage>
+        </div>
+      )}
+      {passwordSaved && !error && (
+        <div className="mb-4">
+          <FormMessage type="success">Contraseña guardada. Ya puedes iniciar sesión.</FormMessage>
+        </div>
+      )}
+
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="tenantSlug" className="label">
+            Código de firma
+          </label>
+          <input
+            id="tenantSlug"
+            type="text"
+            required
+            autoComplete="organization"
+            value={tenantSlug}
+            onChange={(e) => setTenantSlug(e.target.value)}
+            className="input mt-1"
+            placeholder="firma-demo"
+          />
+        </div>
+        <div>
+          <label htmlFor="email" className="label">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            required
+            autoFocus={!prefilled}
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="input mt-1"
+            placeholder="tu@firma.com"
+          />
+        </div>
+        <div>
+          <div className="flex items-baseline justify-between">
+            <label htmlFor="password" className="label">
+              Contraseña
+            </label>
+            <Link href={recoverHref} className="text-xs font-medium text-brand-700 hover:underline">
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
+          <input
+            id="password"
+            type="password"
+            required
+            autoFocus={prefilled}
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="input mt-1"
+          />
+        </div>
+        <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
+          {loading && <Spinner />}
+          {loading ? "Entrando…" : "Iniciar sesión"}
+        </button>
+      </form>
+    </AuthShell>
   );
 }
 

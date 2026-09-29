@@ -17,6 +17,16 @@ services:
       timeout: 5s
       retries: 10
 
+  # Buzón de pruebas: recibe todos los emails (invitaciones, recuperación) sin enviarlos
+  # de verdad. SMTP en :1025, bandeja web en http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: bogados-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   api:
     build:
       context: .
@@ -35,11 +45,15 @@ services:
       UPLOAD_DIR: /app/uploads
       CORS_ORIGIN: http://localhost:3000
       NODE_ENV: production
+      APP_URL: http://localhost:3000
+      SMTP_URL: smtp://mailpit:1025
     volumes:
       - bogados_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     profiles:
       - full
 

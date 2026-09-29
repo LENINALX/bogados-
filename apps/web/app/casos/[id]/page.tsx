@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { StaffLayout } from "@/components/StaffLayout";
 import { StatusBadge } from "@/components/StatusBadge";
+import { FormMessage } from "@/components/ui";
 import { CaseMessages } from "@/components/CaseMessages";
 import { CaseDocuments } from "@/components/CaseDocuments";
 import { CaseStatusForm } from "@/components/CaseStatusForm";
@@ -14,9 +15,9 @@ import { staffLinks } from "@/lib/nav";
 import { toTimelineEvents, toTimelineNotes } from "@/lib/timeline";
 import { documentFields, messageFields } from "@/lib/client-fields";
 
-type Props = { params: { id: string } };
+type Props = { params: { id: string }; searchParams: { aviso?: string } };
 
-export default async function CaseDetailPage({ params }: Props) {
+export default async function CaseDetailPage({ params, searchParams }: Props) {
   const session = await requireRole("ADMIN", "ABOGADO");
   const { tenantId, role, id: userId } = session.user;
 
@@ -78,6 +79,17 @@ export default async function CaseDetailPage({ params }: Props) {
           <span aria-hidden>/</span>
           <span className="truncate text-slate-700">{c.title}</span>
         </nav>
+
+        {searchParams.aviso === "invitacion" && (
+          <div className="mb-4">
+            <FormMessage type="error">
+              El caso se creó, pero no se pudo enviar la invitación por email a {c.client?.name ?? "el cliente"}.
+              {role === "ADMIN"
+                ? " Reenvíala desde Usuarios."
+                : " Pide a un administrador que la reenvíe desde Usuarios."}
+            </FormMessage>
+          </div>
+        )}
 
         <div className="card mb-6 p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">

@@ -3,9 +3,11 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { Prisma } from '@prisma/client';
+import { Prisma, UserTokenType } from '@prisma/client';
+import { AccountTokensService, unusablePasswordHash } from '../auth/account-tokens.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto, ListUsersQueryDto, UpdateUserDto } from './dto/user.dto';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
@@ -27,7 +29,10 @@ const userSelect = {
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private tokens: AccountTokensService,
+  ) {}
 
   async findAll(actor: JwtPayloadUser, query: ListUsersQueryDto) {
     const { page, pageSize, skip, take } = paginateParams(query);
@@ -72,8 +77,11 @@ export class UsersService {
     });
     if (exists) throw new ConflictException('Email ya registrado en el tenant');
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
-    return this.prisma.user.create({
+    // Sin contraseña: se invita por email y el usuario la define al activar la cuenta
+    const passwordHash = dto.password
+      ? await bcrypt.hash(dto.password, 10)
+      : await unusablePasswordHash();
+    const user = await this.prisma.user.create({
       data: {
         tenantId: actor.tenantId,
         email,
@@ -84,6 +92,23 @@ export class UsersService {
       },
       select: userSelect,
     });
+
+    const invitationSent =
+      !dto.password && user.active
+        ? await this.tokens.send(user.id, UserTokenType.INVITE, actor.name)
+        : false;
+    return { ...user, invitationSent };
+  }
+
+  /** (Re)envía la invitación: sirve también para que un admin fuerce un cambio de contraseña. */
+  async invite(id: string, actor: JwtPayloadUser) {
+    const user = await this.findOne(id, actor);
+    if (!user.active) throw new BadRequestException('El usuario está desactivado');
+    const invitationSent = await this.tokens.send(user.id, UserTokenType.INVITE, actor.name);
+    if (!invitationSent) {
+      throw new ServiceUnavailableException('No se pudo enviar el email de invitación');
+    }
+    return { invitationSent };
   }
 
   async update(id: string, dto: UpdateUserDto, actor: JwtPayloadUser) {
@@ -101,7 +126,10 @@ export class UsersService {
     if (dto.name) data.name = dto.name;
     if (dto.role) data.role = dto.role;
     if (dto.active !== undefined) data.active = dto.active;
-    if (dto.password) data.passwordHash = await bcrypt.hash(dto.password, 10);
+    if (dto.password) {
+      data.passwordHash = await bcrypt.hash(dto.password, 10);
+      data.passwordChangedAt = new Date(); // cierra las sesiones abiertas de ese usuario
+    }
 
     return this.prisma.user.update({
       where: { id },

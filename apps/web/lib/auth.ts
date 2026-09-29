@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { Role } from "@prisma/client";
 import { prisma } from "./prisma";
 import { API_UNAVAILABLE, TOO_MANY_ATTEMPTS } from "./auth-errors";
+import { sessionError } from "./session-state";
 
 /** URL de la API Nest vista desde el servidor de Next (en Docker puede diferir de la pública). */
 const NEST_API_URL = (
@@ -16,10 +17,13 @@ type NestLoginResponse = {
   user: { id: string; email: string; name: string; role: Role; tenantId: string };
 };
 
-/** Fecha de expiración (ms) leída del propio JWT de Nest. */
-function jwtExpiresAt(token: string): number {
+/** Emisión y expiración (en segundos) leídas del propio JWT de Nest. */
+function jwtTimes(token: string): { iat: number; exp: number } {
   const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
-  return typeof payload.exp === "number" ? payload.exp * 1000 : 0;
+  return {
+    iat: typeof payload.iat === "number" ? payload.iat : 0,
+    exp: typeof payload.exp === "number" ? payload.exp : 0,
+  };
 }
 
 export const authOptions: NextAuthOptions = {
@@ -61,10 +65,12 @@ export const authOptions: NextAuthOptions = {
 
         const json = await res.json();
         const { accessToken, user } = (json.data ?? json) as NestLoginResponse;
+        const { iat, exp } = jwtTimes(accessToken);
         return {
           ...user,
           accessToken,
-          accessTokenExpires: jwtExpiresAt(accessToken),
+          accessTokenIssuedAt: iat,
+          accessTokenExpires: exp * 1000,
         };
       },
     }),
@@ -76,6 +82,7 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.tenantId = user.tenantId;
         token.accessToken = user.accessToken;
+        token.accessTokenIssuedAt = user.accessTokenIssuedAt;
         token.accessTokenExpires = user.accessTokenExpires;
       }
 
@@ -84,14 +91,13 @@ export const authOptions: NextAuthOptions = {
       const current = token.id
         ? await prisma.user.findUnique({
             where: { id: token.id },
-            select: { active: true, role: true, name: true },
+            select: { active: true, role: true, name: true, passwordChangedAt: true },
           })
         : null;
 
-      if (!current?.active) {
-        token.error = "revoked";
-      } else if (!token.accessToken || Date.now() >= (token.accessTokenExpires ?? 0)) {
-        token.error = "expired";
+      const error = sessionError(current, token);
+      if (error || !current) {
+        token.error = error ?? "revoked";
       } else {
         token.role = current.role;
         token.name = current.name;

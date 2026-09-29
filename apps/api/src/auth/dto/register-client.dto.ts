@@ -12,10 +12,14 @@ export class RegisterClientDto {
   @MaxLength(120)
   name!: string;
 
-  @ApiProperty({ minLength: 6, example: 'demo1234' })
+  @ApiPropertyOptional({
+    minLength: 6,
+    description: 'Contraseña temporal. Si se omite, se envía una invitación por email.',
+  })
+  @IsOptional()
   @IsString()
   @MinLength(6)
-  password!: string;
+  password?: string;
 
   @ApiPropertyOptional({ description: 'Caso al que vincular el cliente (opcional)' })
   @IsOptional()

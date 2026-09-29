@@ -26,6 +26,8 @@ declare module "next-auth" {
     role: Role;
     tenantId: string;
     accessToken: string;
+    /** `iat` del JWT de Nest, en segundos */
+    accessTokenIssuedAt: number;
     accessTokenExpires: number;
   }
 }
@@ -36,6 +38,7 @@ declare module "next-auth/jwt" {
     role: Role;
     tenantId: string;
     accessToken?: string;
+    accessTokenIssuedAt?: number;
     accessTokenExpires?: number;
     error?: SessionError;
   }

@@ -38,6 +38,10 @@ jobs:
       - name: API — build
         run: npm run build:api
 
+      - name: Web — lint
+        run: npm run lint -w @bogados/web
+      - name: Web — tests
+        run: npm run test:web
       # next build incluye el chequeo de tipos
       - name: Web — build
         run: npm run build -w @bogados/web

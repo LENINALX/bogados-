@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -40,6 +41,13 @@ export class UsersController {
   @Post()
   create(@Body() dto: CreateUserDto, @CurrentUser() user: JwtPayloadUser) {
     return this.users.create(dto, user);
+  }
+
+  @Post(':id/invite')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Reenviar invitación por email (define una contraseña nueva)' })
+  invite(@Param('id') id: string, @CurrentUser() user: JwtPayloadUser) {
+    return this.users.invite(id, user);
   }
 
   @Patch(':id')

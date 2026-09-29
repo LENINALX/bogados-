@@ -6,10 +6,12 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { Role } from '@prisma/client';
+import { Role, UserTokenType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterClientDto } from './dto/register-client.dto';
+import { ForgotPasswordDto } from './dto/password.dto';
+import { AccountTokensService, unusablePasswordHash } from './account-tokens.service';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 
 @Injectable()
@@ -17,7 +19,23 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
+    private tokens: AccountTokensService,
   ) {}
+
+  /**
+   * Siempre responde igual, exista o no la cuenta: así no se puede averiguar
+   * qué emails están registrados en cada firma.
+   */
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const tenant = await this.prisma.tenant.findUnique({ where: { slug: dto.tenantSlug } });
+    const user = tenant
+      ? await this.prisma.user.findUnique({
+          where: { tenantId_email: { tenantId: tenant.id, email: dto.email.toLowerCase().trim() } },
+        })
+      : null;
+    if (user?.active) await this.tokens.send(user.id, UserTokenType.RESET);
+    return { ok: true };
+  }
 
   async login(dto: LoginDto) {
     const email = dto.email.toLowerCase().trim();
@@ -103,7 +121,10 @@ export class AuthService {
       }
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    // Sin contraseña: se invita por email y el cliente la define al activar la cuenta
+    const passwordHash = dto.password
+      ? await bcrypt.hash(dto.password, 10)
+      : await unusablePasswordHash();
     const client = await this.prisma.user.create({
       data: {
         tenantId: actor.tenantId,
@@ -131,6 +152,9 @@ export class AuthService {
       });
     }
 
-    return client;
+    const invitationSent = dto.password
+      ? false
+      : await this.tokens.send(client.id, UserTokenType.INVITE, actor.name);
+    return { ...client, invitationSent };
   }
 }

@@ -45,6 +45,8 @@ model User {
   name         String
   role         Role
   active       Boolean  @default(true)
+  /// Los JWT emitidos antes de esta fecha dejan de ser válidos
+  passwordChangedAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -57,6 +59,7 @@ model User {
   activityEvents    ActivityEvent[] @relation("ActivityActor")
   tasksAssigned     CaseTask[]     @relation("TaskAssignee")
   notifications     Notification[]
+  tokens            UserToken[]
 
   @@unique([tenantId, email])
   @@index([tenantId, role])
@@ -179,6 +182,26 @@ model CaseTask {
   @@index([tenantId, caseId])
   @@index([tenantId, dueAt, done])
   @@index([tenantId, assigneeId])
+}
+
+enum UserTokenType {
+  INVITE
+  RESET
+}
+
+/// Enlaces de un solo uso (invitación / recuperar contraseña). Solo se guarda el hash.
+model UserToken {
+  id        String        @id @default(cuid())
+  userId    String
+  type      UserTokenType
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
 }
 
 /// Notificaciones in-app por usuario

@@ -24,6 +24,7 @@ export function NewCaseForm({
 }) {
   const router = useRouter();
   const [clientMode, setClientMode] = useState<ClientMode>(clients.length ? "existing" : "none");
+  const [manualPassword, setManualPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,20 +37,23 @@ export function NewCaseForm({
 
     try {
       let clientId: string | undefined;
+      let invitationFailed = false;
       if (clientMode === "existing") clientId = str("clientId") || undefined;
       if (clientMode === "new") {
-        if (str("clientPassword").length < 6) {
+        if (manualPassword && str("clientPassword").length < 6) {
           throw new Error("La contraseña temporal debe tener al menos 6 caracteres.");
         }
-        const created = await nestFetch<{ id: string }>("/auth/register-client", {
+        const created = await nestFetch<{ id: string; invitationSent: boolean }>("/auth/register-client", {
           method: "POST",
           body: JSON.stringify({
             name: str("clientName"),
             email: str("clientEmail"),
-            password: str("clientPassword"),
+            // Sin contraseña, la API envía una invitación por email
+            password: manualPassword ? str("clientPassword") : undefined,
           }),
         });
         clientId = created.id;
+        invitationFailed = !manualPassword && !created.invitationSent;
       }
 
       const created = await nestFetch<{ id: string }>("/cases", {
@@ -63,7 +67,8 @@ export function NewCaseForm({
           clientId,
         }),
       });
-      router.push(`/casos/${created.id}`);
+      // El caso se crea igualmente; la página del caso avisa de que falta la invitación
+      router.push(`/casos/${created.id}${invitationFailed ? "?aviso=invitacion" : ""}`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear el caso.");
@@ -143,7 +148,7 @@ export function NewCaseForm({
         )}
 
         {clientMode === "new" && (
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className={label} htmlFor="clientName">Nombre *</label>
               <input id="clientName" name="clientName" required minLength={2} maxLength={120} className={input} />
@@ -152,13 +157,25 @@ export function NewCaseForm({
               <label className={label} htmlFor="clientEmail">Email *</label>
               <input id="clientEmail" name="clientEmail" type="email" required className={input} />
             </div>
-            <div>
-              <label className={label} htmlFor="clientPassword">Contraseña temporal *</label>
-              <input id="clientPassword" name="clientPassword" type="password" required minLength={6} className={input} autoComplete="new-password" />
-            </div>
-            <p className="text-xs text-slate-500 sm:col-span-3">
-              Comparte la contraseña temporal con el cliente para que acceda al portal.
-            </p>
+            <label className="flex items-center gap-2 text-xs text-slate-600 sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={manualPassword}
+                onChange={(e) => setManualPassword(e.target.checked)}
+              />
+              Asignar una contraseña temporal en lugar de enviar invitación por email
+            </label>
+            {manualPassword ? (
+              <div>
+                <label className={label} htmlFor="clientPassword">Contraseña temporal *</label>
+                <input id="clientPassword" name="clientPassword" type="password" required minLength={6} className={input} autoComplete="new-password" />
+                <p className="mt-1 text-xs text-slate-500">Compártela con el cliente para que acceda al portal.</p>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 sm:col-span-2">
+                El cliente recibirá un email con un enlace (válido 7 días) para activar su acceso al portal.
+              </p>
+            )}
           </div>
         )}
       </section>

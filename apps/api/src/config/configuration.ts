@@ -18,5 +18,12 @@ export default () => ({
   },
   uploadDir: process.env.UPLOAD_DIR || './uploads',
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  /** URL pública de la web: base de los enlaces que se envían por email. */
+  appUrl: (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, ''),
+  mail: {
+    /** p. ej. smtp://usuario:clave@smtp.proveedor.com:587 · vacío = sin envío real */
+    smtpUrl: process.env.SMTP_URL || '',
+    from: process.env.MAIL_FROM || 'Bogados <no-reply@bogados.local>',
+  },
   nodeEnv: process.env.NODE_ENV || 'development',
 });
