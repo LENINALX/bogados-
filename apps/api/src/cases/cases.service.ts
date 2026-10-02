@@ -1,13 +1,19 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { CaseStatus, Role } from '@prisma/client';
+import { CaseStatus, Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import { getAccessibleCase } from '../common/utils/case-access';
 import { isStaff } from '../common/utils/permissions';
 import { ActivityService } from '../activity/activity.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import {
+  paginateParams,
+  toPaginated,
+} from '../common/dto/pagination.dto';
 import {
   AssignLawyerDto,
   CreateCaseDto,
+  ListCasesQueryDto,
   PatchStatusDto,
   UpdateCaseDto,
 } from './dto/case.dto';
@@ -22,13 +28,12 @@ export class CasesService {
   constructor(
     private prisma: PrismaService,
     private activity: ActivityService,
+    private notifications: NotificationsService,
   ) {}
 
-  async findAll(
-    user: JwtPayloadUser,
-    filters: { status?: CaseStatus; q?: string },
-  ) {
-    const where: Record<string, unknown> = { tenantId: user.tenantId };
+  async findAll(user: JwtPayloadUser, filters: ListCasesQueryDto) {
+    const { page, pageSize, skip, take } = paginateParams(filters);
+    const where: Prisma.CaseWhereInput = { tenantId: user.tenantId };
     if (filters.status) where.status = filters.status;
     if (user.role === Role.CLIENTE) where.clientId = user.id;
     else if (user.role === Role.ABOGADO) where.lawyerId = user.id;
@@ -39,11 +44,18 @@ export class CasesService {
       ];
     }
 
-    return this.prisma.case.findMany({
-      where,
-      include: caseInclude,
-      orderBy: { updatedAt: 'desc' },
-    });
+    const [total, items] = await this.prisma.$transaction([
+      this.prisma.case.count({ where }),
+      this.prisma.case.findMany({
+        where,
+        include: caseInclude,
+        orderBy: { updatedAt: 'desc' },
+        skip,
+        take,
+      }),
+    ]);
+
+    return toPaginated(items, total, page, pageSize);
   }
 
   async findOne(id: string, user: JwtPayloadUser) {
@@ -127,6 +139,20 @@ export class CasesService {
         summary: `Estado: ${prevStatus} → ${data.status}`,
         meta: { from: prevStatus, to: data.status },
       });
+
+      await this.notifications.notifyMany(
+        [updated.lawyerId, updated.clientId].filter((id) => id && id !== user.id),
+        {
+          title: 'Cambio de estado del caso',
+          body: `"${updated.title}": ${prevStatus} → ${data.status}`,
+          meta: {
+            type: 'CASE_STATUS',
+            caseId: updated.id,
+            from: prevStatus,
+            to: data.status,
+          },
+        },
+      );
     }
 
     return updated;
@@ -164,6 +190,15 @@ export class CasesService {
       summary: `Abogado asignado: ${updated.lawyer?.name ?? dto.lawyerId}`,
       meta: { lawyerId: dto.lawyerId },
     });
+
+    if (dto.lawyerId !== user.id) {
+      await this.notifications.create({
+        userId: dto.lawyerId,
+        title: 'Caso asignado',
+        body: `Se te asignó el caso "${updated.title}"`,
+        meta: { type: 'CASE_ASSIGNED', caseId: updated.id },
+      });
+    }
 
     return updated;
   }

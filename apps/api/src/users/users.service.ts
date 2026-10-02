@@ -4,9 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
+import { CreateUserDto, ListUsersQueryDto, UpdateUserDto } from './dto/user.dto';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import {
+  paginateParams,
+  toPaginated,
+} from '../common/dto/pagination.dto';
 
 const userSelect = {
   id: true,
@@ -23,12 +28,29 @@ const userSelect = {
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  findAll(actor: JwtPayloadUser) {
-    return this.prisma.user.findMany({
-      where: { tenantId: actor.tenantId },
-      select: userSelect,
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(actor: JwtPayloadUser, query: ListUsersQueryDto) {
+    const { page, pageSize, skip, take } = paginateParams(query);
+    const where: Prisma.UserWhereInput = { tenantId: actor.tenantId };
+    if (query.role) where.role = query.role;
+    if (query.q) {
+      where.OR = [
+        { name: { contains: query.q, mode: 'insensitive' } },
+        { email: { contains: query.q, mode: 'insensitive' } },
+      ];
+    }
+
+    const [total, items] = await this.prisma.$transaction([
+      this.prisma.user.count({ where }),
+      this.prisma.user.findMany({
+        where,
+        select: userSelect,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
+    ]);
+
+    return toPaginated(items, total, page, pageSize);
   }
 
   async findOne(id: string, actor: JwtPayloadUser) {

@@ -3,22 +3,41 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import { getAccessibleCase } from '../common/utils/case-access';
 import { ActivityService } from '../activity/activity.service';
-import { CreateMessageDto } from './dto/message.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import {
+  paginateParams,
+  toPaginated,
+} from '../common/dto/pagination.dto';
+import { CreateMessageDto, ListMessagesQueryDto } from './dto/message.dto';
 
 @Injectable()
 export class MessagesService {
   constructor(
     private prisma: PrismaService,
     private activity: ActivityService,
+    private notifications: NotificationsService,
   ) {}
 
-  async list(caseId: string, user: JwtPayloadUser) {
+  async list(caseId: string, user: JwtPayloadUser, query: ListMessagesQueryDto) {
     const c = await getAccessibleCase(this.prisma, caseId, user);
-    return this.prisma.message.findMany({
-      where: { caseId: c.id, tenantId: user.tenantId },
-      include: { sender: { select: { id: true, name: true, role: true } } },
-      orderBy: { createdAt: 'asc' },
+    const { page, pageSize, skip, take } = paginateParams({
+      page: query.page,
+      pageSize: query.pageSize ?? 50,
     });
+
+    const where = { caseId: c.id, tenantId: user.tenantId };
+    const [total, items] = await this.prisma.$transaction([
+      this.prisma.message.count({ where }),
+      this.prisma.message.findMany({
+        where,
+        include: { sender: { select: { id: true, name: true, role: true } } },
+        orderBy: { createdAt: 'asc' },
+        skip,
+        take,
+      }),
+    ]);
+
+    return toPaginated(items, total, page, pageSize);
   }
 
   async create(caseId: string, dto: CreateMessageDto, user: JwtPayloadUser) {
@@ -40,6 +59,20 @@ export class MessagesService {
       type: 'MESSAGE_SENT',
       summary: 'Mensaje enviado',
       meta: { messageId: message.id },
+    });
+
+    const recipients = [c.lawyerId, c.clientId].filter(
+      (id): id is string => Boolean(id) && id !== user.id,
+    );
+    const preview = dto.body.length > 120 ? `${dto.body.slice(0, 117)}...` : dto.body;
+    await this.notifications.notifyMany(recipients, {
+      title: 'Nuevo mensaje',
+      body: `${user.name}: ${preview}`,
+      meta: {
+        type: 'NEW_MESSAGE',
+        caseId: c.id,
+        messageId: message.id,
+      },
     });
 
     return message;

@@ -6,7 +6,11 @@ import {
   MaxLength,
   MinLength,
   IsIn,
+  IsInt,
+  Max,
+  Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { CaseStatus } from '@prisma/client';
 
 export class CreateCaseDto {
@@ -90,4 +94,31 @@ export class PatchStatusDto {
   @ApiProperty({ enum: ['intake', 'abierto', 'en_pausa', 'cerrado'] })
   @IsIn(['intake', 'abierto', 'en_pausa', 'cerrado'])
   status!: CaseStatus;
+}
+
+export class ListCasesQueryDto {
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number = 20;
+
+  @ApiPropertyOptional({ enum: CaseStatus })
+  @IsOptional()
+  @IsEnum(CaseStatus)
+  status?: CaseStatus;
+
+  @ApiPropertyOptional({ description: 'Búsqueda por título/descripción' })
+  @IsOptional()
+  @IsString()
+  q?: string;
 }

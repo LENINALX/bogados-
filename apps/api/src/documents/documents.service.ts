@@ -6,13 +6,19 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { createReadStream } from 'fs';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import { getAccessibleCase } from '../common/utils/case-access';
 import { isStaff } from '../common/utils/permissions';
 import { ActivityService } from '../activity/activity.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import {
+  paginateParams,
+  PaginationQueryDto,
+  toPaginated,
+} from '../common/dto/pagination.dto';
 
 @Injectable()
 export class DocumentsService {
@@ -20,22 +26,30 @@ export class DocumentsService {
     private prisma: PrismaService,
     private storage: StorageService,
     private activity: ActivityService,
+    private notifications: NotificationsService,
   ) {}
 
-  async list(caseId: string, user: JwtPayloadUser) {
+  async list(caseId: string, user: JwtPayloadUser, query: PaginationQueryDto) {
     const c = await getAccessibleCase(this.prisma, caseId, user);
-    const where: {
-      caseId: string;
-      tenantId: string;
-      sharedWithClient?: boolean;
-    } = { caseId: c.id, tenantId: user.tenantId };
+    const { page, pageSize, skip, take } = paginateParams(query);
+    const where: Prisma.DocumentWhereInput = {
+      caseId: c.id,
+      tenantId: user.tenantId,
+    };
     if (!isStaff(user.role)) where.sharedWithClient = true;
 
-    return this.prisma.document.findMany({
-      where,
-      include: { uploadedBy: { select: { id: true, name: true } } },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [total, items] = await this.prisma.$transaction([
+      this.prisma.document.count({ where }),
+      this.prisma.document.findMany({
+        where,
+        include: { uploadedBy: { select: { id: true, name: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
+    ]);
+
+    return toPaginated(items, total, page, pageSize);
   }
 
   async upload(
@@ -84,6 +98,30 @@ export class DocumentsService {
       summary: `Documento: ${doc.fileName}`,
       meta: { documentId: doc.id, sharedWithClient },
     });
+
+    if (sharedWithClient && c.clientId && c.clientId !== user.id) {
+      await this.notifications.create({
+        userId: c.clientId,
+        title: 'Documento compartido',
+        body: `Se compartió "${doc.fileName}" en el caso "${c.title}"`,
+        meta: {
+          type: 'DOC_SHARED',
+          caseId: c.id,
+          documentId: doc.id,
+        },
+      });
+    } else if (!sharedWithClient && c.lawyerId && c.lawyerId !== user.id) {
+      await this.notifications.create({
+        userId: c.lawyerId,
+        title: 'Nuevo documento',
+        body: `Se subió "${doc.fileName}" en el caso "${c.title}"`,
+        meta: {
+          type: 'DOC_UPLOADED',
+          caseId: c.id,
+          documentId: doc.id,
+        },
+      });
+    }
 
     return doc;
   }

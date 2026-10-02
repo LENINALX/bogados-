@@ -3,6 +3,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   Res,
   UploadedFile,
@@ -22,6 +23,7 @@ import { DocumentsService } from './documents.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { PaginationQueryDto } from '../common/dto/pagination.dto';
 
 @ApiTags('documents')
 @ApiBearerAuth()
@@ -31,9 +33,13 @@ export class DocumentsController {
   constructor(private documents: DocumentsService) {}
 
   @Get('cases/:caseId/documents')
-  @ApiOperation({ summary: 'Listar documentos del caso (ACL)' })
-  list(@Param('caseId') caseId: string, @CurrentUser() user: JwtPayloadUser) {
-    return this.documents.list(caseId, user);
+  @ApiOperation({ summary: 'Listar documentos del caso (ACL, paginado)' })
+  list(
+    @Param('caseId') caseId: string,
+    @CurrentUser() user: JwtPayloadUser,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.documents.list(caseId, user, query);
   }
 
   @Post('cases/:caseId/documents')

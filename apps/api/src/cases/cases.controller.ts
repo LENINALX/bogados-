@@ -9,12 +9,13 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { CaseStatus, Role } from '@prisma/client';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
 import { CasesService } from './cases.service';
 import {
   AssignLawyerDto,
   CreateCaseDto,
+  ListCasesQueryDto,
   PatchStatusDto,
   UpdateCaseDto,
 } from './dto/case.dto';
@@ -31,15 +32,9 @@ export class CasesController {
   constructor(private cases: CasesService) {}
 
   @Get()
-  @ApiQuery({ name: 'status', required: false, enum: CaseStatus })
-  @ApiQuery({ name: 'q', required: false })
-  @ApiOperation({ summary: 'Listar casos (filtrado por rol)' })
-  findAll(
-    @CurrentUser() user: JwtPayloadUser,
-    @Query('status') status?: CaseStatus,
-    @Query('q') q?: string,
-  ) {
-    return this.cases.findAll(user, { status, q });
+  @ApiOperation({ summary: 'Listar casos (paginado + filtros por rol)' })
+  findAll(@CurrentUser() user: JwtPayloadUser, @Query() query: ListCasesQueryDto) {
+    return this.cases.findAll(user, query);
   }
 
   @Get(':id')

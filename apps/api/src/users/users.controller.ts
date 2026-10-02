@@ -6,12 +6,13 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { UsersService } from './users.service';
-import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
+import { CreateUserDto, ListUsersQueryDto, UpdateUserDto } from './dto/user.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -26,9 +27,9 @@ export class UsersController {
   constructor(private users: UsersService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Listar usuarios del tenant (admin)' })
-  findAll(@CurrentUser() user: JwtPayloadUser) {
-    return this.users.findAll(user);
+  @ApiOperation({ summary: 'Listar usuarios del tenant (admin, paginado)' })
+  findAll(@CurrentUser() user: JwtPayloadUser, @Query() query: ListUsersQueryDto) {
+    return this.users.findAll(user, query);
   }
 
   @Get(':id')
