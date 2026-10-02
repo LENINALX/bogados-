@@ -14,6 +14,8 @@ const PRISMA_ERRORS: Record<string, { status: HttpStatus; message: string }> = {
   P2002: { status: HttpStatus.CONFLICT, message: 'Ya existe un registro con esos datos' },
   P2003: { status: HttpStatus.BAD_REQUEST, message: 'Referencia a un registro inexistente' },
   P2025: { status: HttpStatus.NOT_FOUND, message: 'Registro no encontrado' },
+  // Conflicto entre transacciones serializables simultáneas
+  P2034: { status: HttpStatus.CONFLICT, message: 'Otra operación cambió estos datos a la vez. Inténtalo de nuevo.' },
 };
 
 @Catch()

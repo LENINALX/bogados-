@@ -19,6 +19,19 @@ export const CASE_STATUS_LABELS: Record<CaseStatus, string> = {
   cerrado: "Cerrado",
 };
 
+export const APPOINTMENT_STATUSES = ["pendiente", "confirmada", "cancelada", "completada"] as const;
+export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
+
+export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
+  pendiente: "Pendiente",
+  confirmada: "Confirmada",
+  cancelada: "Cancelada",
+  completada: "Completada",
+};
+
+/** Índice = Date.getDay() (0 = domingo) */
+export const WEEKDAY_LABELS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"] as const;
+
 export const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: "Administrador",
   ABOGADO: "Abogado",

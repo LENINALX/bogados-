@@ -3,6 +3,12 @@ import { PrismaClient, Role, CaseStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { promises as fs } from "fs";
 import path from "path";
+import {
+  addDaysYmd,
+  localYmd,
+  weekdayOfYmd,
+  zonedToUtc,
+} from "../apps/api/src/appointments/time";
 
 const prisma = new PrismaClient();
 
@@ -262,6 +268,56 @@ async function main() {
     ],
   });
 
+  // Agenda demo: disponibilidad semanal (hora local de la firma) y dos citas
+  const hm = (h: number, m = 0) => h * 60 + m;
+  await prisma.availability.createMany({
+    data: [
+      // Abogado: lunes a viernes, mañana y tarde
+      ...[1, 2, 3, 4, 5].flatMap((weekday) => [
+        { tenantId: tenant.id, lawyerId: lawyer.id, weekday, startMin: hm(9), endMin: hm(13) },
+        { tenantId: tenant.id, lawyerId: lawyer.id, weekday, startMin: hm(15), endMin: hm(18) },
+      ]),
+      // Admin: martes y jueves por la mañana
+      ...[2, 4].map((weekday) => ({
+        tenantId: tenant.id,
+        lawyerId: admin.id,
+        weekday,
+        startMin: hm(9),
+        endMin: hm(12),
+      })),
+    ],
+  });
+
+  // Próximo lunes (hora de la firma): una cita confirmada y una solicitud pendiente
+  let monday = addDaysYmd(localYmd(now, tenant.timezone), 1);
+  while (weekdayOfYmd(monday) !== 1) monday = addDaysYmd(monday, 1);
+  const at = (minutes: number) => zonedToUtc(monday, minutes, tenant.timezone);
+  await prisma.appointment.createMany({
+    data: [
+      {
+        tenantId: tenant.id,
+        lawyerId: lawyer.id,
+        clientId: client.id,
+        caseId: case1.id,
+        startsAt: at(hm(10)),
+        endsAt: at(hm(11)),
+        status: "confirmada",
+        reason: "Revisar la contestación de la demanda",
+        createdById: lawyer.id,
+      },
+      {
+        tenantId: tenant.id,
+        lawyerId: lawyer.id,
+        clientId: client.id,
+        startsAt: at(hm(16)),
+        endsAt: at(hm(17)),
+        status: "pendiente",
+        reason: "Consulta sobre la liquidación",
+        createdById: client.id,
+      },
+    ],
+  });
+
   console.log("✅ Seed OK");
   console.log("  Tenant:", tenant.slug);
   console.log("  Admin:   admin@demo.bogados / demo1234");
@@ -270,6 +326,7 @@ async function main() {
   console.log("  Casos:", 3);
   console.log("  Tareas:", 4);
   console.log("  Notificaciones:", 4);
+  console.log("  Citas:", 2, `(lunes ${monday})`);
 }
 
 main()

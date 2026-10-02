@@ -21,10 +21,21 @@ enum CaseStatus {
   cerrado
 }
 
+enum AppointmentStatus {
+  pendiente
+  confirmada
+  cancelada
+  completada
+}
+
 model Tenant {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
+  /// Zona horaria IANA de la firma: la disponibilidad se expresa en hora local
+  timezone  String   @default("America/Guayaquil")
+  /// Duración de cada cita reservable, en minutos
+  appointmentMinutes Int @default(60)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -35,6 +46,8 @@ model Tenant {
   notes          CaseNote[]
   activityEvents ActivityEvent[]
   tasks          CaseTask[]
+  availability   Availability[]
+  appointments   Appointment[]
 }
 
 model User {
@@ -60,6 +73,9 @@ model User {
   tasksAssigned     CaseTask[]     @relation("TaskAssignee")
   notifications     Notification[]
   tokens            UserToken[]
+  availability      Availability[]
+  appointmentsAsLawyer Appointment[] @relation("AppointmentLawyer")
+  appointmentsAsClient Appointment[] @relation("AppointmentClient")
 
   @@unique([tenantId, email])
   @@index([tenantId, role])
@@ -87,6 +103,7 @@ model Case {
   notes          CaseNote[]
   activityEvents ActivityEvent[]
   tasks          CaseTask[]
+  appointments   Appointment[]
 
   @@index([tenantId, status])
   @@index([tenantId, lawyerId])
@@ -182,6 +199,51 @@ model CaseTask {
   @@index([tenantId, caseId])
   @@index([tenantId, dueAt, done])
   @@index([tenantId, assigneeId])
+}
+
+/// Franja semanal en la que un abogado atiende citas, en hora local de la firma
+model Availability {
+  id       String @id @default(cuid())
+  tenantId String
+  lawyerId String
+  /// 0 = domingo … 6 = sábado (como Date.getDay)
+  weekday  Int
+  /// Minutos desde las 00:00
+  startMin Int
+  endMin   Int
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lawyer User   @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, lawyerId])
+}
+
+model Appointment {
+  id             String            @id @default(cuid())
+  tenantId       String
+  lawyerId       String
+  clientId       String
+  caseId         String?
+  startsAt       DateTime
+  endsAt         DateTime
+  status         AppointmentStatus @default(pendiente)
+  /// Motivo indicado al pedir la cita
+  reason         String?
+  /// Comentario del despacho al confirmar o cancelar
+  note           String?
+  createdById    String
+  reminderSentAt DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lawyer User   @relation("AppointmentLawyer", fields: [lawyerId], references: [id], onDelete: Cascade)
+  client User   @relation("AppointmentClient", fields: [clientId], references: [id], onDelete: Cascade)
+  case   Case?  @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, lawyerId, startsAt])
+  @@index([tenantId, clientId, startsAt])
+  @@index([status, startsAt])
 }
 
 enum UserTokenType {

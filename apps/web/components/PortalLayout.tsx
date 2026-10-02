@@ -9,7 +9,13 @@ type Props = {
 export function PortalLayout({ user, children }: Props) {
   return (
     <div className="min-h-screen">
-      <AppHeader user={user} links={[{ href: "/portal", label: "Mis casos" }]} />
+      <AppHeader
+        user={user}
+        links={[
+          { href: "/portal", label: "Mis casos" },
+          { href: "/portal/citas", label: "Citas" },
+        ]}
+      />
       {children}
       <AppFooter />
     </div>

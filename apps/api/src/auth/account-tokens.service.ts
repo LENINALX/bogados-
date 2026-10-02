@@ -5,6 +5,7 @@ import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { escapeHtml } from '../common/utils/html';
 
 export const TOKEN_TTL_MS: Record<UserTokenType, number> = {
   INVITE: 7 * 24 * 60 * 60 * 1000,
@@ -22,10 +23,6 @@ export function hashToken(raw: string): string {
 /** Hash de una contraseña que nadie conoce: la cuenta no puede entrar hasta activarse. */
 export function unusablePasswordHash(): Promise<string> {
   return bcrypt.hash(randomBytes(32).toString('hex'), 10);
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
 type EmailData = { name: string; tenantName: string; tenantSlug: string; link: string };

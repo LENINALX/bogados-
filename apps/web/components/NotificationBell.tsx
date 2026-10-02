@@ -10,7 +10,7 @@ type Notification = {
   body: string;
   read: boolean;
   createdAt: string;
-  meta: { caseId?: string } | null;
+  meta: { caseId?: string; appointmentId?: string } | null;
 };
 
 type Page<T> = { items: T[]; meta: { total: number } };
@@ -71,7 +71,10 @@ export function NotificationBell({ role }: { role: string }) {
       nestFetch(`/notifications/${n.id}/read`, { method: "PATCH" }).catch(() => load());
     }
     const caseId = n.meta?.caseId;
-    if (caseId) {
+    if (n.meta?.appointmentId) {
+      setOpen(false);
+      router.push(role === "CLIENTE" ? "/portal/citas" : "/agenda");
+    } else if (caseId) {
       setOpen(false);
       router.push(role === "CLIENTE" ? `/portal/casos/${caseId}` : `/casos/${caseId}`);
     }

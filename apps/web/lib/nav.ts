@@ -4,6 +4,7 @@ import { Role } from "@prisma/client";
 export function staffLinks(role: Role) {
   const links = [
     { href: "/dashboard", label: role === "ADMIN" ? "Casos" : "Mis casos" },
+    { href: "/agenda", label: "Agenda" },
     { href: "/tareas", label: "Mis plazos" },
   ];
   if (role === "ADMIN") links.push({ href: "/admin/usuarios", label: "Usuarios" });

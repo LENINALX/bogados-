@@ -17,6 +17,8 @@ import { StorageModule } from './storage/storage.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { TasksModule } from './tasks/tasks.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { AppointmentsModule } from './appointments/appointments.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { NotificationsModule } from './notifications/notifications.module';
     DashboardModule,
     TasksModule,
     NotificationsModule,
+    AppointmentsModule,
+    ScheduleModule.forRoot(),
   ],
 })
 export class AppModule {}

@@ -18,6 +18,7 @@ Centraliza expedientes, documentos y comunicación segura entre abogado y client
 | **Dashboard** | Conteos por estado, docs, mensajes, roles, tareas |
 | **Portal cliente** | Login, estado del caso, docs compartidos, mensajes |
 | **Cuentas** | Invitación por email (el usuario elige su contraseña), recuperar contraseña; cambiarla cierra las demás sesiones |
+| **Citas** | Disponibilidad semanal por abogado, el cliente pide cita en huecos libres (sin dobles reservas), el despacho confirma/cancela/completa, emails y recordatorio 24 h antes |
 | **API dedicada** | NestJS + JWT + Swagger + helmet (`apps/api`) |
 
 ### Pantallas web (staff)
@@ -28,6 +29,8 @@ Centraliza expedientes, documentos y comunicación segura entre abogado y client
 | `/casos/nuevo` | Alta de caso con cliente existente o invitación de cliente nuevo |
 | `/casos/[id]` | Documentos, notas, **timeline unificado** (notas + eventos), **tareas y plazos**, mensajes |
 | `/tareas` | "Mis plazos": pendientes, vencidas, próximos 3 días, completadas (admin: toda la firma) |
+| `/agenda` | Próximas citas (confirmar/cancelar/completar), programar cita, editar mi disponibilidad |
+| `/portal/citas` | Cliente: sus citas y pedir una nueva en un hueco libre |
 | `/admin/usuarios` | Solo admin: invitar usuarios por email, reenviar invitación, cambiar rol, activar/desactivar |
 | Header | Campana de notificaciones con contador y "marcar todas como leídas" |
 | `/recuperar` · `/restablecer` | Públicas: pedir enlace de recuperación · definir contraseña (invitación o recuperación) |
@@ -137,6 +140,11 @@ Los listados paginados aceptan `page` (default 1) y `pageSize` (default 20, máx
 | GET | `/tasks/overdue` | Tareas vencidas sin completar |
 | POST | `/tasks` | Crear tarea (`caseId` en body) |
 | PATCH/DELETE | `/tasks/:id` | Actualizar / eliminar tarea |
+| GET/PUT | `/lawyers/:id/availability` | Disponibilidad semanal (`{ blocks: [{ weekday, start: "09:00", end: "13:00" }] }`, hora local de la firma). Abogado: solo la suya |
+| GET | `/appointments/lawyers` | Abogados con disponibilidad |
+| GET | `/appointments/slots?lawyerId=&from=&days=` | Huecos libres (UTC) calculados en el servidor |
+| GET/POST | `/appointments` | Listar (por rol) / crear. Cliente: queda `pendiente`, solo en huecos libres, máx. 3 activas. Despacho: `confirmada`. Hueco ocupado → 409 |
+| PATCH | `/appointments/:id/status` | `confirmada` · `cancelada` · `completada` (+ `note`). Cliente: solo cancelar las suyas futuras |
 | GET | `/notifications` | Notificaciones del usuario (paginado, `unreadOnly`) |
 | PATCH | `/notifications/:id/read` | Marcar leída |
 | PATCH | `/notifications/read-all` | Marcar todas leídas |
@@ -209,6 +217,7 @@ docker compose exec api sh -c "cd /app && node_modules/.bin/tsx prisma/seed.ts" 
 - Global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`) + **helmet**.
 - No hay secretos en el repositorio: usa `.env` local (ignorado por git).
 - Con `NODE_ENV=production` la API no arranca sin `JWT_SECRET`.
+- Citas: comprobar hueco y reservar van en una transacción `Serializable` (dos reservas simultáneas → una gana, la otra recibe 409). Los recordatorios los envía la propia API cada 30 min (`@nestjs/schedule`), sin endpoint público; se desactivan con `REMINDERS_ENABLED=false`.
 - Enlaces de invitación/recuperación: de un solo uso, con caducidad, y en BD solo se guarda su hash SHA-256. En producción hace falta `SMTP_URL` (sin él no se envían; nunca se escriben en logs).
 - `UPLOAD_DIR` relativo se resuelve desde la raíz del monorepo (misma carpeta para la API y el seed).
 

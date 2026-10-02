@@ -25,5 +25,9 @@ export default () => ({
     smtpUrl: process.env.SMTP_URL || '',
     from: process.env.MAIL_FROM || 'Bogados <no-reply@bogados.local>',
   },
+  reminders: {
+    /** Recordatorios de citas cada 30 min. Apagados en tests. */
+    enabled: process.env.REMINDERS_ENABLED !== 'false' && process.env.NODE_ENV !== 'test',
+  },
   nodeEnv: process.env.NODE_ENV || 'development',
 });
