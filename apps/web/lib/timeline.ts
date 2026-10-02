@@ -24,7 +24,17 @@ export type TimelineItem = TimelineNote | TimelineEvent;
 type EventWithActor = ActivityEvent & { actor: { name: string } | null };
 
 /** Eventos que el cliente puede ver en el portal (lista blanca). */
-const CLIENT_VISIBLE = new Set(["CASE_CREATED", "STATUS_CHANGED", "ASSIGNED", "DOC_UPLOADED"]);
+const CLIENT_VISIBLE = new Set([
+  "CASE_CREATED",
+  "STATUS_CHANGED",
+  "ASSIGNED",
+  "DOC_UPLOADED",
+  // Solicitud desde el portal y decisión del despacho (el motivo va dirigido al cliente)
+  "CASE_REQUESTED",
+  "CASE_ACCEPTED",
+  "CASE_POSTPONED",
+  "CASE_REJECTED",
+]);
 
 function meta(e: ActivityEvent) {
   return (e.meta ?? {}) as Prisma.JsonObject;

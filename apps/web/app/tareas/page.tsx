@@ -78,16 +78,16 @@ export default async function TasksPage({
             </p>
           </div>
           {role === "ADMIN" && (
-            <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 text-xs font-medium">
+            <div className="flex rounded-lg border border-slate-200 bg-surface p-0.5 text-xs font-medium">
               <Link
                 href={qs(filter, false)}
-                className={`rounded-md px-3 py-1.5 ${!scopeAll ? "bg-brand-700 text-white" : "text-slate-600"}`}
+                className={`rounded-md px-3 py-1.5 ${!scopeAll ? "bg-brand-600 text-white" : "text-slate-600"}`}
               >
                 Asignadas a mí
               </Link>
               <Link
                 href={qs(filter, true)}
-                className={`rounded-md px-3 py-1.5 ${scopeAll ? "bg-brand-700 text-white" : "text-slate-600"}`}
+                className={`rounded-md px-3 py-1.5 ${scopeAll ? "bg-brand-600 text-white" : "text-slate-600"}`}
               >
                 Toda la firma
               </Link>
@@ -102,8 +102,8 @@ export default async function TasksPage({
               href={qs(f)}
               className={`rounded-full border px-3 py-1 text-xs font-medium ${
                 f === filter
-                  ? "border-brand-700 bg-brand-700 text-white"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-brand-500"
+                  ? "border-brand-600 bg-brand-600 text-white"
+                  : "border-slate-200 bg-surface text-slate-700 hover:border-brand-500"
               }`}
             >
               {FILTERS[f]}

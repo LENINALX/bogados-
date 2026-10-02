@@ -62,7 +62,7 @@ function LoginForm() {
     <AuthShell
       title="Inicia sesión"
       footer={
-        <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white/60 px-4 py-3 text-center text-xs text-slate-500">
+        <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-surface/60 px-4 py-3 text-center text-xs text-slate-500">
           <span className="font-semibold text-slate-600">Firma demo:</span> código `firma-demo` ·
           <br />
           <span className="font-semibold text-slate-600">Cuentas:</span> admin@demo.bogados ·

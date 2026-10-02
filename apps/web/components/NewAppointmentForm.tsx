@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { nestFetch } from "@/lib/nest-api";
 import { SlotPicker } from "./SlotPicker";
 import { FormMessage, Spinner, errorMessage } from "./ui";
+import { useToast } from "./Toaster";
 
 type Option = { id: string; name: string };
 
@@ -33,6 +34,7 @@ export function NewAppointmentForm({
   const [reloadKey, setReloadKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const toast = useToast();
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -58,7 +60,7 @@ export function NewAppointmentForm({
       setStartsAt(null);
       setClientId("");
       setReloadKey((k) => k + 1);
-      setMessage({ type: "success", text: "Cita programada. El cliente recibirá un email." });
+      toast("success", "Cita programada · el cliente recibirá un email");
       onCreated();
     } catch (err) {
       setReloadKey((k) => k + 1);

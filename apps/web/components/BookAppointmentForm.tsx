@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { nestFetch } from "@/lib/nest-api";
 import { SlotPicker } from "./SlotPicker";
 import { FormMessage, Spinner, errorMessage } from "./ui";
+import { useToast } from "./Toaster";
 
 type Option = { id: string; name: string };
 
@@ -21,6 +22,7 @@ export function BookAppointmentForm({
   const [reloadKey, setReloadKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     nestFetch<Option[]>("/appointments/lawyers")
@@ -51,7 +53,7 @@ export function BookAppointmentForm({
       form.reset();
       setStartsAt(null);
       setReloadKey((k) => k + 1);
-      setMessage({ type: "success", text: "Solicitud enviada. Te avisaremos por email cuando la confirmen." });
+      toast("success", "Cita solicitada · te avisaremos cuando la confirmen");
       onBooked();
     } catch (err) {
       // 409: alguien reservó ese hueco a la vez → recargar los horarios

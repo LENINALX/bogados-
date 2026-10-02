@@ -6,8 +6,15 @@ import { APPOINTMENT_STATUS_LABELS } from "@bogados/shared";
 import { nestFetch } from "@/lib/nest-api";
 import { Appointment, STATUS_BADGE, formatTime, groupByDay } from "@/lib/appointments";
 import { EmptyState, FormMessage, Spinner, errorMessage } from "./ui";
+import { useToast } from "./Toaster";
 
 type Action = "confirmada" | "cancelada" | "completada";
+
+const DONE_MESSAGE: Record<Action, string> = {
+  confirmada: "Cita confirmada · el cliente recibirá un email",
+  cancelada: "Cita cancelada",
+  completada: "Cita marcada como completada",
+};
 
 const ACTION_LABEL: Record<Action, string> = {
   confirmada: "Confirmar",
@@ -43,6 +50,7 @@ export function AppointmentList({
   const [pending, setPending] = useState<{ id: string; action: Action } | null>(null);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const toast = useToast();
 
   const load = useCallback(() => {
     nestFetch<Appointment[]>("/appointments")
@@ -63,6 +71,7 @@ export function AppointmentList({
         method: "PATCH",
         body: JSON.stringify({ status: pending.action, note: note.trim() || undefined }),
       });
+      toast("success", DONE_MESSAGE[pending.action]);
       setPending(null);
       setNote("");
       load();
@@ -78,9 +87,21 @@ export function AppointmentList({
     return error ? (
       <FormMessage type="error">{error}</FormMessage>
     ) : (
-      <div className="flex items-center gap-2 p-5 text-sm text-slate-500">
-        <Spinner className="h-4 w-4" /> Cargando citas…
-      </div>
+      // Esqueleto con la forma final: la carga no hace saltar el diseño
+      <section className="card" aria-busy="true">
+        <div className="card-header">
+          <div className="skeleton h-4 w-32" />
+        </div>
+        <div className="space-y-3 p-4 sm:p-5">
+          <span className="sr-only">Cargando citas…</span>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-slate-100 p-3">
+              <div className="skeleton h-4 w-40" />
+              <div className="skeleton mt-2 h-3 w-56" />
+            </div>
+          ))}
+        </div>
+      </section>
     );
   }
 

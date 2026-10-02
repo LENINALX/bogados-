@@ -9,13 +9,14 @@ import { StaffLayout } from "@/components/StaffLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DueBadge } from "@/components/DueBadge";
 import { EmptyState } from "@/components/ui";
+import { CaseRequestBadge } from "@/components/CaseRequestBadge";
 import {
   CasesByStatusChart,
   LawyerLoadChart,
   LawyerLoadRow,
   StatTile,
 } from "@/components/DashboardCharts";
-import { CASE_STATUSES, CASE_STATUS_LABELS, CaseStatus } from "@bogados/shared";
+import { CASE_STATUSES, CASE_STATUS_LABELS, CaseStatus, OPEN_CASE_REQUEST_STATES } from "@bogados/shared";
 
 const ACTIVE_STATUSES = ["intake", "abierto", "en_pausa"] as const satisfies readonly CaseStatus[];
 const UPCOMING_DAYS = 7;
@@ -80,6 +81,16 @@ export default async function DashboardPage({
   const total = CASE_STATUSES.reduce((a, s) => a + byStatus[s], 0);
   const activeCases = ACTIVE_STATUSES.reduce((a, s) => a + byStatus[s], 0);
 
+  // Solicitudes del portal sin decidir: solo el admin las decide (aún no tienen abogado)
+  const openRequests = isAdmin
+    ? await prisma.case.findMany({
+        where: { tenantId, requestState: { in: [...OPEN_CASE_REQUEST_STATES] } },
+        select: { id: true, title: true, requestState: true, createdAt: true, client: { select: { name: true } } },
+        orderBy: { createdAt: "asc" },
+        take: 20,
+      })
+    : [];
+
   let lawyerRows: LawyerLoadRow[] = [];
   if (isAdmin) {
     const [staff, load, overdueByAssignee] = await Promise.all([
@@ -133,8 +144,8 @@ export default async function DashboardPage({
   const chip = (active: boolean) =>
     `inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
       active
-        ? "border-brand-700 bg-brand-700 text-white"
-        : "border-slate-200 bg-white text-slate-700 hover:border-brand-500 hover:text-brand-700"
+        ? "border-brand-600 bg-brand-600 text-white"
+        : "border-slate-200 bg-surface text-slate-700 hover:border-brand-500 hover:text-brand-700"
     }`;
 
   return (
@@ -159,6 +170,35 @@ export default async function DashboardPage({
           <StatTile label="Tareas vencidas" value={overdueTasks} tone="critical" href="/tareas?f=vencidas" />
           <StatTile label="Documentos" value={documents} />
         </div>
+
+        {openRequests.length > 0 && (
+          <section className="card mb-8 rounded-2xl border-amber-200">
+            <div className="card-header py-4 sm:px-6">
+              <h2 className="text-base font-semibold text-slate-900">Solicitudes de clientes</h2>
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                {openRequests.length} por decidir
+              </span>
+            </div>
+            <ul className="divide-y divide-slate-100">
+              {openRequests.map((r) => (
+                <li key={r.id}>
+                  <Link
+                    href={`/casos/${r.id}`}
+                    className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-slate-50 sm:px-6"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-brand-700">{r.title}</div>
+                      <div className="text-xs text-slate-500">
+                        {r.client?.name ?? "—"} · {r.createdAt.toLocaleDateString("es-EC")}
+                      </div>
+                    </div>
+                    {r.requestState && <CaseRequestBadge state={r.requestState} />}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <div className="mb-10 grid gap-6 lg:grid-cols-2">
           <CasesByStatusChart counts={byStatus} statuses={CASE_STATUSES} />

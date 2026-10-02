@@ -71,7 +71,7 @@ export default async function UsersAdminPage({
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <Link
             href={href({ role: undefined })}
-            className={`rounded-full border px-3 py-1 text-xs font-medium ${!role ? "border-brand-700 bg-brand-700 text-white" : "border-slate-200 bg-white text-slate-700"}`}
+            className={`rounded-full border px-3 py-1 text-xs font-medium ${!role ? "border-brand-600 bg-brand-600 text-white" : "border-slate-200 bg-surface text-slate-700"}`}
           >
             Todos
           </Link>
@@ -79,7 +79,7 @@ export default async function UsersAdminPage({
             <Link
               key={r}
               href={href({ role: r })}
-              className={`rounded-full border px-3 py-1 text-xs font-medium ${role === r ? "border-brand-700 bg-brand-700 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-brand-500"}`}
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${role === r ? "border-brand-600 bg-brand-600 text-white" : "border-slate-200 bg-surface text-slate-700 hover:border-brand-500"}`}
             >
               {ROLE_LABELS[r]} ({countFor(r)})
             </Link>
@@ -92,7 +92,7 @@ export default async function UsersAdminPage({
             <Link
               key={v}
               href={href({ estado: searchParams.estado === v ? undefined : v })}
-              className={`rounded-full border px-3 py-1 text-xs font-medium ${searchParams.estado === v ? "border-brand-700 bg-brand-700 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-brand-500"}`}
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${searchParams.estado === v ? "border-brand-600 bg-brand-600 text-white" : "border-slate-200 bg-surface text-slate-700 hover:border-brand-500"}`}
             >
               {label}
             </Link>

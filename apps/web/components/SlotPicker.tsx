@@ -74,8 +74,8 @@ export function SlotPicker({
             onClick={() => setDay(g.day)}
             className={`shrink-0 rounded-lg border px-3 py-2 text-left text-xs transition ${
               g.day === day
-                ? "border-brand-700 bg-brand-700 text-white"
-                : "border-slate-200 bg-white text-slate-700 hover:border-brand-500"
+                ? "border-brand-600 bg-brand-600 text-white"
+                : "border-slate-200 bg-surface text-slate-700 hover:border-brand-500"
             }`}
           >
             <span className="block font-semibold">{g.label.split(",")[0]}</span>
@@ -95,7 +95,7 @@ export function SlotPicker({
               className={`rounded-lg border px-2 py-2 text-sm font-medium tabular-nums transition ${
                 value === s.startsAt
                   ? "border-brand-700 bg-brand-50 text-brand-900 ring-2 ring-brand-500/30"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-brand-500"
+                  : "border-slate-200 bg-surface text-slate-700 hover:border-brand-500"
               }`}
             >
               {formatTime(s.startsAt, data.timeZone)}

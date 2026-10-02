@@ -1,5 +1,5 @@
-import { AppHeader } from "./AppHeader";
-import { AppFooter } from "./AppFooter";
+import { clientLinks } from "@/lib/nav";
+import { AppShell } from "./shell/AppShell";
 
 type Props = {
   user: { name: string; role: string };
@@ -8,16 +8,8 @@ type Props = {
 
 export function PortalLayout({ user, children }: Props) {
   return (
-    <div className="min-h-screen">
-      <AppHeader
-        user={user}
-        links={[
-          { href: "/portal", label: "Mis casos" },
-          { href: "/portal/citas", label: "Citas" },
-        ]}
-      />
+    <AppShell user={user} links={clientLinks()}>
       {children}
-      <AppFooter />
-    </div>
+    </AppShell>
   );
 }

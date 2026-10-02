@@ -5,6 +5,7 @@ import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import { getAccessibleCase } from '../common/utils/case-access';
 import { isStaff } from '../common/utils/permissions';
 import { ActivityService } from '../activity/activity.service';
+import { OPEN_REQUEST_STATES } from './case-requests.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
   paginateParams,
@@ -121,6 +122,16 @@ export class CasesService {
     if (user.role !== Role.ADMIN) {
       delete data.lawyerId;
       delete data.clientId;
+    }
+    // Una solicitud del portal cambia de estado al decidirla (aceptar/aplazar/rechazar),
+    // no a mano: si no, el caso quedaría "abierto" con la solicitud aún "pendiente"
+    if (
+      data.status &&
+      data.status !== existing.status &&
+      existing.requestState &&
+      OPEN_REQUEST_STATES.includes(existing.requestState)
+    ) {
+      throw new BadRequestException('Primero acepta, aplaza o rechaza la solicitud del cliente');
     }
     // null desasigna; un id debe ser un usuario activo del tenant con el rol adecuado
     if (data.lawyerId) await this.assertValidLawyer(data.lawyerId, user.tenantId);

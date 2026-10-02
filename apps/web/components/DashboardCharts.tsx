@@ -52,7 +52,7 @@ export function StatTile({
     </>
   );
   const cls = `block rounded-2xl border p-5 shadow-sm ${
-    tone === "critical" && value > 0 ? "border-red-200 bg-red-50/40" : "border-slate-200 bg-white"
+    tone === "critical" && value > 0 ? "border-red-200 bg-red-50/40" : "border-slate-200 bg-surface"
   } ${href ? "transition hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-md" : ""}`;
   return href ? (
     <Link href={href} className={cls}>

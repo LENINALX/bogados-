@@ -52,6 +52,17 @@ describe("toTimelineEvents", () => {
     expect(staff.map((e) => e.summary)).toContain("Documento: demanda.pdf (compartido con cliente)");
   });
 
+  it("el cliente ve la solicitud y la decisión del despacho (con su motivo)", () => {
+    const flow = [
+      ev("CASE_REQUESTED", "Solicitud enviada desde el portal"),
+      ev("CASE_POSTPONED", "Solicitud aplazada: esperamos documentos"),
+      ev("CASE_REJECTED", "Solicitud no aceptada: no llevamos esa materia"),
+    ];
+    const client = toTimelineEvents(flow, "client");
+    expect(types(client)).toEqual(["CASE_REQUESTED", "CASE_POSTPONED", "CASE_REJECTED"]);
+    expect(client[2].summary).toContain("no llevamos esa materia");
+  });
+
   it("serializa fecha y autor", () => {
     const [first] = toTimelineEvents(events, "staff");
     expect(first.createdAt).toBe("2026-09-01T10:00:00.000Z");

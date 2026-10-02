@@ -212,6 +212,22 @@ describe('CasesService.update (validación de lawyerId/clientId)', () => {
     );
   });
 
+  it('una solicitud del portal abierta no cambia de estado a mano', async () => {
+    prisma.case.findFirst.mockResolvedValueOnce({
+      id: 'c1',
+      tenantId: 't1',
+      title: 'Caso',
+      status: CaseStatus.intake,
+      lawyerId: null,
+      clientId: 'cli2',
+      requestState: 'pendiente',
+    });
+    await expect(service.update('c1', { status: CaseStatus.abierto }, admin)).rejects.toThrow(
+      'acepta, aplaza o rechaza',
+    );
+    expect(prisma.case.update).not.toHaveBeenCalled();
+  });
+
   it('abogado no puede cambiar lawyerId/clientId (se ignoran)', async () => {
     await service.update('c1', { title: 'Nuevo', lawyerId: 'lawOtroTenant' }, lawyer);
     expect(prisma.user.findFirst).not.toHaveBeenCalled();

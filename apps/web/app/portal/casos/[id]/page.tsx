@@ -7,10 +7,19 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { CaseMessages } from "@/components/CaseMessages";
 import { CaseDocuments } from "@/components/CaseDocuments";
 import { CaseTimeline } from "@/components/CaseTimeline";
+import { CaseRequestBadge } from "@/components/CaseRequestBadge";
+import { FormMessage } from "@/components/ui";
 import { toTimelineEvents, toTimelineNotes } from "@/lib/timeline";
 import { documentFields, messageFields } from "@/lib/client-fields";
+import type { CaseRequestState } from "@bogados/shared";
 
 type Props = { params: { id: string } };
+
+const REQUEST_MESSAGE: Record<Exclude<CaseRequestState, "aceptada">, string> = {
+  pendiente: "Hemos recibido tu solicitud y la estamos revisando. Te avisaremos por email.",
+  aplazada: "Hemos aplazado la decisión sobre tu solicitud. No está rechazada: te avisaremos cuando la retomemos.",
+  rechazada: "En esta ocasión no podemos asumir tu caso.",
+};
 
 export default async function PortalCasePage({ params }: Props) {
   const session = await requireRole("CLIENTE");
@@ -47,6 +56,9 @@ export default async function PortalCasePage({ params }: Props) {
 
   if (!c) notFound();
 
+  // Solicitud del portal aún no aceptada: lo que importa al cliente es su estado
+  const request = c.requestState && c.requestState !== "aceptada" ? c.requestState : null;
+
   // Notas ya filtradas (isInternal=false); eventos por lista blanca de cliente
   const timeline = [
     ...toTimelineNotes(c.notes),
@@ -68,13 +80,31 @@ export default async function PortalCasePage({ params }: Props) {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="page-title">{c.title}</h1>
-              <p className="page-subtitle">
-                Tu abogado:{" "}
-                <span className="font-medium text-slate-700">{c.lawyer?.name ?? "Por asignar"}</span>
-              </p>
+              {!request && (
+                <p className="page-subtitle">
+                  Tu abogado:{" "}
+                  <span className="font-medium text-slate-700">{c.lawyer?.name ?? "Por asignar"}</span>
+                </p>
+              )}
             </div>
-            <StatusBadge status={c.status} />
+            {request ? <CaseRequestBadge state={request} /> : <StatusBadge status={c.status} />}
           </div>
+          {request && (
+            <div className="mt-4">
+              <FormMessage type={request === "rechazada" ? "error" : "success"}>
+                {REQUEST_MESSAGE[request]}
+                {c.decisionReason && (
+                  <>
+                    <br />
+                    <span className="font-medium">
+                      {request === "rechazada" ? "Motivo" : "Comentario del despacho"}:
+                    </span>{" "}
+                    {c.decisionReason}
+                  </>
+                )}
+              </FormMessage>
+            </div>
+          )}
           {c.description && (
             <p className="mt-4 whitespace-pre-wrap border-t border-slate-100 pt-4 text-sm leading-relaxed text-slate-700">
               {c.description}
@@ -85,23 +115,28 @@ export default async function PortalCasePage({ params }: Props) {
         <div className="space-y-6">
           <CaseTimeline title="Avances del caso" items={timeline} audience="client" />
 
-          <CaseMessages
-            caseId={c.id}
-            currentUserId={session.user.id}
-            initial={c.messages.map((m) => ({
-              ...m,
-              createdAt: m.createdAt.toISOString(),
-            }))}
-          />
+          {/* Mensajes y documentos, cuando el despacho acepta la solicitud (antes no hay abogado) */}
+          {!request && (
+            <>
+              <CaseMessages
+                caseId={c.id}
+                currentUserId={session.user.id}
+                initial={c.messages.map((m) => ({
+                  ...m,
+                  createdAt: m.createdAt.toISOString(),
+                }))}
+              />
 
-          <CaseDocuments
-            caseId={c.id}
-            canMarkInternal={false}
-            initial={c.documents.map((d) => ({
-              ...d,
-              createdAt: d.createdAt.toISOString(),
-            }))}
-          />
+              <CaseDocuments
+                caseId={c.id}
+                canMarkInternal={false}
+                initial={c.documents.map((d) => ({
+                  ...d,
+                  createdAt: d.createdAt.toISOString(),
+                }))}
+              />
+            </>
+          )}
         </div>
       </main>
     </PortalLayout>

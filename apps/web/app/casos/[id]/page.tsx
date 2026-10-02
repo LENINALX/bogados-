@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { StaffLayout } from "@/components/StaffLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FormMessage } from "@/components/ui";
+import { CaseRequestBadge } from "@/components/CaseRequestBadge";
+import { CaseRequestDecision } from "@/components/CaseRequestDecision";
+import { OPEN_CASE_REQUEST_STATES } from "@bogados/shared";
 import { CaseMessages } from "@/components/CaseMessages";
 import { CaseDocuments } from "@/components/CaseDocuments";
 import { CaseStatusForm } from "@/components/CaseStatusForm";
@@ -68,6 +71,9 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
   ];
 
   const sectionLabel = role === "ADMIN" ? "Casos" : "Mis casos";
+  // Solicitud del portal sin decidir: el estado lo cambia la decisión, no el selector
+  const openRequest =
+    c.requestState && OPEN_CASE_REQUEST_STATES.includes(c.requestState) ? c.requestState : null;
 
   return (
     <StaffLayout user={session.user} links={staffLinks(role)}>
@@ -89,6 +95,15 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
                 : " Pide a un administrador que la reenvíe desde Usuarios."}
             </FormMessage>
           </div>
+        )}
+
+        {openRequest && role === "ADMIN" && (
+          <CaseRequestDecision
+            caseId={c.id}
+            postponed={openRequest === "aplazada"}
+            staff={staff}
+            currentUserId={userId}
+          />
         )}
 
         <div className="card mb-6 p-4 sm:p-5">
@@ -115,8 +130,20 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
                 )}
               </dl>
             </div>
-            <CaseStatusForm caseId={c.id} status={c.status} />
+            {openRequest ? (
+              <div className="text-right">
+                <CaseRequestBadge state={openRequest} />
+                <p className="mt-1 text-xs text-slate-500">Solicitud del portal</p>
+              </div>
+            ) : (
+              <CaseStatusForm caseId={c.id} status={c.status} />
+            )}
           </div>
+          {c.requestState && c.decisionReason && (
+            <p className="mt-3 text-xs text-slate-500">
+              Decisión sobre la solicitud ({c.requestState}): {c.decisionReason}
+            </p>
+          )}
           {c.description && (
             <p className="mt-4 whitespace-pre-wrap border-t border-slate-100 pt-4 text-sm leading-relaxed text-slate-700">
               {c.description}

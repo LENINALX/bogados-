@@ -19,6 +19,19 @@ export const CASE_STATUS_LABELS: Record<CaseStatus, string> = {
   cerrado: "Cerrado",
 };
 
+/** Estado de un caso pedido por el cliente desde el portal */
+export type CaseRequestState = "pendiente" | "aplazada" | "aceptada" | "rechazada";
+
+/** Etiquetas desde el punto de vista del cliente */
+export const CASE_REQUEST_LABELS: Record<CaseRequestState, string> = {
+  pendiente: "En revisión",
+  aplazada: "En espera",
+  aceptada: "Aceptado",
+  rechazada: "No aceptado",
+};
+
+export const OPEN_CASE_REQUEST_STATES: readonly CaseRequestState[] = ["pendiente", "aplazada"];
+
 export const APPOINTMENT_STATUSES = ["pendiente", "confirmada", "cancelada", "completada"] as const;
 export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
 

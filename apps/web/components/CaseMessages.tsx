@@ -84,7 +84,7 @@ export function CaseMessages({
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm shadow-sm ${
-                  mine ? "rounded-br-sm bg-brand-700 text-white" : "rounded-bl-sm border border-slate-200 bg-white text-slate-800"
+                  mine ? "rounded-br-sm bg-brand-600 text-white" : "rounded-bl-sm border border-slate-200 bg-surface text-slate-800"
                 }`}
               >
                 <div className={`mb-0.5 flex gap-2 text-[11px] ${mine ? "text-brand-100" : "text-slate-500"}`}>

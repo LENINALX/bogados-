@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { TimelineItem } from "@/lib/timeline";
 
 const EVENT_STYLE: Record<string, { dot: string; icon: string; label: string }> = {
-  CASE_CREATED: { dot: "bg-brand-700", icon: "+", label: "Caso creado" },
+  CASE_CREATED: { dot: "bg-brand-600", icon: "+", label: "Caso creado" },
   STATUS_CHANGED: { dot: "bg-blue-600", icon: "↻", label: "Cambio de estado" },
   ASSIGNED: { dot: "bg-violet-600", icon: "→", label: "Asignación" },
   DOC_UPLOADED: { dot: "bg-slate-500", icon: "▤", label: "Documento" },
@@ -59,7 +59,7 @@ export function CaseTimeline({
                 type="button"
                 onClick={() => setFilter(f)}
                 className={`rounded-full px-2.5 py-0.5 font-medium ${
-                  filter === f ? "bg-brand-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  filter === f ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
                 {label} ({counts[f]})

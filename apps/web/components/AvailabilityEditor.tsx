@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { WEEKDAY_LABELS } from "@bogados/shared";
 import { nestFetch } from "@/lib/nest-api";
 import { FormMessage, Spinner, errorMessage } from "./ui";
+import { useToast } from "./Toaster";
 
 type Block = { weekday: number; start: string; end: string };
 
@@ -14,6 +15,7 @@ export function AvailabilityEditor({ lawyerId, onSaved }: { lawyerId: string; on
   const [blocks, setBlocks] = useState<Block[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     nestFetch<Block[]>(`/lawyers/${lawyerId}/availability`)
@@ -34,7 +36,7 @@ export function AvailabilityEditor({ lawyerId, onSaved }: { lawyerId: string; on
         body: JSON.stringify({ blocks }),
       });
       setBlocks(saved);
-      setMessage({ type: "success", text: "Disponibilidad guardada." });
+      toast("success", "Disponibilidad guardada");
       onSaved?.();
     } catch (err) {
       setMessage({ type: "error", text: errorMessage(err, "No se pudo guardar.") });

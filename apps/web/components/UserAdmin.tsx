@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ROLE_LABELS, USER_ROLES, UserRole } from "@bogados/shared";
 import { nestFetch } from "@/lib/nest-api";
+import { useToast } from "./Toaster";
 
 const input = "rounded-lg border border-slate-300 px-3 py-2 text-sm";
 
@@ -62,7 +63,7 @@ export function InviteUserForm() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"
+        className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
       >
         + Invitar usuario
       </button>
@@ -120,7 +121,7 @@ export function InviteUserForm() {
         <button
           type="submit"
           disabled={loading}
-          className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
         >
           {loading ? "Creando…" : manual ? "Crear usuario" : "Enviar invitación"}
         </button>
@@ -146,15 +147,14 @@ export function UserRowControls({
   const [current, setCurrent] = useState({ role, active });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [inviteSent, setInviteSent] = useState(false);
+  const toast = useToast();
 
   async function resendInvite() {
     setPending(true);
     setError(null);
-    setInviteSent(false);
     try {
       await nestFetch(`/users/${userId}/invite`, { method: "POST" });
-      setInviteSent(true);
+      toast("success", "Invitación enviada");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo enviar la invitación.");
     } finally {
@@ -169,6 +169,10 @@ export function UserRowControls({
     setError(null);
     try {
       await nestFetch(`/users/${userId}`, { method: "PATCH", body: JSON.stringify(data) });
+      toast(
+        "success",
+        data.active === undefined ? "Rol actualizado" : data.active ? "Usuario activado" : "Usuario desactivado",
+      );
       router.refresh();
     } catch (err) {
       setCurrent(prev);
@@ -219,7 +223,6 @@ export function UserRowControls({
           Reenviar invitación
         </button>
       )}
-      {inviteSent && <span className="text-xs text-emerald-700">Invitación enviada.</span>}
       {error && <span className="text-xs text-red-600">{error}</span>}
     </div>
   );

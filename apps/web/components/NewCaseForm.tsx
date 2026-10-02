@@ -193,7 +193,7 @@ export function NewCaseForm({
         <button
           type="submit"
           disabled={loading}
-          className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900 disabled:opacity-60"
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
         >
           {loading ? "Creando…" : "Crear caso"}
         </button>

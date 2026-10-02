@@ -1,18 +1,16 @@
-import { AppHeader } from "./AppHeader";
-import { AppFooter } from "./AppFooter";
+import { NavItem } from "@/lib/nav";
+import { AppShell } from "./shell/AppShell";
 
 type Props = {
   user: { name: string; role: string };
-  links: { href: string; label: string }[];
+  links: NavItem[];
   children: React.ReactNode;
 };
 
 export function StaffLayout({ user, links, children }: Props) {
   return (
-    <div className="min-h-screen">
-      <AppHeader user={user} links={links} />
+    <AppShell user={user} links={links}>
       {children}
-      <AppFooter />
-    </div>
+    </AppShell>
   );
 }

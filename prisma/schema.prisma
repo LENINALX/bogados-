@@ -21,6 +21,14 @@ enum CaseStatus {
   cerrado
 }
 
+/// Caso pedido por un cliente desde el portal y la decisión del despacho
+enum CaseRequestState {
+  pendiente
+  aplazada
+  aceptada
+  rechazada
+}
+
 enum AppointmentStatus {
   pendiente
   confirmada
@@ -92,6 +100,12 @@ model Case {
   clientId    String?
   openedAt    DateTime   @default(now())
   closedAt    DateTime?
+  /// Solo en casos pedidos por el cliente desde el portal (null = creado por el despacho)
+  requestState   CaseRequestState?
+  /// Motivo que se comunica al cliente al aplazar o rechazar
+  decisionReason String?
+  decidedAt      DateTime?
+  decidedById    String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -108,6 +122,7 @@ model Case {
   @@index([tenantId, status])
   @@index([tenantId, lawyerId])
   @@index([tenantId, clientId])
+  @@index([tenantId, requestState])
 }
 
 model Document {

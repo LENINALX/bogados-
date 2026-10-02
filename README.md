@@ -18,6 +18,7 @@ Centraliza expedientes, documentos y comunicación segura entre abogado y client
 | **Dashboard** | Conteos por estado, docs, mensajes, roles, tareas |
 | **Portal cliente** | Login, estado del caso, docs compartidos, mensajes |
 | **Cuentas** | Invitación por email (el usuario elige su contraseña), recuperar contraseña; cambiarla cierra las demás sesiones |
+| **Solicitud de caso** | El cliente pide un caso desde el portal; el admin lo acepta (asigna abogado), aplaza o rechaza con motivo; emails en cada paso |
 | **Citas** | Disponibilidad semanal por abogado, el cliente pide cita en huecos libres (sin dobles reservas), el despacho confirma/cancela/completa, emails y recordatorio 24 h antes |
 | **API dedicada** | NestJS + JWT + Swagger + helmet (`apps/api`) |
 
@@ -31,6 +32,8 @@ Centraliza expedientes, documentos y comunicación segura entre abogado y client
 | `/tareas` | "Mis plazos": pendientes, vencidas, próximos 3 días, completadas (admin: toda la firma) |
 | `/agenda` | Próximas citas (confirmar/cancelar/completar), programar cita, editar mi disponibilidad |
 | `/portal/citas` | Cliente: sus citas y pedir una nueva en un hueco libre |
+| `/portal/solicitar` | Cliente: solicitar un caso nuevo (queda "En revisión") |
+| Dashboard (admin) | "Solicitudes de clientes" por decidir; en la ficha del caso, panel aceptar / aplazar / rechazar |
 | `/admin/usuarios` | Solo admin: invitar usuarios por email, reenviar invitación, cambiar rol, activar/desactivar |
 | Header | Campana de notificaciones con contador y "marcar todas como leídas" |
 | `/recuperar` · `/restablecer` | Públicas: pedir enlace de recuperación · definir contraseña (invitación o recuperación) |
@@ -140,6 +143,8 @@ Los listados paginados aceptan `page` (default 1) y `pageSize` (default 20, máx
 | GET | `/tasks/overdue` | Tareas vencidas sin completar |
 | POST | `/tasks` | Crear tarea (`caseId` en body) |
 | PATCH/DELETE | `/tasks/:id` | Actualizar / eliminar tarea |
+| POST | `/portal/case-requests` | Cliente solicita un caso (`title`, `description` ≥ 10, `matterType?`). Máx. 3 abiertas |
+| POST | `/cases/:id/decision` | Admin: `aceptar` (+ `lawyerId`, abre el caso) · `aplazar` · `rechazar` (`reason` obligatorio, cierra el caso) |
 | GET/PUT | `/lawyers/:id/availability` | Disponibilidad semanal (`{ blocks: [{ weekday, start: "09:00", end: "13:00" }] }`, hora local de la firma). Abogado: solo la suya |
 | GET | `/appointments/lawyers` | Abogados con disponibilidad |
 | GET | `/appointments/slots?lawyerId=&from=&days=` | Huecos libres (UTC) calculados en el servidor |
@@ -205,6 +210,17 @@ docker compose --profile full up -d --build
 #   PowerShell: $env:ALPINE_MIRROR="https://mirrors.edge.kernel.org/alpine"   · bash: export ALPINE_MIRROR=...
 docker compose exec api sh -c "cd /app && node_modules/.bin/tsx prisma/seed.ts"   # opcional: datos demo
 ```
+
+## Diseño (web)
+
+- **Tema claro / oscuro / sistema** (menú del avatar). Las paletas de Tailwind (`slate`, `brand`, `red`, `emerald`, `amber`, `sky`, `blue`, `violet`) leen variables CSS de `app/globals.css` que cambian con el tema: no hace falta escribir variantes `dark:`.
+- Reglas para que el modo oscuro funcione solo:
+  - Superficies: `bg-surface` (tarjetas, inputs, menús), nunca `bg-white`. Fondo de página: `bg-canvas`.
+  - Azul de marca: `bg-brand-600` para fondos con texto blanco (botones, chips activos) y `text-brand-700` para texto y enlaces. Hover de botones: `hover:bg-brand-800`.
+  - Componentes base en `globals.css`: `card`, `btn-primary`, `btn-secondary`, `btn-ghost`, `input`, `label`, `page`, `page-title`, `skeleton`, `material` (barras translúcidas).
+- Armazón común (`components/shell/AppShell`): barra lateral en escritorio, pestañas inferiores en móvil. Navegación por rol en `lib/nav.ts`.
+- Feedback: confirmaciones con `useToast()` (`components/Toaster`); los errores van junto al campo o acción que los causa.
+- Movimiento: respuesta al pulsar (`scale 0.97`), menús que nacen de su disparador, entradas cortas con ease-out. Se respeta `prefers-reduced-motion`, `prefers-reduced-transparency` y `prefers-contrast`.
 
 ## Seguridad / permisos
 
