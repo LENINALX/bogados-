@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -9,6 +10,13 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   app.enableCors({
     origin: config.get<string>('CORS_ORIGIN', 'http://localhost:3000'),
@@ -32,7 +40,7 @@ async function bootstrap() {
   const swagger = new DocumentBuilder()
     .setTitle('Bogados API')
     .setDescription(
-      'API REST dedicada para gestión legal multi-tenant (casos, documentos, mensajes, portal cliente).',
+      'API REST dedicada para gestión legal multi-tenant (casos, documentos, mensajes, tareas, notificaciones, portal cliente).',
     )
     .setVersion('1.0')
     .addBearerAuth()

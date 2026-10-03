@@ -13,6 +13,9 @@ import { MessagesModule } from './messages/messages.module';
 import { ActivityModule } from './activity/activity.module';
 import { ClientsModule } from './clients/clients.module';
 import { StorageModule } from './storage/storage.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { TasksModule } from './tasks/tasks.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -33,6 +36,9 @@ import { StorageModule } from './storage/storage.module';
     MessagesModule,
     ActivityModule,
     ClientsModule,
+    DashboardModule,
+    TasksModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}
