@@ -8,13 +8,16 @@ Centraliza expedientes, documentos y comunicación segura entre abogado y client
 
 | Módulo | Qué incluye |
 |--------|-------------|
-| **Casos** | CRUD, estados `intake → abierto → en_pausa → cerrado`, abogado asignado, filtros |
+| **Casos** | CRUD, estados `intake → abierto → en_pausa → cerrado`, abogado asignado, filtros + paginación |
 | **Roles** | Admin, Abogado, Cliente + aislamiento por tenant |
 | **Documentos** | Subida/descarga, flag *compartido con cliente* vs interno |
 | **Mensajes** | Hilo por caso entre participantes |
 | **Notas / timeline** | Internas (solo firma) o visibles al cliente + auditoría |
+| **Tareas / plazos** | `CaseTask` con vencimiento, asignatario, listado overdue |
+| **Notificaciones** | In-app al cambiar estado, nuevo mensaje o doc compartido |
+| **Dashboard** | Conteos por estado, docs, mensajes, roles, tareas |
 | **Portal cliente** | Login, estado del caso, docs compartidos, mensajes |
-| **API dedicada** | NestJS + JWT + Swagger (`apps/api`) |
+| **API dedicada** | NestJS + JWT + Swagger + helmet (`apps/api`) |
 
 **Diferido:** facturación, e-firma, calendarios, app nativa, IA.
 
@@ -87,20 +90,36 @@ Abre [http://localhost:3000](http://localhost:3000) y la documentación en [http
 
 ## API Nest — endpoints (`/api/v1`)
 
+Los listados paginados aceptan `page` (default 1) y `pageSize` (default 20, máx. 100) y responden:
+
+```json
+{ "success": true, "data": { "items": [...], "meta": { "total": 0, "page": 1, "pageSize": 20 } } }
+```
+
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | POST | `/auth/login` | Login → JWT Bearer |
 | GET | `/auth/me` | Usuario actual |
-| CRUD | `/users` | Usuarios (admin) |
-| GET/POST | `/cases` | Listar / crear casos |
+| POST | `/auth/register-client` | Admin/Abogado crea usuario CLIENTE (opcional `caseId`) |
+| GET | `/dashboard/stats` | Conteos tenant-scoped (casos, docs, msgs, roles, tareas) |
+| CRUD | `/users` | Usuarios (admin) — listado paginado + filtro `role`/`q` |
+| GET/POST | `/cases` | Listar (paginado, `status`/`q`) / crear casos |
 | GET/PATCH/DELETE | `/cases/:id` | Detalle / actualizar / borrar |
-| PATCH | `/cases/:id/status` | Transición de estado |
+| PATCH | `/cases/:id/status` | Transición de estado (+ notificación) |
 | PATCH | `/cases/:id/assign` | Asignar abogado (admin) |
 | GET/POST | `/cases/:caseId/notes` | Notas (clientes sin internas) |
-| GET/POST | `/cases/:caseId/documents` | Listar / subir (multipart) |
+| GET/POST | `/cases/:caseId/documents` | Listar (paginado) / subir (multipart) |
 | GET | `/documents/:id/download` | Descarga con ACL |
-| GET/POST | `/cases/:caseId/messages` | Mensajes del caso |
+| GET/POST | `/cases/:caseId/messages` | Mensajes del caso (paginado) |
 | GET | `/cases/:caseId/activity` | Timeline / auditoría |
+| GET/POST | `/cases/:caseId/tasks` | Tareas del caso |
+| GET | `/tasks` | Listar tareas (admin/abogado) |
+| GET | `/tasks/overdue` | Tareas vencidas sin completar |
+| POST | `/tasks` | Crear tarea (`caseId` en body) |
+| PATCH/DELETE | `/tasks/:id` | Actualizar / eliminar tarea |
+| GET | `/notifications` | Notificaciones del usuario (paginado, `unreadOnly`) |
+| PATCH | `/notifications/:id/read` | Marcar leída |
+| PATCH | `/notifications/read-all` | Marcar todas leídas |
 | GET | `/portal/cases` | Portal cliente |
 | GET | `/health` · `/health/ready` | Liveness / readiness |
 | — | `/api/docs` | Swagger UI |
@@ -116,9 +135,10 @@ bogados-/
 ├── apps/
 │   ├── api/                  # NestJS backend dedicado (:3001)
 │   │   └── src/
-│   │       ├── auth/         # JWT + roles
+│   │       ├── auth/         # JWT + roles + register-client
 │   │       ├── cases/ users/ tenants/
 │   │       ├── notes/ documents/ messages/
+│   │       ├── tasks/ notifications/ dashboard/
 │   │       ├── activity/ clients/ health/
 │   │       ├── common/ prisma/ config/ storage/
 │   │       ├── main.ts
@@ -140,7 +160,8 @@ bogados-/
 npm run dev          # Next.js en :3000
 npm run dev:api      # NestJS en :3001 (watch)
 npm run build:api    # Compilar API
-npm run db:seed      # Datos demo
+npm run test:api     # Tests unitarios Jest (auth + cases + roles)
+npm run db:seed      # Datos demo (incluye tareas y notificaciones)
 npm run db:studio    # Prisma Studio
 npx prisma migrate dev
 docker compose up -d postgres
@@ -154,6 +175,7 @@ docker compose --profile full up -d
 - **Cliente** solo ve sus casos, notas no internas y documentos compartidos.
 - **Abogado** solo gestiona casos donde es el abogado asignado.
 - **Admin** ve todo el tenant.
+- Global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`) + **helmet**.
 - No hay secretos en el repositorio: usa `.env` local (ignorado por git).
 
 ## Licencia

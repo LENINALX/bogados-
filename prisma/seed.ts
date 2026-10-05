@@ -11,6 +11,11 @@ async function main() {
   // Limpieza idempotente del tenant demo
   const existing = await prisma.tenant.findUnique({ where: { slug: "firma-demo" } });
   if (existing) {
+    await prisma.notification.deleteMany({
+      where: { user: { tenantId: existing.id } },
+    });
+    await prisma.caseTask.deleteMany({ where: { tenantId: existing.id } });
+    await prisma.activityEvent.deleteMany({ where: { tenantId: existing.id } });
     await prisma.message.deleteMany({ where: { tenantId: existing.id } });
     await prisma.caseNote.deleteMany({ where: { tenantId: existing.id } });
     await prisma.document.deleteMany({ where: { tenantId: existing.id } });
@@ -179,12 +184,91 @@ async function main() {
     ],
   });
 
+  // Tareas / plazos demo
+  const now = new Date();
+  const overdue = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const soon = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000);
+  const later = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+  await prisma.caseTask.createMany({
+    data: [
+      {
+        tenantId: tenant.id,
+        caseId: case1.id,
+        title: "Preparar escrito de réplica",
+        dueAt: overdue,
+        done: false,
+        assigneeId: lawyer.id,
+      },
+      {
+        tenantId: tenant.id,
+        caseId: case1.id,
+        title: "Confirmar audiencia con cliente",
+        dueAt: soon,
+        done: false,
+        assigneeId: lawyer.id,
+      },
+      {
+        tenantId: tenant.id,
+        caseId: case2.id,
+        title: "Recibir cédulas de socios",
+        dueAt: later,
+        done: false,
+        assigneeId: admin.id,
+      },
+      {
+        tenantId: tenant.id,
+        caseId: case2.id,
+        title: "Borrador de estatutos",
+        dueAt: soon,
+        done: true,
+        assigneeId: lawyer.id,
+      },
+    ],
+  });
+
+  // Notificaciones demo
+  await prisma.notification.createMany({
+    data: [
+      {
+        userId: lawyer.id,
+        title: "Tarea vencida",
+        body: 'La tarea "Preparar escrito de réplica" está vencida.',
+        read: false,
+        meta: { type: "TASK_OVERDUE", caseId: case1.id },
+      },
+      {
+        userId: client.id,
+        title: "Nuevo mensaje",
+        body: "Luis Abogado: Hola Carla, ya presentamos la demanda...",
+        read: false,
+        meta: { type: "NEW_MESSAGE", caseId: case1.id },
+      },
+      {
+        userId: client.id,
+        title: "Documento compartido",
+        body: 'Se compartió "carta-demanda.txt" en tu caso laboral.',
+        read: true,
+        meta: { type: "DOC_SHARED", caseId: case1.id },
+      },
+      {
+        userId: admin.id,
+        title: "Bienvenida",
+        body: "Panel de administración listo. Revisa el dashboard de la firma.",
+        read: false,
+        meta: { type: "SYSTEM" },
+      },
+    ],
+  });
+
   console.log("✅ Seed OK");
   console.log("  Tenant:", tenant.slug);
   console.log("  Admin:   admin@demo.bogados / demo1234");
   console.log("  Abogado: abogado@demo.bogados / demo1234");
   console.log("  Cliente: cliente@demo.bogados / demo1234");
   console.log("  Casos:", 3);
+  console.log("  Tareas:", 4);
+  console.log("  Notificaciones:", 4);
 }
 
 main()
