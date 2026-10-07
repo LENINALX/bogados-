@@ -12,8 +12,14 @@ import { EmptyState } from "@/components/ui";
 import { CaseRequestBadge } from "@/components/CaseRequestBadge";
 import {
   CasesByStatusChart,
+  CasesByMatterChart,
+  CasesByMonthChart,
+  LawyerAppointmentsChart,
   LawyerLoadChart,
+  LawyerAppointmentsRow,
   LawyerLoadRow,
+  CountChartRow,
+  RequestDecisionTimeChart,
   StatTile,
 } from "@/components/DashboardCharts";
 import { CASE_STATUSES, CASE_STATUS_LABELS, CaseStatus, OPEN_CASE_REQUEST_STATES } from "@bogados/shared";
@@ -91,9 +97,63 @@ export default async function DashboardPage({
       })
     : [];
 
+  const analyticsStart = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+  let caseMonthRows: CountChartRow[] = [];
+  let caseMatterRows: CountChartRow[] = [];
+  let decisionDays: number | null = null;
+  let decidedRequestCount = 0;
+  let lawyerAppointmentRows: LawyerAppointmentsRow[] = [];
+
+  if (isAdmin) {
+    const [monthBuckets, matterBuckets, decidedRequests] = await Promise.all([
+      prisma.$queryRaw<Array<{ month: Date; total: number }>>`
+        SELECT date_trunc('month', "createdAt") AS month, COUNT(*)::int AS total
+        FROM "Case"
+        WHERE "tenantId" = ${tenantId} AND "createdAt" >= ${analyticsStart} AND "createdAt" <= ${now}
+        GROUP BY 1
+        ORDER BY 1
+      `,
+      prisma.case.groupBy({
+        by: ["matterType"],
+        where: { tenantId },
+        _count: { _all: true },
+      }),
+      prisma.case.findMany({
+        where: {
+          tenantId,
+          requestState: { in: ["aceptada", "rechazada"] },
+          decidedAt: { not: null },
+        },
+        select: { createdAt: true, decidedAt: true },
+      }),
+    ]);
+
+    const monthTotals = new Map(monthBuckets.map((row) => [row.month.toISOString().slice(0, 7), row.total]));
+    caseMonthRows = Array.from({ length: 12 }, (_, index) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - 11 + index, 1);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      return {
+        label: date.toLocaleDateString("es-EC", { month: "short" }).replace(".", ""),
+        value: monthTotals.get(key) ?? 0,
+      };
+    });
+    caseMatterRows = matterBuckets
+      .map((row) => ({ label: row.matterType ?? "Sin especificar", value: row._count._all }))
+      .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
+
+    decidedRequestCount = decidedRequests.length;
+    if (decidedRequestCount > 0) {
+      const elapsed = decidedRequests.reduce(
+        (sum, request) => sum + (request.decidedAt!.getTime() - request.createdAt.getTime()),
+        0,
+      );
+      decisionDays = elapsed / decidedRequestCount / (24 * 60 * 60 * 1000);
+    }
+  }
+
   let lawyerRows: LawyerLoadRow[] = [];
   if (isAdmin) {
-    const [staff, load, overdueByAssignee] = await Promise.all([
+    const [staff, load, overdueByAssignee, appointmentGroups, appointmentLawyers] = await Promise.all([
       prisma.user.findMany({
         where: { tenantId, active: true, role: { in: ["ADMIN", "ABOGADO"] } },
         select: { id: true, name: true, role: true },
@@ -107,6 +167,22 @@ export default async function DashboardPage({
         by: ["assigneeId"],
         where: { tenantId, done: false, dueAt: { lt: now }, assigneeId: { not: null } },
         _count: true,
+      }),
+      prisma.appointment.groupBy({
+        by: ["lawyerId", "status"],
+        where: { tenantId },
+        _count: { _all: true },
+      }),
+      prisma.user.findMany({
+        where: {
+          tenantId,
+          role: "ABOGADO",
+          OR: [
+            { active: true },
+            { appointmentsAsLawyer: { some: { tenantId } } },
+          ],
+        },
+        select: { id: true, name: true },
       }),
     ]);
     lawyerRows = staff
@@ -124,6 +200,20 @@ export default async function DashboardPage({
       // Los admins solo aparecen si llevan casos
       .filter((r) => r.role === "ABOGADO" || r.total > 0)
       .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+
+    const appointmentsByLawyer = new Map<string, Partial<Record<"pendiente" | "confirmada" | "completada" | "cancelada", number>>>();
+    for (const row of appointmentGroups) {
+      const counts = appointmentsByLawyer.get(row.lawyerId) ?? {};
+      counts[row.status] = row._count._all;
+      appointmentsByLawyer.set(row.lawyerId, counts);
+    }
+    lawyerAppointmentRows = appointmentLawyers
+      .map((lawyer) => ({ id: lawyer.id, name: lawyer.name, byStatus: appointmentsByLawyer.get(lawyer.id) ?? {} }))
+      .sort((a, b) =>
+        Object.values(b.byStatus).reduce((sum, count) => sum + (count ?? 0), 0) -
+          Object.values(a.byStatus).reduce((sum, count) => sum + (count ?? 0), 0) ||
+        a.name.localeCompare(b.name),
+      );
   }
 
   // Cambiar filtros vuelve a la página 1 (no se pasa `page`)
@@ -170,6 +260,25 @@ export default async function DashboardPage({
           <StatTile label="Tareas vencidas" value={overdueTasks} tone="critical" href="/tareas?f=vencidas" />
           <StatTile label="Documentos" value={documents} />
         </div>
+
+        {isAdmin && (
+          <section aria-labelledby="office-statistics-title" className="mb-10">
+            <div className="mb-4">
+              <h2 id="office-statistics-title" className="text-lg font-semibold text-slate-900">
+                Estadísticas del despacho
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Casos por mes y materia, decisiones de solicitudes y citas por abogado.
+              </p>
+            </div>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <CasesByMonthChart rows={caseMonthRows} />
+              <CasesByMatterChart rows={caseMatterRows} />
+              <RequestDecisionTimeChart averageDays={decisionDays} requestCount={decidedRequestCount} />
+              <LawyerAppointmentsChart rows={lawyerAppointmentRows} />
+            </div>
+          </section>
+        )}
 
         {openRequests.length > 0 && (
           <section className="card mb-8 rounded-2xl border-amber-200">

@@ -63,6 +63,176 @@ export function StatTile({
   );
 }
 
+export type CountChartRow = { label: string; value: number };
+
+export function CasesByMonthChart({ rows }: { rows: CountChartRow[] }) {
+  const max = Math.max(1, ...rows.map((row) => row.value));
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
+
+  return (
+    <section className="card rounded-2xl p-5 sm:p-6">
+      <div className="mb-4 flex items-baseline justify-between gap-2">
+        <h3 className="text-base font-semibold text-slate-900">Casos por mes</h3>
+        <span className="text-xs text-slate-500">Últimos 12 meses · {total} casos</span>
+      </div>
+      {total === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-400">Aún no hay casos en este periodo.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <ul aria-label="Casos creados por mes" className="grid h-48 min-w-[34rem] grid-cols-12 items-end gap-2">
+            {rows.map((row) => (
+              <li key={row.label} className="flex h-full flex-col items-center justify-end gap-2">
+                <span className="text-xs font-semibold tabular-nums text-slate-700">{row.value || ""}</span>
+                <span className="flex h-32 w-full items-end rounded-sm bg-slate-100">
+                  <span
+                    className="w-full rounded-t-sm bg-brand-600"
+                    style={{ height: row.value ? `${Math.max(4, (row.value / max) * 100)}%` : 0 }}
+                    title={`${row.label}: ${row.value} casos`}
+                  />
+                </span>
+                <span className="text-[10px] capitalize text-slate-500">{row.label}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
+export function CasesByMatterChart({ rows }: { rows: CountChartRow[] }) {
+  const max = Math.max(1, ...rows.map((row) => row.value));
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
+
+  return (
+    <section className="card rounded-2xl p-5 sm:p-6">
+      <div className="mb-4 flex items-baseline justify-between gap-2">
+        <h3 className="text-base font-semibold text-slate-900">Casos por materia</h3>
+        <span className="text-xs text-slate-500">Histórico · {total} casos</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-400">Aún no hay casos registrados.</p>
+      ) : (
+        <ul className="max-h-48 space-y-3 overflow-y-auto pr-1">
+          {rows.map((row) => (
+            <li key={row.label} className="grid grid-cols-[minmax(0,8rem)_1fr_auto] items-center gap-3">
+              <span className="truncate text-sm text-slate-600" title={row.label}>{row.label}</span>
+              <span className="h-3 rounded-sm bg-slate-100">
+                <span
+                  className="block h-full rounded-sm bg-emerald-600"
+                  style={{ width: `${Math.max(2, (row.value / max) * 100)}%` }}
+                />
+              </span>
+              <span className="w-8 text-right text-sm font-semibold tabular-nums text-slate-800">{row.value}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+export function RequestDecisionTimeChart({
+  averageDays,
+  requestCount,
+}: {
+  averageDays: number | null;
+  requestCount: number;
+}) {
+  return (
+    <section className="card rounded-2xl p-5 sm:p-6">
+      <div className="mb-4">
+        <h3 className="text-base font-semibold text-slate-900">Tiempo hasta decidir una solicitud</h3>
+        <p className="mt-1 text-xs text-slate-500">Promedio desde su creación hasta la aceptación o el rechazo.</p>
+      </div>
+      {averageDays === null ? (
+        <p className="py-6 text-sm text-slate-400">Aún no hay solicitudes con decisión definitiva.</p>
+      ) : (
+        <div className="flex items-baseline gap-2">
+          <span className="text-4xl font-bold tabular-nums text-slate-900">
+            {new Intl.NumberFormat("es-EC", { maximumFractionDigits: 1 }).format(averageDays)}
+          </span>
+          <span className="text-sm text-slate-500">días promedio</span>
+          <span className="ml-auto text-xs text-slate-500">{requestCount} solicitudes</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+export type LawyerAppointmentsRow = {
+  id: string;
+  name: string;
+  byStatus: Partial<Record<"pendiente" | "confirmada" | "completada" | "cancelada", number>>;
+};
+
+const APPOINTMENT_STATUSES = ["pendiente", "confirmada", "completada", "cancelada"] as const;
+const APPOINTMENT_LABELS = {
+  pendiente: "Pendientes",
+  confirmada: "Confirmadas",
+  completada: "Completadas",
+  cancelada: "Canceladas",
+} as const;
+const APPOINTMENT_COLORS = {
+  pendiente: "#eda100",
+  confirmada: "#2a78d6",
+  completada: "#1baf7a",
+  cancelada: "#d9534f",
+} as const;
+
+export function LawyerAppointmentsChart({ rows }: { rows: LawyerAppointmentsRow[] }) {
+  const totals = rows.map((row) => APPOINTMENT_STATUSES.reduce((sum, status) => sum + (row.byStatus[status] ?? 0), 0));
+  const max = Math.max(1, ...totals);
+
+  return (
+    <section className="card rounded-2xl p-5 sm:p-6">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-base font-semibold text-slate-900">Citas por abogado</h3>
+        <span className="text-xs text-slate-500">Todas las citas</span>
+      </div>
+      <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+        {APPOINTMENT_STATUSES.map((status) => (
+          <span key={status} className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: APPOINTMENT_COLORS[status] }} />
+            {APPOINTMENT_LABELS[status]}
+          </span>
+        ))}
+      </div>
+      {rows.length === 0 ? (
+        <p className="py-4 text-sm text-slate-400">No hay abogados activos ni citas en este periodo.</p>
+      ) : (
+        <ul className="space-y-3">
+          {rows.map((row, index) => (
+            <li key={row.id} className="grid grid-cols-[minmax(0,8rem)_1fr] items-center gap-3">
+              <span className="truncate text-sm text-slate-600" title={row.name}>{row.name}</span>
+              <span className="flex items-center gap-2">
+                <span className="flex h-5 flex-1">
+                  <span className="flex h-full" style={{ width: totals[index] ? `${(totals[index] / max) * 100}%` : 0 }}>
+                    {APPOINTMENT_STATUSES.map((status) => {
+                      const count = row.byStatus[status] ?? 0;
+                      return count ? (
+                        <span
+                          key={status}
+                          className="flex h-full items-center justify-center text-[10px] font-semibold text-white first:rounded-l last:rounded-r"
+                          style={{ flexGrow: count, flexBasis: 0, backgroundColor: APPOINTMENT_COLORS[status] }}
+                          title={`${row.name} · ${APPOINTMENT_LABELS[status]}: ${count}`}
+                        >
+                          {count}
+                        </span>
+                      ) : null;
+                    })}
+                  </span>
+                </span>
+                <span className="w-8 text-right text-sm font-semibold tabular-nums text-slate-800">{totals[index]}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 /** Barras horizontales: casos por estado. Cada barra filtra el listado. */
 export function CasesByStatusChart({
   counts,
