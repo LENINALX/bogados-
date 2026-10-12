@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
-import { LogOut, Monitor, Moon, Sun } from "lucide-react";
+import { ChevronDown, LogOut, Monitor, Moon, Settings, Sun } from "lucide-react";
 import { ROLE_LABELS, UserRole } from "@bogados/shared";
 import { clearNestToken } from "@/lib/nest-api";
 import { ThemePreference, applyThemePreference, readThemePreference } from "@/lib/theme";
@@ -24,8 +24,28 @@ const THEMES: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
   { value: "system", label: "Sistema", icon: Monitor },
 ];
 
-/** Avatar → menú con identidad, tema y salir. Nace desde el avatar (origin arriba a la derecha). */
-export function UserMenu({ user }: { user: { name: string; role: string } }) {
+type Variant = "avatar" | "profile" | "gear";
+
+/** Dónde nace el menú en cada variante: siempre desde su disparador. */
+const PANEL_POSITION: Record<Variant, string> = {
+  avatar: "right-0 top-full mt-2 origin-top-right",
+  profile: "left-0 top-full mt-2 origin-top-left",
+  gear: "bottom-0 left-full ml-4 origin-bottom-left",
+};
+
+/**
+ * Menú de cuenta con identidad, tema y salir.
+ * - `avatar`: barra superior del móvil
+ * - `profile`: cabecera de la barra lateral (avatar, nombre y correo)
+ * - `gear`: botón de ajustes del riel oscuro
+ */
+export function UserMenu({
+  user,
+  variant = "avatar",
+}: {
+  user: { name: string; role: string; email?: string };
+  variant?: Variant;
+}) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<ThemePreference>("system");
   const [leaving, setLeaving] = useState(false);
@@ -37,29 +57,69 @@ export function UserMenu({ user }: { user: { name: string; role: string } }) {
   useEffect(() => setTheme(readThemePreference()), []);
 
   return (
-    <div ref={panel} className="relative">
-      <button
-        ref={trigger}
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={`Cuenta de ${user.name}`}
-        className="flex items-center gap-2.5 rounded-full p-0.5 pr-0.5 transition-transform duration-100 ease-out active:scale-95 sm:pr-3"
-      >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
-          {initials(user.name)}
-        </span>
-        <span className="hidden text-left leading-tight sm:block">
-          <span className="block text-sm font-medium text-slate-900">{user.name.split(" ")[0]}</span>
-          <span className="block text-[11px] text-slate-500">{ROLE_LABELS[user.role as UserRole] ?? user.role}</span>
-        </span>
-      </button>
+    <div ref={panel} className={`relative ${variant === "gear" ? "group" : variant === "profile" ? "min-w-0 flex-1" : ""}`}>
+      {variant === "gear" ? (
+        <button
+          ref={trigger}
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label="Ajustes de la cuenta"
+          className="rail-key flex h-11 w-11 items-center justify-center rounded-2xl bg-rail text-white/80 hover:text-white active:scale-95"
+        >
+          <Settings className="h-5 w-5 transition-transform duration-500 ease-out group-hover:rotate-45" strokeWidth={1.9} aria-hidden />
+        </button>
+      ) : variant === "profile" ? (
+        <button
+          ref={trigger}
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={`Cuenta de ${user.name}`}
+          className="flex w-full min-w-0 items-center gap-3 rounded-2xl p-1.5 text-left transition-[background-color,transform] duration-150 ease-out hover:bg-slate-900/[0.04] active:scale-[0.98]"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#3a4558,#121925)] text-sm font-semibold text-white shadow-md shadow-black/25 ring-2 ring-[rgb(var(--raised))]">
+            {initials(user.name)}
+          </span>
+          <span className="min-w-0 leading-tight">
+            <span className="flex items-center gap-1 text-[0.9375rem] font-medium text-slate-900">
+              <span className="truncate">{user.name}</span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                aria-hidden
+              />
+            </span>
+            <span className="mt-0.5 block truncate text-[13px] text-slate-500">
+              {user.email ?? ROLE_LABELS[user.role as UserRole] ?? user.role}
+            </span>
+          </span>
+        </button>
+      ) : (
+        <button
+          ref={trigger}
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={`Cuenta de ${user.name}`}
+          className="flex items-center gap-2.5 rounded-full p-0.5 pr-0.5 transition-transform duration-100 ease-out active:scale-95 sm:pr-3"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+            {initials(user.name)}
+          </span>
+          <span className="hidden text-left leading-tight sm:block">
+            <span className="block text-sm font-medium text-slate-900">{user.name.split(" ")[0]}</span>
+            <span className="block text-[11px] text-slate-500">{ROLE_LABELS[user.role as UserRole] ?? user.role}</span>
+          </span>
+        </button>
+      )}
 
       {open && (
         <div
           role="menu"
-          className="animate-pop absolute right-0 z-50 mt-2 w-64 origin-top-right overflow-hidden rounded-2xl border border-slate-200/80 bg-surface p-1.5 shadow-xl shadow-slate-900/10"
+          className={`animate-pop absolute z-50 w-64 overflow-hidden rounded-2xl border border-slate-200/80 bg-surface p-1.5 shadow-xl shadow-slate-900/10 ${PANEL_POSITION[variant]}`}
         >
           <div className="px-3 py-2.5">
             <p className="truncate text-sm font-semibold text-slate-900">{user.name}</p>

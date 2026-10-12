@@ -1,53 +1,36 @@
+import { cookies } from "next/headers";
 import { NavItem } from "@/lib/nav";
-import { NotificationBell } from "../NotificationBell";
-import { BottomNav } from "./BottomNav";
-import { BrandMark } from "./BrandMark";
-import { SideNav } from "./SideNav";
-import { UserMenu } from "./UserMenu";
+import { getShellData } from "@/lib/shell-data";
+import { SIDEBAR_COOKIE } from "@/lib/shell-prefs";
+import { ShellFrame } from "./ShellFrame";
+
+export type ShellSessionUser = { id: string; name: string; email: string; role: string; tenantId: string };
 
 /**
- * Armazón de la aplicación (despacho y portal):
- * - escritorio: barra lateral + barra superior translúcidas
- * - móvil: barra superior compacta + pestañas inferiores
+ * Armazón de la aplicación (despacho y portal). En el servidor carga los recuentos de la
+ * barra lateral y lee la cookie de plegado, para pintar el estado correcto sin parpadeo.
  */
-export function AppShell({
+export async function AppShell({
   user,
   links,
   children,
 }: {
-  user: { name: string; role: string };
+  user: ShellSessionUser;
   links: NavItem[];
   children: React.ReactNode;
 }) {
-  const home = links[0]?.href ?? "/";
+  const data = await getShellData(user);
+  const collapsed = cookies().get(SIDEBAR_COOKIE)?.value === "1";
   return (
-    <div className="min-h-dvh lg:pl-64">
-      <a
-        href="#contenido"
-        className="sr-only z-[60] rounded-lg bg-surface px-3 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
-      >
-        Saltar al contenido
-      </a>
-      <SideNav links={links} home={home} />
-
-      <header className="material sticky top-0 z-30 border-b border-slate-200/70">
-        <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6 lg:h-16 lg:px-8">
-          <div className="lg:hidden">
-            <BrandMark href={home} />
-          </div>
-          <div className="ml-auto flex items-center gap-1.5">
-            <NotificationBell role={user.role} />
-            <UserMenu user={user} />
-          </div>
-        </div>
-      </header>
-
-      {/* pb en móvil: deja sitio a las pestañas inferiores */}
-      <div id="contenido" className="pb-24 lg:pb-8">
-        {children}
-      </div>
-
-      <BottomNav links={links} />
-    </div>
+    <ShellFrame
+      user={{ name: user.name, email: user.email, role: user.role }}
+      links={links}
+      data={data}
+      home={links[0]?.href ?? "/"}
+      variant={user.role === "CLIENTE" ? "portal" : "despacho"}
+      initialCollapsed={collapsed}
+    >
+      {children}
+    </ShellFrame>
   );
 }

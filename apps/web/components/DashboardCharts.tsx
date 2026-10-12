@@ -40,9 +40,9 @@ export function StatTile({
 }) {
   const body = (
     <>
-      <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</div>
-      <div className="mt-2 flex flex-wrap items-baseline gap-2">
-        <span className="text-3xl font-bold tabular-nums text-slate-900">{value}</span>
+      <div className="text-[0.9375rem] font-medium text-slate-600">{label}</div>
+      <div className="mt-3 flex flex-wrap items-center gap-2.5">
+        <span className="text-[2.75rem] font-light leading-none tracking-[-0.04em] tabular-nums text-slate-900">{value}</span>
         {tone === "critical" && value > 0 && (
           <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-800">
             ! Requiere atención
@@ -52,7 +52,7 @@ export function StatTile({
       {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
     </>
   );
-  const cls = `block rounded-2xl border p-5 shadow-sm ${
+  const cls = `block rounded-[22px] border p-5 shadow-[inset_0_1px_0_var(--glass-edge),0_1px_2px_rgb(15_23_42/0.05),0_12px_28px_-18px_rgb(15_23_42/0.3)] ${
     tone === "critical" && value > 0 ? "border-red-200 bg-red-50/40" : "border-slate-200 bg-surface"
   } ${href ? "transition hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-md" : ""}`;
   return href ? (

@@ -32,7 +32,12 @@ function relativeTime(iso: string, now = Date.now()): string {
   return new Date(iso).toLocaleDateString("es-EC", { day: "numeric", month: "short" });
 }
 
-export function NotificationBell({ role }: { role: string }) {
+/**
+ * `rail`: dentro del riel oscuro del escritorio; el panel se abre a su derecha, alineado arriba.
+ * `bar`: en la barra superior (móvil); el panel cae bajo el botón.
+ */
+export function NotificationBell({ role, placement = "bar" }: { role: string; placement?: "bar" | "rail" }) {
+  const rail = placement === "rail";
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -101,11 +106,15 @@ export function NotificationBell({ role }: { role: string }) {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={`Notificaciones${unread ? ` (${unread} sin leer)` : ""}`}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition-[background-color,transform] duration-150 ease-out hover:bg-slate-100 active:scale-95"
+        className={`relative flex items-center justify-center transition-[background-color,color,transform] duration-150 ease-out active:scale-95 ${
+          rail
+            ? "h-10 w-10 rounded-xl text-white/60 hover:bg-white/10 hover:text-white aria-expanded:bg-white/10 aria-expanded:text-white"
+            : "h-9 w-9 rounded-full text-slate-600 hover:bg-slate-100"
+        }`}
       >
         <Bell className="h-[19px] w-[19px]" strokeWidth={1.9} aria-hidden />
         {unread > 0 && (
-          <span className="absolute right-0.5 top-0.5 min-w-[1.05rem] rounded-full bg-red-600 px-1 text-center text-[10px] font-semibold leading-[1.05rem] text-white ring-2 ring-surface">
+          <span className={`absolute right-0.5 top-0.5 min-w-[1.05rem] rounded-full bg-red-600 px-1 text-center text-[10px] font-semibold leading-[1.05rem] text-white ring-2 ${rail ? "ring-rail" : "ring-surface"}`}>
             {unread > 99 ? "99+" : unread}
           </span>
         )}
@@ -115,7 +124,11 @@ export function NotificationBell({ role }: { role: string }) {
         <div
           role="dialog"
           aria-label="Notificaciones"
-          className="animate-pop fixed inset-x-3 top-[3.75rem] z-50 origin-top overflow-hidden rounded-2xl border border-slate-200/80 bg-surface shadow-xl shadow-slate-900/10 sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 sm:origin-top-right"
+          className={`animate-pop z-50 overflow-hidden rounded-2xl border border-slate-200/80 bg-surface shadow-xl shadow-slate-900/10 ${
+            rail
+              ? "absolute left-full top-0 ml-4 w-96 origin-top-left"
+              : "fixed inset-x-3 top-[3.75rem] origin-top sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 sm:origin-top-right"
+          }`}
         >
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-[0.9375rem] font-semibold text-slate-900">Notificaciones</span>

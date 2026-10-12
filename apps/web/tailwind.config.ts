@@ -26,6 +26,9 @@ const config: Config = {
         /** Acento dorado de la web pública (igual en ambos temas). `gold-ink` = texto sobre dorado */
         gold: token("gold"),
         "gold-ink": token("gold-ink"),
+        /** Armazón de la app: fondo donde flotan los paneles y riel oscuro de navegación */
+        shell: token("shell"),
+        rail: token("rail"),
         /** Superficies: tarjetas, inputs, menús */
         surface: token("surface"),
         /** Fondo de la aplicación */

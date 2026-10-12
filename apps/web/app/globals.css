@@ -99,6 +99,11 @@
   --violet-950: 46 16 101;
   --surface: 255 255 255;
   --canvas: 248 250 252;
+  /* Armazón de la app: fondo gris donde flotan los paneles, riel oscuro y relieve */
+  --shell: 228 231 236;
+  --rail: 22 30 43;
+  --raised: 255 255 255;
+  --glass-edge: rgb(255 255 255 / 0.8);
   /* Acento dorado: no cambia con el tema (los bloques oscuros no lo redefinen) */
   --gold: 242 174 60;
   --gold-ink: 33 22 4;
@@ -204,6 +209,10 @@
     --violet-950: 245 243 255;
     --surface: 17 26 43;
     --canvas: 11 17 32;
+    --shell: 6 10 18;
+    --rail: 30 42 62;
+    --raised: 30 42 64;
+    --glass-edge: rgb(255 255 255 / 0.06);
   }
 }
 
@@ -299,6 +308,10 @@
   --violet-950: 245 243 255;
   --surface: 17 26 43;
   --canvas: 11 17 32;
+  --shell: 6 10 18;
+  --rail: 30 42 62;
+  --raised: 30 42 64;
+  --glass-edge: rgb(255 255 255 / 0.06);
 }
 
 @layer base {
@@ -410,10 +423,10 @@
     @apply mx-auto w-full max-w-6xl px-4 py-6 animate-enter sm:px-6 sm:py-8 lg:px-8;
   }
   .page-title {
-    @apply text-2xl font-semibold leading-tight tracking-[-0.022em] text-brand-900 sm:text-[1.75rem];
+    @apply text-[1.75rem] font-medium leading-tight tracking-[-0.028em] text-slate-900 sm:text-[2.125rem];
   }
   .page-subtitle {
-    @apply mt-1 text-sm leading-relaxed text-slate-500;
+    @apply mt-1.5 text-[0.9375rem] leading-relaxed text-slate-500;
   }
 
   .skeleton {
@@ -464,6 +477,121 @@
   from {
     opacity: 0;
   }
+}
+
+/* ── Armazón de la app (despacho y portal) ─ */
+/* Material translúcido de los paneles: borde superior iluminado y sombra amplia y suave */
+.shell-capsule,
+.shell-panel {
+  border: 1px solid rgb(var(--slate-200) / 0.7);
+  box-shadow:
+    inset 0 1px 0 var(--glass-edge),
+    0 1px 2px rgb(15 23 42 / 0.05),
+    0 18px 40px -22px rgb(15 23 42 / 0.35);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+}
+.shell-capsule {
+  background: rgb(var(--surface) / 0.45);
+}
+.shell-panel {
+  background: rgb(var(--surface) / 0.62);
+}
+/* Hundido: campos y listas dentro del panel */
+.shell-inset {
+  background: rgb(var(--slate-900) / 0.035);
+  border: 1px solid rgb(var(--slate-900) / 0.05);
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+/* Enlaces de la barra lateral: el activo es una píldora en relieve */
+.side-link {
+  transition:
+    background-color var(--dur-quick) ease,
+    box-shadow 260ms var(--ease-premium),
+    color var(--dur-quick) ease,
+    transform 120ms ease-out;
+}
+.side-link:hover {
+  background: rgb(var(--slate-900) / 0.04);
+}
+.side-link:active {
+  transform: scale(0.985);
+}
+.side-link-active,
+.side-link-active:hover {
+  background: rgb(var(--raised));
+  box-shadow:
+    inset 0 1px 0 var(--glass-edge),
+    0 0 0 1px rgb(var(--slate-900) / 0.04),
+    0 1px 2px rgb(15 23 42 / 0.08),
+    0 10px 24px -12px rgb(15 23 42 / 0.32);
+}
+
+/* Teclas del riel oscuro */
+.rail-key {
+  transition:
+    background-color var(--dur-quick) ease,
+    color var(--dur-quick) ease,
+    box-shadow 260ms var(--ease-premium),
+    transform 120ms ease-out;
+}
+.rail-key:hover {
+  background: rgb(255 255 255 / 0.07);
+}
+.rail-key:active {
+  transform: scale(0.94);
+}
+.rail-key-active,
+.rail-key-active:hover {
+  background: rgb(255 255 255 / 0.13);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 6px 14px -6px rgb(0 0 0 / 0.55);
+}
+/* Etiqueta del riel: nace junto al icono y se desliza 4px hacia fuera */
+.rail-tip {
+  opacity: 0;
+  transform: translate(-4px, -50%);
+  transition:
+    opacity 140ms ease,
+    transform 220ms var(--ease-premium);
+}
+.group:hover > .rail-tip,
+.group:focus-visible > .rail-tip {
+  opacity: 1;
+  transform: translate(0, -50%);
+  transition-delay: 120ms;
+}
+
+/* Hueco del contenido: riel (lg) o riel + barra lateral (xl); se anima al plegar */
+@media (min-width: 1024px) {
+  .app-main {
+    padding-left: 6.25rem;
+    transition: padding-left var(--dur-standard) var(--ease-premium);
+  }
+}
+@media (min-width: 1280px) {
+  .app-shell:not([data-collapsed="true"]) .app-main {
+    padding-left: 24.75rem;
+  }
+}
+/* Plegar: la barra sale más rápido de lo que entra (salida acelerada, entrada suave) */
+.app-sidebar {
+  transition:
+    opacity 320ms ease,
+    transform var(--dur-standard) var(--ease-premium),
+    visibility 0s linear 0s;
+}
+.app-shell[data-collapsed="true"] .app-sidebar {
+  opacity: 0;
+  transform: translateX(-24px) scale(0.98);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    transform 260ms var(--ease-exit),
+    visibility 0s linear 260ms;
 }
 
 /* ── Landing ─────────────────────────────── */
@@ -788,6 +916,20 @@
   .btn-gold::after {
     display: none;
   }
+  .app-main,
+  .app-sidebar,
+  .app-shell[data-collapsed="true"] .app-sidebar {
+    transform: none;
+    transition-property: opacity, visibility;
+  }
+  .rail-tip,
+  .group:hover > .rail-tip {
+    transform: translate(0, -50%);
+  }
+  .side-link:active,
+  .rail-key:active {
+    transform: none;
+  }
   .segmented-thumb {
     transition-duration: 1ms;
   }
@@ -797,6 +939,12 @@
 @media (prefers-reduced-transparency: reduce) {
   .material {
     @apply bg-surface backdrop-blur-none backdrop-saturate-100;
+  }
+  .shell-capsule,
+  .shell-panel {
+    background: rgb(var(--surface));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 

@@ -280,7 +280,7 @@ export default async function DashboardPage({
         )}
 
         {openRequests.length > 0 && (
-          <section className="card mb-8 rounded-2xl border-amber-200">
+          <section id="solicitudes" className="card mb-8 scroll-mt-6 rounded-2xl border-amber-200">
             <div className="card-header py-4 sm:px-6">
               <h2 className="text-base font-semibold text-slate-900">Solicitudes de clientes</h2>
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">

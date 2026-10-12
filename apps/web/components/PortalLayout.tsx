@@ -1,8 +1,8 @@
 import { clientLinks } from "@/lib/nav";
-import { AppShell } from "./shell/AppShell";
+import { AppShell, ShellSessionUser } from "./shell/AppShell";
 
 type Props = {
-  user: { name: string; role: string };
+  user: ShellSessionUser;
   children: React.ReactNode;
 };
 
