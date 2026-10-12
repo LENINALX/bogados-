@@ -497,6 +497,19 @@
 .shell-panel {
   background: rgb(var(--surface) / 0.62);
 }
+/* Desplazamiento fino dentro de los paneles (la barra del navegador es demasiado gruesa aquí) */
+.shell-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--slate-300)) transparent;
+}
+.shell-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.shell-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(var(--slate-300));
+}
+
 /* Hundido: campos y listas dentro del panel */
 .shell-inset {
   background: rgb(var(--slate-900) / 0.035);
