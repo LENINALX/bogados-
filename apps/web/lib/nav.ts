@@ -25,6 +25,14 @@ export function clientLinks(): NavItem[] {
   ];
 }
 
+/** id del listado de casos del panel: los filtros enlazan a `/dashboard?…#casos` para llevar hasta él */
+export const CASES_LIST_ID = "casos";
+
+/** Enlace al listado del panel filtrado por estado (barra lateral y gráficas) */
+export function casesByStatusHref(status: string): string {
+  return `/dashboard?status=${encodeURIComponent(status)}#${CASES_LIST_ID}`;
+}
+
 /** ¿Está activo el enlace en esta ruta? El detalle de un caso pertenece a "Casos". */
 export function isActiveLink(href: string, pathname: string): boolean {
   if (href === "/portal") return pathname === "/portal" || pathname.startsWith("/portal/casos");

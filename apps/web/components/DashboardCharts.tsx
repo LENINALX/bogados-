@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CASE_STATUS_LABELS, CaseStatus } from "@bogados/shared";
 import { STATUS_SERIES_COLOR, STATUS_SERIES_INK } from "@/lib/viz";
 import { formatAverageDuration } from "@/lib/stats";
+import { casesByStatusHref } from "@/lib/nav";
 
 /** Tooltip CSS (hover + foco de teclado); el padre debe ser `group relative`. */
 function Tip({ children }: { children: React.ReactNode }) {
@@ -268,7 +269,7 @@ export function CasesByStatusChart({
           return (
             <li key={s}>
               <Link
-                href={`/dashboard?status=${s}`}
+                href={casesByStatusHref(s)}
                 className="group relative grid grid-cols-[6.5rem_1fr] items-center gap-3 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               >
                 <span className="flex items-center gap-2 text-sm text-slate-600">

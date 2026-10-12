@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useState, useSyncExternalStore } from "react";
 import { PanelLeftClose, PanelLeftOpen, Scale, Search } from "lucide-react";
 import { CASE_STATUS_LABELS, CASE_STATUSES, CaseStatus } from "@bogados/shared";
-import { NavItem, isActiveLink } from "@/lib/nav";
+import { CASES_LIST_ID, NavItem, casesByStatusHref, isActiveLink } from "@/lib/nav";
 import type { ShellData } from "@/lib/shell-data";
 import { STATUS_SERIES_COLOR } from "@/lib/viz";
 import { NotificationBell } from "../NotificationBell";
@@ -283,7 +283,7 @@ function Sidebar({
 
         <Group label={variant === "portal" ? "Tus casos" : "Casos recientes"}>
           {variant === "despacho" && (
-            <form action="/dashboard" role="search" className="relative mb-2">
+            <form action={`/dashboard#${CASES_LIST_ID}`} role="search" className="relative mb-2">
               <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <label htmlFor="sidebar-q" className="sr-only">
                 Buscar casos
@@ -342,7 +342,7 @@ function StatusGroup({ byStatus, openRequests }: { byStatus: Record<CaseStatus, 
       {CASE_STATUSES.map((s) => (
         <SideLink
           key={s}
-          href={`/dashboard?status=${s}`}
+          href={casesByStatusHref(s)}
           label={CASE_STATUS_LABELS[s]}
           icon={
             <span className="flex h-[18px] w-[18px] items-center justify-center" aria-hidden>

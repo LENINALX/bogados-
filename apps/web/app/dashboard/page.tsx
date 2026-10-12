@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { requireRole } from "@/lib/session";
@@ -23,6 +24,8 @@ import {
   StatTile,
 } from "@/components/DashboardCharts";
 import { recentMonths } from "@/lib/stats";
+import { CASES_LIST_ID } from "@/lib/nav";
+import { ScrollToHash } from "@/components/ScrollToHash";
 import { CASE_STATUSES, CASE_STATUS_LABELS, CaseStatus, OPEN_CASE_REQUEST_STATES } from "@bogados/shared";
 
 const ACTIVE_STATUSES = ["intake", "abierto", "en_pausa"] as const satisfies readonly CaseStatus[];
@@ -215,14 +218,16 @@ export default async function DashboardPage({
       );
   }
 
-  // Cambiar filtros vuelve a la página 1 (no se pasa `page`)
+  // Cambiar filtros vuelve a la página 1 (no se pasa `page`).
+  // El ancla lleva al listado: está bajo las estadísticas y, sin ella, la página volvería
+  // arriba y el filtro parecería no hacer nada.
   const href = (params: { status?: string; q?: string; page?: number }) => {
     const sp = new URLSearchParams();
     if (params.status) sp.set("status", params.status);
     if (params.q) sp.set("q", params.q);
     if (params.page && params.page > 1) sp.set("page", String(params.page));
     const s = sp.toString();
-    return `/dashboard${s ? `?${s}` : ""}`;
+    return `/dashboard${s ? `?${s}` : ""}#${CASES_LIST_ID}`;
   };
   const filtered = Boolean(validStatus || q);
 
@@ -350,7 +355,11 @@ export default async function DashboardPage({
           )}
         </div>
 
-        <div className="card mb-8 space-y-4 rounded-2xl p-4 sm:p-6">
+        <Suspense>
+          <ScrollToHash id={CASES_LIST_ID} />
+        </Suspense>
+        {/* scroll-mt: deja libre la barra superior fija del móvil */}
+        <div id={CASES_LIST_ID} className="card mb-8 scroll-mt-20 space-y-4 rounded-2xl p-4 sm:p-6 lg:scroll-mt-6">
           <nav aria-label="Filtrar por estado" className="flex flex-wrap gap-2">
             <Link href={href({ q })} className={chip(!validStatus)} aria-current={!validStatus ? "true" : undefined}>
               Todos <span className="opacity-70">{total}</span>
@@ -367,7 +376,7 @@ export default async function DashboardPage({
             ))}
           </nav>
 
-          <form role="search" className="flex flex-col gap-2 sm:flex-row">
+          <form role="search" action={`/dashboard#${CASES_LIST_ID}`} className="flex flex-col gap-2 sm:flex-row">
             {validStatus && <input type="hidden" name="status" value={validStatus} />}
             <label htmlFor="q" className="sr-only">
               Buscar casos
@@ -400,7 +409,7 @@ export default async function DashboardPage({
             {q && <> · “{q}”</>}
           </h2>
           {filtered && (
-            <Link href="/dashboard" className="text-xs font-medium text-brand-700 hover:underline">
+            <Link href={href({})} className="text-xs font-medium text-brand-700 hover:underline">
               Quitar filtros
             </Link>
           )}
@@ -412,7 +421,7 @@ export default async function DashboardPage({
               <EmptyState
                 title="No hay casos que coincidan con estos filtros"
                 hint="Prueba con otra búsqueda o quita el filtro de estado."
-                action={{ href: "/dashboard", label: "Ver todos los casos" }}
+                action={{ href: href({}), label: "Ver todos los casos" }}
               />
             ) : (
               <EmptyState
