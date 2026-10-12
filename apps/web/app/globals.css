@@ -99,6 +99,16 @@
   --violet-950: 46 16 101;
   --surface: 255 255 255;
   --canvas: 248 250 252;
+  /* Acento dorado: no cambia con el tema (los bloques oscuros no lo redefinen) */
+  --gold: 242 174 60;
+  --gold-ink: 33 22 4;
+
+  /* Identidad de movimiento de la web pública (personalidad «premium») */
+  --ease-premium: cubic-bezier(0.22, 1, 0.36, 1); /* curva firma: salida suave, sin rebote */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --dur-quick: 180ms;
+  --dur-standard: 420ms;
+  --dur-slow: 900ms;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -353,6 +363,40 @@
     @apply rounded-lg px-3 py-1.5 text-xs;
   }
 
+  /* ── Botón dorado ─────────────────────────── */
+  .btn-gold {
+    @apply btn bg-gold font-bold text-gold-ink shadow-lg shadow-gold/20 hover:brightness-105;
+    position: relative;
+    overflow: hidden;
+  }
+  /* Brillo que cruza el botón al pasar el cursor */
+  .btn-gold::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.45) 50%, transparent 70%);
+    transform: translateX(-120%);
+    pointer-events: none;
+  }
+  @media (hover: hover) {
+    .btn-gold:hover::after {
+      transform: translateX(120%);
+      transition: transform 750ms var(--ease-premium);
+    }
+  }
+  .cta-arrow {
+    transition: transform var(--dur-quick) var(--ease-premium);
+  }
+  .group:hover .cta-arrow {
+    transform: translateX(3px);
+  }
+  .play-dot {
+    transition: transform var(--dur-standard) var(--ease-premium);
+  }
+  .group:hover .play-dot {
+    transform: scale(1.12);
+  }
+
   .label {
     @apply block text-sm font-medium text-slate-700;
   }
@@ -429,18 +473,229 @@
   }
 }
 
-/* Aparición al hacer scroll. Sin JavaScript el contenido se ve tal cual. */
+/*
+ * Aparición al hacer scroll: sube, aparece y se enfoca (el desenfoque hace que el
+ * elemento «se materialice» en vez de solo fundirse). Sin JavaScript se ve tal cual.
+ */
 @media (scripting: enabled) {
   .reveal {
     opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(28px);
+    filter: blur(6px);
     transition:
-      opacity 700ms cubic-bezier(0.2, 0.8, 0.2, 1),
-      transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      opacity 700ms var(--ease-premium),
+      transform var(--dur-slow) var(--ease-premium),
+      filter 700ms var(--ease-premium);
   }
   .reveal[data-shown="true"] {
     opacity: 1;
     transform: none;
+    filter: none;
+  }
+
+  /* Línea que se dibuja de izquierda a derecha (une los pasos) */
+  .reveal-line {
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 1200ms var(--ease-premium);
+  }
+  .reveal-line[data-shown="true"] {
+    transform: none;
+  }
+
+  /* Secundario: el icono llega justo después de su tarjeta, con un pequeño asentamiento */
+  .reveal .pop-in {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  .reveal[data-shown="true"] .pop-in {
+    animation: pop-in 520ms 220ms cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Tarjetas: al pasar el cursor se elevan y la sombra crece un instante después (secundario) */
+/* Incluye opacidad y desenfoque: estas tarjetas también usan .reveal y comparten `transition` */
+.lift {
+  transition:
+    opacity 700ms var(--ease-premium),
+    filter 700ms var(--ease-premium),
+    transform 600ms var(--ease-premium),
+    box-shadow 520ms var(--ease-premium),
+    border-color var(--dur-quick) ease;
+}
+@media (hover: hover) {
+  .lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 24px 48px -24px rgb(15 23 42 / 0.28);
+  }
+  .lift:hover .lift-visual {
+    transform: scale(1.02);
+  }
+}
+.lift-visual {
+  transition: transform 600ms var(--ease-premium);
+  transform-origin: 50% 100%;
+}
+
+/* ── Barra de navegación ──────────────────── */
+.landing-nav {
+  transition:
+    background-color var(--dur-standard) ease,
+    border-color var(--dur-standard) ease,
+    backdrop-filter var(--dur-standard) ease;
+}
+.landing-nav[data-over-hero="true"] {
+  /* Sobre la portada: un velo oscuro arriba asegura la lectura del texto claro */
+  background: linear-gradient(to bottom, rgb(0 0 0 / 0.35), transparent);
+}
+
+/* ── Portada ──────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  /* Ambiente: el fondo se asienta al cargar */
+  .hero-settle {
+    animation: hero-settle 1800ms var(--ease-premium) both;
+  }
+  /* La luz cálida deriva muy despacio (ciclo de 20 s, amplitud mínima) */
+  .hero-glow {
+    animation:
+      fade 1400ms ease both,
+      hero-drift 20s ease-in-out 1400ms infinite alternate;
+  }
+  .hero-rule {
+    animation: rule-draw 800ms var(--ease-premium) 100ms both;
+  }
+  .hero-rule-left {
+    transform-origin: right;
+  }
+  .hero-rule-right {
+    transform-origin: left;
+  }
+  .hero-eyebrow {
+    animation: rise var(--dur-slow) var(--ease-premium) 60ms both;
+  }
+  /* Titular: cada línea sube desde detrás de una máscara */
+  .hero-line-inner {
+    animation: line-up 1000ms var(--ease-premium) both;
+  }
+  .hero-rise {
+    animation: rise var(--dur-slow) var(--ease-premium) both;
+  }
+  .hero-accent::after {
+    animation: rule-draw 700ms var(--ease-premium) 760ms both;
+  }
+  .hero-cue {
+    animation: fade 800ms ease 1100ms both;
+  }
+  .hero-cue-dot {
+    animation: cue 1.8s var(--ease-premium) 1600ms infinite;
+  }
+}
+.hero-line {
+  display: block;
+  overflow: hidden;
+  /* Deja sitio a los descendentes dentro de la máscara */
+  padding-bottom: 0.06em;
+  margin-bottom: -0.06em;
+}
+.hero-line-inner {
+  display: inline-block;
+}
+.hero-accent {
+  position: relative;
+  white-space: nowrap;
+}
+.hero-accent::after {
+  content: "";
+  position: absolute;
+  left: 0.02em;
+  right: 0.02em;
+  bottom: 0.02em;
+  height: 0.07em;
+  border-radius: 999px;
+  background: rgb(var(--gold));
+  transform-origin: left;
+}
+.hero-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Scroll: el fondo va más lento que el texto (parallax) y el texto se despide al salir */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-parallax {
+      animation: hero-parallax linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 100vh;
+    }
+    .hero-content {
+      animation: hero-out linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 75vh;
+    }
+  }
+}
+
+@keyframes hero-settle {
+  from {
+    transform: scale(1.06);
+    opacity: 0.4;
+  }
+}
+@keyframes hero-drift {
+  to {
+    transform: translate(4%, 3%);
+  }
+}
+@keyframes rule-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes line-up {
+  from {
+    transform: translateY(105%);
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+    filter: blur(6px);
+  }
+}
+@keyframes cue {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+}
+@keyframes hero-parallax {
+  to {
+    transform: translateY(22vh);
+  }
+}
+@keyframes hero-out {
+  to {
+    opacity: 0;
+    transform: translateY(-8vh) scale(0.97);
   }
 }
 
@@ -505,13 +760,33 @@
   .animate-pulse {
     animation: none;
   }
-  /* Solo fundidos: nada se desplaza ni cambia de escala */
+  /* Solo fundidos: nada se desplaza, cambia de escala ni se desenfoca */
   .reveal,
+  .reveal-line,
+  .reveal .pop-in,
   .showcase-panel[data-active="false"] {
     transform: none;
+    filter: none;
   }
   .reveal {
     transition: opacity 300ms ease;
+  }
+  .reveal[data-shown="true"] .pop-in {
+    animation-name: fade;
+  }
+  .hero-eyebrow,
+  .hero-rise,
+  .hero-content h1 {
+    animation: fade 400ms ease both;
+  }
+  .lift:hover,
+  .lift:hover .lift-visual,
+  .group:hover .cta-arrow,
+  .group:hover .play-dot {
+    transform: none;
+  }
+  .btn-gold::after {
+    display: none;
   }
   .segmented-thumb {
     transition-duration: 1ms;

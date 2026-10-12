@@ -11,15 +11,20 @@ export function Reveal({
   as: Tag = "div",
   delay = 0,
   className = "",
+  variant = "rise",
 }: {
   children: ReactNode;
   as?: ElementType;
   /** Escalonado en ms para elementos hermanos */
   delay?: number;
   className?: string;
+  /** rise = sube, aparece y se enfoca · line = se dibuja de izquierda a derecha */
+  variant?: "rise" | "line";
 }) {
   const ref = useRef<HTMLElement>(null);
   const [shown, setShown] = useState(false);
+  // Tras aparecer se quita el retraso escalonado, para que no afecte al hover
+  const [settled, setSettled] = useState(false);
 
   useEffect(() => {
     const node = ref.current;
@@ -37,12 +42,18 @@ export function Reveal({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (!shown || !delay) return;
+    const t = setTimeout(() => setSettled(true), delay + 1200);
+    return () => clearTimeout(t);
+  }, [shown, delay]);
+
   return (
     <Tag
       ref={ref}
       data-shown={shown}
-      className={`reveal ${className}`}
-      style={delay ? { transitionDelay: `${delay}ms` } : undefined}
+      className={`${variant === "line" ? "reveal-line" : "reveal"} ${className}`}
+      style={delay && !settled ? { transitionDelay: `${delay}ms` } : undefined}
     >
       {children}
     </Tag>

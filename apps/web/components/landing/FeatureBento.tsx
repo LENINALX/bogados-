@@ -48,11 +48,11 @@ function Tile({
     <Reveal
       as="article"
       delay={delay}
-      className={`flex min-h-[19rem] flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-surface p-6 sm:p-7 ${className}`}
+      className={`lift flex min-h-[19rem] flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-surface p-6 sm:p-7 ${className}`}
     >
       <h3 className="text-[1.1875rem] font-semibold leading-snug tracking-[-0.017em] text-slate-900">{title}</h3>
       <p className="mt-1.5 max-w-md text-[0.9375rem] leading-relaxed text-slate-500">{text}</p>
-      <div aria-hidden className="mt-auto pt-6">
+      <div aria-hidden className="lift-visual mt-auto pt-6">
         {children}
       </div>
     </Reveal>

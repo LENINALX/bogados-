@@ -23,6 +23,9 @@ const config: Config = {
         sky: scale("sky"),
         blue: scale("blue"),
         violet: scale("violet"),
+        /** Acento dorado de la web pública (igual en ambos temas). `gold-ink` = texto sobre dorado */
+        gold: token("gold"),
+        "gold-ink": token("gold-ink"),
         /** Superficies: tarjetas, inputs, menús */
         surface: token("surface"),
         /** Fondo de la aplicación */
