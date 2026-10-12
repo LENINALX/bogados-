@@ -19,15 +19,15 @@ export function Hero() {
   return (
     <section
       id="inicio"
-      className="hero relative isolate flex min-h-[100svh] flex-col overflow-hidden bg-[#050b16] text-white"
+      className="hero relative isolate flex min-h-[100svh] flex-col overflow-hidden bg-[#0b1311] text-white"
     >
       <HeroBackdrop />
 
       <div className="hero-content relative mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-4 pb-36 pt-28 text-center sm:px-6 sm:pb-48 lg:px-8">
         <p className="hero-eyebrow flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/75 sm:text-xs">
-          <span aria-hidden className="hero-rule hero-rule-left hidden h-px w-12 bg-gold/80 sm:block" />
+          <span aria-hidden className="hero-rule hero-rule-left hidden h-px w-12 bg-accent-light/80 sm:block" />
           Gestión legal para firmas de abogados
-          <span aria-hidden className="hero-rule hero-rule-right hidden h-px w-12 bg-gold/80 sm:block" />
+          <span aria-hidden className="hero-rule hero-rule-right hidden h-px w-12 bg-accent-light/80 sm:block" />
         </p>
 
         <h1 className="mt-6 text-[clamp(2.1rem,4.7vw,4.25rem)] font-bold uppercase leading-[1.06] tracking-[-0.012em]">
@@ -38,7 +38,7 @@ export function Hero() {
           </span>
           <span className="hero-line">
             <span className="hero-line-inner" style={{ animationDelay: "300ms" }}>
-              Tus clientes, <span className="hero-accent text-gold">informados</span>.
+              Tus clientes, <span className="hero-accent text-accent-light">informados</span>.
             </span>
           </span>
         </h1>
@@ -49,7 +49,7 @@ export function Hero() {
         </p>
 
         <div className="hero-rise mt-10 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: "500ms" }}>
-          <Link href="/login" className="btn-gold group rounded-full px-7 py-3.5 text-[0.9375rem] uppercase tracking-[0.06em]">
+          <Link href="/login" className="btn-accent group rounded-full px-7 py-3.5 text-[0.9375rem] uppercase tracking-[0.06em]">
             Acceder a mi firma
             <ArrowRight className="cta-arrow h-4 w-4" aria-hidden />
           </Link>
@@ -57,7 +57,7 @@ export function Hero() {
             href="#demo"
             className="btn group rounded-full border border-white/20 bg-white/10 px-6 py-3.5 text-[0.9375rem] uppercase tracking-[0.06em] text-white backdrop-blur-md hover:border-white/35 hover:bg-white/15"
           >
-            <span className="play-dot flex h-6 w-6 items-center justify-center rounded-full bg-white text-[#050b16]">
+            <span className="play-dot flex h-6 w-6 items-center justify-center rounded-full bg-white text-[#0b1311]">
               <Play className="h-3 w-3 translate-x-[1px] fill-current" aria-hidden />
             </span>
             Ver demostración
@@ -74,16 +74,19 @@ export function Hero() {
   );
 }
 
-/** Capas decorativas. El contenedor exterior hace parallax con el scroll; el interior se asienta al cargar. */
-function HeroBackdrop() {
+/**
+ * Capas decorativas. El contenedor exterior hace parallax con el scroll; el interior se asienta al cargar.
+ * También lo usa el panel de marca del login (`fade={false}`: allí no se funde con la página).
+ */
+export function HeroBackdrop({ fade = true }: { fade?: boolean }) {
   return (
     <div aria-hidden className="hero-parallax pointer-events-none absolute inset-0 -z-10">
       <div className="hero-settle absolute inset-0">
-        {/* Base: azul noche con una zona más clara arriba */}
-        <div className="absolute inset-0 bg-[radial-gradient(120%_85%_at_50%_0%,#163764_0%,#0a1a33_42%,#050b16_100%)]" />
-        {/* Luz cálida, como la de una lámpara de despacho: deriva muy despacio */}
-        <div className="hero-glow absolute -left-[10%] -top-[20%] h-[80%] w-[70%] rounded-full bg-[radial-gradient(closest-side,rgba(242,174,60,0.22),transparent)] blur-2xl" />
-        <div className="absolute -right-[15%] top-[10%] h-[70%] w-[60%] rounded-full bg-[radial-gradient(closest-side,rgba(70,140,230,0.22),transparent)] blur-2xl" />
+        {/* Base: pino casi negro con una zona más clara arriba */}
+        <div className="absolute inset-0 bg-[radial-gradient(120%_85%_at_50%_0%,#24453f_0%,#132723_42%,#0b1311_100%)]" />
+        {/* Luz de arcilla, como la de una lámpara de despacho: deriva muy despacio */}
+        <div className="hero-glow absolute -left-[10%] -top-[20%] h-[80%] w-[70%] rounded-full bg-[radial-gradient(closest-side,rgba(196,110,86,0.26),transparent)] blur-2xl" />
+        <div className="absolute -right-[15%] top-[10%] h-[70%] w-[60%] rounded-full bg-[radial-gradient(closest-side,rgba(98,150,124,0.24),transparent)] blur-2xl" />
 
         {/* Balanza grande, apenas visible */}
         <svg
@@ -110,7 +113,7 @@ function HeroBackdrop() {
         <div className="absolute inset-0 bg-[radial-gradient(90%_70%_at_50%_45%,transparent_40%,rgba(0,0,0,0.55)_100%)]" />
       </div>
       {/* Funde la portada con el fondo de la página, donde se apoya la demostración */}
-      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-canvas" />
+      {fade && <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-canvas" />}
     </div>
   );
 }
@@ -130,7 +133,7 @@ function Columns() {
             <rect x={x - 22} y="96" width="44" height="380" />
             {/* Estrías */}
             {[-12, -4, 4, 12].map((dx) => (
-              <rect key={dx} x={x + dx - 1} y="104" width="2" height="364" fill="#050b16" opacity="0.5" />
+              <rect key={dx} x={x + dx - 1} y="104" width="2" height="364" fill="#0b1311" opacity="0.5" />
             ))}
             <rect x={x - 28} y="476" width="56" height="10" />
             <rect x={x - 34} y="486" width="68" height="12" />

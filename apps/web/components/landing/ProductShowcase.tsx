@@ -77,7 +77,7 @@ export function ProductShowcase() {
             aria-hidden
             className="absolute -inset-x-10 -inset-y-8 -z-10 rounded-[3rem] bg-[radial-gradient(60%_60%_at_50%_40%,rgb(var(--brand-200)/0.55),transparent_70%)] blur-2xl"
           />
-          <div className="overflow-hidden rounded-[22px] border border-slate-200/80 bg-surface shadow-[0_30px_80px_-20px_rgb(15_23_42/0.25),0_1px_2px_rgb(15_23_42/0.06)]">
+          <div className="overflow-hidden rounded-[22px] border border-slate-200/80 bg-surface shadow-[0_30px_80px_-20px_rgb(23_21_17/0.25),0_1px_2px_rgb(23_21_17/0.06)]">
             <div className="flex items-center gap-1.5 border-b border-slate-100 px-4 py-3">
               <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
               <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />

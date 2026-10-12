@@ -13,7 +13,7 @@ export function BottomNav({ links, counts = {} }: { links: NavItem[]; counts?: R
   const pathname = usePathname();
   return (
     <nav aria-label="Principal" className="pb-safe fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
-      <ul className="mx-auto flex max-w-md gap-1 rounded-[24px] bg-rail p-1.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_18px_40px_-12px_rgb(2_6_23/0.55)]">
+      <ul className="mx-auto flex max-w-md gap-1 rounded-[24px] bg-rail p-1.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_18px_40px_-12px_rgb(10_9_7/0.55)]">
         {links.map((l) => {
           const active = isActiveLink(l.href, pathname);
           const count = counts[l.href];

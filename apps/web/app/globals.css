@@ -5,108 +5,115 @@
 /*
  * Tokens de color (R G B). Tailwind los lee en tailwind.config.ts.
  * Tema: sistema por defecto; data-theme="light" | "dark" en <html> lo fuerza.
- * Valores generados a partir de la paleta de Tailwind (claro) y ajustados para oscuro.
+ * Paleta Bogados: Pergamino, Marfil, Tinta, Pino, Arcilla y Salvia. Cada escala se genera
+ * mezclando el color base con Marfil (tonos claros) y con Tinta (oscuros), con contrastes
+ * WCAG comprobados. Roles, valores y reglas de uso: docs/paleta-de-colores.md
  */
 :root {
   color-scheme: light;
-  --slate-50: 248 250 252;
-  --slate-100: 241 245 249;
-  --slate-200: 226 232 240;
-  --slate-300: 203 213 225;
-  --slate-400: 148 163 184;
-  --slate-500: 100 116 139;
-  --slate-600: 71 85 105;
-  --slate-700: 51 65 85;
-  --slate-800: 30 41 59;
-  --slate-900: 15 23 42;
-  --slate-950: 2 6 23;
-  --brand-50: 240 244 248;
-  --brand-100: 217 226 236;
-  --brand-200: 188 204 220;
-  --brand-300: 159 179 200;
-  --brand-400: 98 125 152;
-  --brand-500: 36 59 83;
-  --brand-600: 16 42 67;
-  --brand-700: 30 75 125;
-  --brand-800: 10 25 41;
-  --brand-900: 10 25 41;
-  --brand-950: 6 16 27;
-  --red-50: 254 242 242;
-  --red-100: 254 226 226;
-  --red-200: 254 202 202;
-  --red-300: 252 165 165;
-  --red-400: 248 113 113;
-  --red-500: 239 68 68;
-  --red-600: 220 38 38;
-  --red-700: 185 28 28;
-  --red-800: 153 27 27;
-  --red-900: 127 29 29;
-  --red-950: 69 10 10;
-  --emerald-50: 236 253 245;
-  --emerald-100: 209 250 229;
-  --emerald-200: 167 243 208;
-  --emerald-300: 110 231 183;
-  --emerald-400: 52 211 153;
-  --emerald-500: 16 185 129;
-  --emerald-600: 5 150 105;
-  --emerald-700: 4 120 87;
-  --emerald-800: 6 95 70;
-  --emerald-900: 6 78 59;
-  --emerald-950: 2 44 34;
-  --amber-50: 255 251 235;
-  --amber-100: 254 243 199;
-  --amber-200: 253 230 138;
-  --amber-300: 252 211 77;
-  --amber-400: 251 191 36;
-  --amber-500: 245 158 11;
-  --amber-600: 217 119 6;
-  --amber-700: 180 83 9;
-  --amber-800: 146 64 14;
-  --amber-900: 120 53 15;
-  --amber-950: 69 26 3;
-  --sky-50: 240 249 255;
-  --sky-100: 224 242 254;
-  --sky-200: 186 230 253;
-  --sky-300: 125 211 252;
-  --sky-400: 56 189 248;
-  --sky-500: 14 165 233;
-  --sky-600: 2 132 199;
-  --sky-700: 3 105 161;
-  --sky-800: 7 89 133;
-  --sky-900: 12 74 110;
-  --sky-950: 8 47 73;
-  --blue-50: 239 246 255;
-  --blue-100: 219 234 254;
-  --blue-200: 191 219 254;
-  --blue-300: 147 197 253;
-  --blue-400: 96 165 250;
-  --blue-500: 59 130 246;
-  --blue-600: 37 99 235;
-  --blue-700: 29 78 216;
-  --blue-800: 30 64 175;
-  --blue-900: 30 58 138;
-  --blue-950: 23 37 84;
-  --violet-50: 245 243 255;
-  --violet-100: 237 233 254;
-  --violet-200: 221 214 254;
-  --violet-300: 196 181 253;
-  --violet-400: 167 139 250;
-  --violet-500: 139 92 246;
-  --violet-600: 124 58 237;
-  --violet-700: 109 40 217;
-  --violet-800: 91 33 182;
-  --violet-900: 76 29 149;
-  --violet-950: 46 16 101;
-  --surface: 255 255 255;
-  --canvas: 248 250 252;
-  /* Armazón de la app: fondo gris donde flotan los paneles, riel oscuro y relieve */
-  --shell: 228 231 236;
-  --rail: 22 30 43;
-  --raised: 255 255 255;
-  --glass-edge: rgb(255 255 255 / 0.8);
-  /* Acento dorado: no cambia con el tema (los bloques oscuros no lo redefinen) */
-  --gold: 242 174 60;
-  --gold-ink: 33 22 4;
+  --slate-50: 245 243 238;
+  --slate-100: 237 235 230;
+  --slate-200: 225 223 218;
+  --slate-300: 204 202 197;
+  --slate-400: 138 136 131;
+  --slate-500: 105 103 99;
+  --slate-600: 83 81 76;
+  --slate-700: 64 62 58;
+  --slate-800: 46 44 40;
+  --slate-900: 23 21 17;
+  --slate-950: 14 13 10;
+  --brand-50: 239 239 234;
+  --brand-100: 223 225 220;
+  --brand-200: 197 203 198;
+  --brand-300: 159 171 166;
+  --brand-400: 106 125 120;
+  --brand-500: 62 87 82;
+  --brand-600: 31 61 56;
+  --brand-700: 31 61 56;
+  --brand-800: 28 47 42;
+  --brand-900: 27 43 38;
+  --brand-950: 25 32 28;
+  --red-50: 246 239 234;
+  --red-100: 240 227 221;
+  --red-200: 228 206 199;
+  --red-300: 212 176 167;
+  --red-400: 189 134 123;
+  --red-500: 169 99 86;
+  --red-600: 156 74 60;
+  --red-700: 127 62 51;
+  --red-800: 100 52 42;
+  --red-900: 79 43 35;
+  --red-950: 60 36 29;
+  --emerald-50: 241 241 235;
+  --emerald-100: 227 231 224;
+  --emerald-200: 205 214 205;
+  --emerald-300: 173 190 178;
+  --emerald-400: 127 156 140;
+  --emerald-500: 89 127 108;
+  --emerald-600: 63 107 86;
+  --emerald-700: 54 88 71;
+  --emerald-800: 46 71 57;
+  --emerald-900: 40 57 46;
+  --emerald-950: 34 45 36;
+  --amber-50: 247 242 233;
+  --amber-100: 241 233 219;
+  --amber-200: 231 218 194;
+  --amber-300: 217 196 160;
+  --amber-400: 197 166 111;
+  --amber-500: 180 140 70;
+  --amber-600: 168 122 42;
+  --amber-700: 136 100 36;
+  --amber-800: 107 80 32;
+  --amber-900: 84 63 28;
+  --amber-950: 64 49 24;
+  --sky-50: 241 241 238;
+  --sky-100: 227 230 229;
+  --sky-200: 205 211 214;
+  --sky-300: 173 185 193;
+  --sky-400: 127 148 164;
+  --sky-500: 89 117 139;
+  --sky-600: 63 95 122;
+  --sky-700: 54 79 99;
+  --sky-800: 46 64 78;
+  --sky-900: 40 52 61;
+  --sky-950: 34 42 46;
+  --blue-50: 241 241 238;
+  --blue-100: 227 230 229;
+  --blue-200: 205 211 214;
+  --blue-300: 173 185 193;
+  --blue-400: 127 148 164;
+  --blue-500: 89 117 139;
+  --blue-600: 63 95 122;
+  --blue-700: 54 79 99;
+  --blue-800: 46 64 78;
+  --blue-900: 40 52 61;
+  --blue-950: 34 42 46;
+  --violet-50: 243 240 237;
+  --violet-100: 233 227 227;
+  --violet-200: 216 206 210;
+  --violet-300: 191 177 187;
+  --violet-400: 156 135 154;
+  --violet-500: 126 100 126;
+  --violet-600: 106 76 107;
+  --violet-700: 88 64 87;
+  --violet-800: 71 53 69;
+  --violet-900: 58 44 55;
+  --violet-950: 46 36 42;
+  --surface: 252 250 245;
+  --canvas: 244 239 228;
+  /* Armazón de la app: fondo donde flotan los paneles, riel oscuro y relieve */
+  --shell: 233 228 217;
+  --rail: 23 21 17;
+  --raised: 252 250 245;
+  --glass-edge: rgb(255 253 248 / 0.8);
+  /*
+   * Acento Arcilla (#9C4A3C): igual en ambos temas (los bloques oscuros no lo redefinen).
+   * accent-light: la misma arcilla aclarada para texto sobre fondos oscuros (portada, login).
+   * accent-ink: texto sobre botones de acento (Marfil).
+   */
+  --accent: 156 74 60;
+  --accent-light: 214 145 122;
+  --accent-ink: 252 250 245;
 
   /* Identidad de movimiento de la web pública (personalidad «premium») */
   --ease-premium: cubic-bezier(0.22, 1, 0.36, 1); /* curva firma: salida suave, sin rebote */
@@ -119,199 +126,199 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --slate-50: 11 17 32;
-    --slate-100: 22 32 51;
-    --slate-200: 36 48 71;
-    --slate-300: 51 65 85;
-    --slate-400: 124 138 160;
-    --slate-500: 148 163 184;
-    --slate-600: 180 192 208;
-    --slate-700: 203 213 225;
-    --slate-800: 226 232 240;
-    --slate-900: 241 245 249;
-    --slate-950: 248 250 252;
-    --brand-50: 15 29 46;
-    --brand-100: 22 40 62;
-    --brand-200: 31 58 89;
-    --brand-300: 45 82 128;
-    --brand-400: 91 136 191;
-    --brand-500: 122 167 220;
-    --brand-600: 47 98 160;
-    --brand-700: 143 182 230;
-    --brand-800: 61 114 180;
-    --brand-900: 232 238 246;
-    --brand-950: 244 247 251;
-    --red-50: 69 10 10;
-    --red-100: 127 29 29;
-    --red-200: 153 27 27;
-    --red-300: 185 28 28;
-    --red-400: 220 38 38;
-    --red-500: 239 68 68;
-    --red-600: 248 113 113;
-    --red-700: 252 165 165;
-    --red-800: 254 202 202;
-    --red-900: 254 226 226;
-    --red-950: 254 242 242;
-    --emerald-50: 2 44 34;
-    --emerald-100: 6 78 59;
-    --emerald-200: 6 95 70;
-    --emerald-300: 4 120 87;
-    --emerald-400: 5 150 105;
-    --emerald-500: 16 185 129;
-    --emerald-600: 52 211 153;
-    --emerald-700: 110 231 183;
-    --emerald-800: 167 243 208;
-    --emerald-900: 209 250 229;
-    --emerald-950: 236 253 245;
-    --amber-50: 69 26 3;
-    --amber-100: 120 53 15;
-    --amber-200: 146 64 14;
-    --amber-300: 180 83 9;
-    --amber-400: 217 119 6;
-    --amber-500: 245 158 11;
-    --amber-600: 251 191 36;
-    --amber-700: 252 211 77;
-    --amber-800: 253 230 138;
-    --amber-900: 254 243 199;
-    --amber-950: 255 251 235;
-    --sky-50: 8 47 73;
-    --sky-100: 12 74 110;
-    --sky-200: 7 89 133;
-    --sky-300: 3 105 161;
-    --sky-400: 2 132 199;
-    --sky-500: 14 165 233;
-    --sky-600: 56 189 248;
-    --sky-700: 125 211 252;
-    --sky-800: 186 230 253;
-    --sky-900: 224 242 254;
-    --sky-950: 240 249 255;
-    --blue-50: 23 37 84;
-    --blue-100: 30 58 138;
-    --blue-200: 30 64 175;
-    --blue-300: 29 78 216;
-    --blue-400: 37 99 235;
-    --blue-500: 59 130 246;
-    --blue-600: 96 165 250;
-    --blue-700: 147 197 253;
-    --blue-800: 191 219 254;
-    --blue-900: 219 234 254;
-    --blue-950: 239 246 255;
-    --violet-50: 46 16 101;
-    --violet-100: 76 29 149;
-    --violet-200: 91 33 182;
-    --violet-300: 109 40 217;
-    --violet-400: 124 58 237;
-    --violet-500: 139 92 246;
-    --violet-600: 167 139 250;
-    --violet-700: 196 181 253;
-    --violet-800: 221 214 254;
-    --violet-900: 237 233 254;
-    --violet-950: 245 243 255;
-    --surface: 17 26 43;
-    --canvas: 11 17 32;
-    --shell: 6 10 18;
-    --rail: 30 42 62;
-    --raised: 30 42 64;
-    --glass-edge: rgb(255 255 255 / 0.06);
+    --slate-50: 22 20 17;
+    --slate-100: 33 31 28;
+    --slate-200: 46 44 40;
+    --slate-300: 64 62 57;
+    --slate-400: 122 119 112;
+    --slate-500: 155 151 144;
+    --slate-600: 184 180 171;
+    --slate-700: 206 202 192;
+    --slate-800: 224 219 209;
+    --slate-900: 244 239 228;
+    --slate-950: 252 250 245;
+    --brand-50: 28 30 27;
+    --brand-100: 30 35 31;
+    --brand-200: 34 41 37;
+    --brand-300: 38 49 45;
+    --brand-400: 45 61 57;
+    --brand-500: 91 110 104;
+    --brand-600: 46 90 81;
+    --brand-700: 147 194 178;
+    --brand-800: 56 106 96;
+    --brand-900: 248 244 236;
+    --brand-950: 252 250 245;
+    --red-50: 43 29 24;
+    --red-100: 54 33 27;
+    --red-200: 68 38 32;
+    --red-300: 84 45 37;
+    --red-400: 110 56 45;
+    --red-500: 172 104 90;
+    --red-600: 188 133 120;
+    --red-700: 204 165 152;
+    --red-800: 219 193 181;
+    --red-900: 231 214 203;
+    --red-950: 238 227 216;
+    --emerald-50: 29 34 28;
+    --emerald-100: 32 41 34;
+    --emerald-200: 36 50 40;
+    --emerald-300: 41 60 49;
+    --emerald-400: 49 77 63;
+    --emerald-500: 96 131 112;
+    --emerald-600: 128 155 137;
+    --emerald-700: 163 180 164;
+    --emerald-800: 193 202 188;
+    --emerald-900: 217 219 207;
+    --emerald-950: 231 230 218;
+    --amber-50: 45 36 21;
+    --amber-100: 57 44 23;
+    --amber-200: 72 55 26;
+    --amber-300: 89 67 28;
+    --amber-400: 118 87 34;
+    --amber-500: 182 143 75;
+    --amber-600: 195 164 109;
+    --amber-700: 210 186 144;
+    --amber-800: 223 206 176;
+    --amber-900: 233 221 200;
+    --amber-950: 239 231 215;
+    --sky-50: 29 32 34;
+    --sky-100: 32 38 42;
+    --sky-200: 36 46 53;
+    --sky-300: 41 54 65;
+    --sky-400: 49 70 86;
+    --sky-500: 96 121 141;
+    --sky-600: 128 147 160;
+    --sky-700: 163 174 180;
+    --sky-800: 193 199 198;
+    --sky-900: 217 217 212;
+    --sky-950: 231 229 221;
+    --blue-50: 29 32 34;
+    --blue-100: 32 38 42;
+    --blue-200: 36 46 53;
+    --blue-300: 41 54 65;
+    --blue-400: 49 70 86;
+    --blue-500: 96 121 141;
+    --blue-600: 128 147 160;
+    --blue-700: 163 174 180;
+    --blue-800: 193 199 198;
+    --blue-900: 217 217 212;
+    --blue-950: 231 229 221;
+    --violet-50: 35 29 31;
+    --violet-100: 42 33 39;
+    --violet-200: 51 39 48;
+    --violet-300: 61 46 58;
+    --violet-400: 77 57 76;
+    --violet-500: 131 105 129;
+    --violet-600: 156 135 151;
+    --violet-700: 182 166 174;
+    --violet-800: 205 193 194;
+    --violet-900: 223 215 210;
+    --violet-950: 234 228 220;
+    --surface: 31 28 24;
+    --canvas: 22 20 17;
+    --shell: 15 14 11;
+    --rail: 42 38 32;
+    --raised: 44 40 35;
+    --glass-edge: rgb(255 253 248 / 0.06);
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --slate-50: 11 17 32;
-  --slate-100: 22 32 51;
-  --slate-200: 36 48 71;
-  --slate-300: 51 65 85;
-  --slate-400: 124 138 160;
-  --slate-500: 148 163 184;
-  --slate-600: 180 192 208;
-  --slate-700: 203 213 225;
-  --slate-800: 226 232 240;
-  --slate-900: 241 245 249;
-  --slate-950: 248 250 252;
-  --brand-50: 15 29 46;
-  --brand-100: 22 40 62;
-  --brand-200: 31 58 89;
-  --brand-300: 45 82 128;
-  --brand-400: 91 136 191;
-  --brand-500: 122 167 220;
-  --brand-600: 47 98 160;
-  --brand-700: 143 182 230;
-  --brand-800: 61 114 180;
-  --brand-900: 232 238 246;
-  --brand-950: 244 247 251;
-  --red-50: 69 10 10;
-  --red-100: 127 29 29;
-  --red-200: 153 27 27;
-  --red-300: 185 28 28;
-  --red-400: 220 38 38;
-  --red-500: 239 68 68;
-  --red-600: 248 113 113;
-  --red-700: 252 165 165;
-  --red-800: 254 202 202;
-  --red-900: 254 226 226;
-  --red-950: 254 242 242;
-  --emerald-50: 2 44 34;
-  --emerald-100: 6 78 59;
-  --emerald-200: 6 95 70;
-  --emerald-300: 4 120 87;
-  --emerald-400: 5 150 105;
-  --emerald-500: 16 185 129;
-  --emerald-600: 52 211 153;
-  --emerald-700: 110 231 183;
-  --emerald-800: 167 243 208;
-  --emerald-900: 209 250 229;
-  --emerald-950: 236 253 245;
-  --amber-50: 69 26 3;
-  --amber-100: 120 53 15;
-  --amber-200: 146 64 14;
-  --amber-300: 180 83 9;
-  --amber-400: 217 119 6;
-  --amber-500: 245 158 11;
-  --amber-600: 251 191 36;
-  --amber-700: 252 211 77;
-  --amber-800: 253 230 138;
-  --amber-900: 254 243 199;
-  --amber-950: 255 251 235;
-  --sky-50: 8 47 73;
-  --sky-100: 12 74 110;
-  --sky-200: 7 89 133;
-  --sky-300: 3 105 161;
-  --sky-400: 2 132 199;
-  --sky-500: 14 165 233;
-  --sky-600: 56 189 248;
-  --sky-700: 125 211 252;
-  --sky-800: 186 230 253;
-  --sky-900: 224 242 254;
-  --sky-950: 240 249 255;
-  --blue-50: 23 37 84;
-  --blue-100: 30 58 138;
-  --blue-200: 30 64 175;
-  --blue-300: 29 78 216;
-  --blue-400: 37 99 235;
-  --blue-500: 59 130 246;
-  --blue-600: 96 165 250;
-  --blue-700: 147 197 253;
-  --blue-800: 191 219 254;
-  --blue-900: 219 234 254;
-  --blue-950: 239 246 255;
-  --violet-50: 46 16 101;
-  --violet-100: 76 29 149;
-  --violet-200: 91 33 182;
-  --violet-300: 109 40 217;
-  --violet-400: 124 58 237;
-  --violet-500: 139 92 246;
-  --violet-600: 167 139 250;
-  --violet-700: 196 181 253;
-  --violet-800: 221 214 254;
-  --violet-900: 237 233 254;
-  --violet-950: 245 243 255;
-  --surface: 17 26 43;
-  --canvas: 11 17 32;
-  --shell: 6 10 18;
-  --rail: 30 42 62;
-  --raised: 30 42 64;
-  --glass-edge: rgb(255 255 255 / 0.06);
+  --slate-50: 22 20 17;
+  --slate-100: 33 31 28;
+  --slate-200: 46 44 40;
+  --slate-300: 64 62 57;
+  --slate-400: 122 119 112;
+  --slate-500: 155 151 144;
+  --slate-600: 184 180 171;
+  --slate-700: 206 202 192;
+  --slate-800: 224 219 209;
+  --slate-900: 244 239 228;
+  --slate-950: 252 250 245;
+  --brand-50: 28 30 27;
+  --brand-100: 30 35 31;
+  --brand-200: 34 41 37;
+  --brand-300: 38 49 45;
+  --brand-400: 45 61 57;
+  --brand-500: 91 110 104;
+  --brand-600: 46 90 81;
+  --brand-700: 147 194 178;
+  --brand-800: 56 106 96;
+  --brand-900: 248 244 236;
+  --brand-950: 252 250 245;
+  --red-50: 43 29 24;
+  --red-100: 54 33 27;
+  --red-200: 68 38 32;
+  --red-300: 84 45 37;
+  --red-400: 110 56 45;
+  --red-500: 172 104 90;
+  --red-600: 188 133 120;
+  --red-700: 204 165 152;
+  --red-800: 219 193 181;
+  --red-900: 231 214 203;
+  --red-950: 238 227 216;
+  --emerald-50: 29 34 28;
+  --emerald-100: 32 41 34;
+  --emerald-200: 36 50 40;
+  --emerald-300: 41 60 49;
+  --emerald-400: 49 77 63;
+  --emerald-500: 96 131 112;
+  --emerald-600: 128 155 137;
+  --emerald-700: 163 180 164;
+  --emerald-800: 193 202 188;
+  --emerald-900: 217 219 207;
+  --emerald-950: 231 230 218;
+  --amber-50: 45 36 21;
+  --amber-100: 57 44 23;
+  --amber-200: 72 55 26;
+  --amber-300: 89 67 28;
+  --amber-400: 118 87 34;
+  --amber-500: 182 143 75;
+  --amber-600: 195 164 109;
+  --amber-700: 210 186 144;
+  --amber-800: 223 206 176;
+  --amber-900: 233 221 200;
+  --amber-950: 239 231 215;
+  --sky-50: 29 32 34;
+  --sky-100: 32 38 42;
+  --sky-200: 36 46 53;
+  --sky-300: 41 54 65;
+  --sky-400: 49 70 86;
+  --sky-500: 96 121 141;
+  --sky-600: 128 147 160;
+  --sky-700: 163 174 180;
+  --sky-800: 193 199 198;
+  --sky-900: 217 217 212;
+  --sky-950: 231 229 221;
+  --blue-50: 29 32 34;
+  --blue-100: 32 38 42;
+  --blue-200: 36 46 53;
+  --blue-300: 41 54 65;
+  --blue-400: 49 70 86;
+  --blue-500: 96 121 141;
+  --blue-600: 128 147 160;
+  --blue-700: 163 174 180;
+  --blue-800: 193 199 198;
+  --blue-900: 217 217 212;
+  --blue-950: 231 229 221;
+  --violet-50: 35 29 31;
+  --violet-100: 42 33 39;
+  --violet-200: 51 39 48;
+  --violet-300: 61 46 58;
+  --violet-400: 77 57 76;
+  --violet-500: 131 105 129;
+  --violet-600: 156 135 151;
+  --violet-700: 182 166 174;
+  --violet-800: 205 193 194;
+  --violet-900: 223 215 210;
+  --violet-950: 234 228 220;
+  --surface: 31 28 24;
+  --canvas: 22 20 17;
+  --shell: 15 14 11;
+  --rail: 42 38 32;
+  --raised: 44 40 35;
+  --glass-edge: rgb(255 253 248 / 0.06);
 }
 
 @layer base {
@@ -376,14 +383,14 @@
     @apply rounded-lg px-3 py-1.5 text-xs;
   }
 
-  /* ── Botón dorado ─────────────────────────── */
-  .btn-gold {
-    @apply btn bg-gold font-bold text-gold-ink shadow-lg shadow-gold/20 hover:brightness-105;
+  /* ── Botón de acento (Arcilla) ─────────────── */
+  .btn-accent {
+    @apply btn bg-accent font-bold text-accent-ink shadow-lg shadow-accent/25 hover:brightness-110;
     position: relative;
     overflow: hidden;
   }
   /* Brillo que cruza el botón al pasar el cursor */
-  .btn-gold::after {
+  .btn-accent::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -392,7 +399,7 @@
     pointer-events: none;
   }
   @media (hover: hover) {
-    .btn-gold:hover::after {
+    .btn-accent:hover::after {
       transform: translateX(120%);
       transition: transform 750ms var(--ease-premium);
     }
@@ -486,8 +493,8 @@
   border: 1px solid rgb(var(--slate-200) / 0.7);
   box-shadow:
     inset 0 1px 0 var(--glass-edge),
-    0 1px 2px rgb(15 23 42 / 0.05),
-    0 18px 40px -22px rgb(15 23 42 / 0.35);
+    0 1px 2px rgb(23 21 17 / 0.05),
+    0 18px 40px -22px rgb(23 21 17 / 0.35);
   backdrop-filter: blur(24px) saturate(150%);
   -webkit-backdrop-filter: blur(24px) saturate(150%);
 }
@@ -514,7 +521,7 @@
 .shell-inset {
   background: rgb(var(--slate-900) / 0.035);
   border: 1px solid rgb(var(--slate-900) / 0.05);
-  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.06);
+  box-shadow: inset 0 1px 2px rgb(23 21 17 / 0.06);
 }
 
 /* Enlaces de la barra lateral: el activo es una píldora en relieve */
@@ -537,8 +544,8 @@
   box-shadow:
     inset 0 1px 0 var(--glass-edge),
     0 0 0 1px rgb(var(--slate-900) / 0.04),
-    0 1px 2px rgb(15 23 42 / 0.08),
-    0 10px 24px -12px rgb(15 23 42 / 0.32);
+    0 1px 2px rgb(23 21 17 / 0.08),
+    0 10px 24px -12px rgb(23 21 17 / 0.32);
 }
 
 /* Teclas del riel oscuro */
@@ -605,6 +612,62 @@
     opacity 180ms ease,
     transform 260ms var(--ease-exit),
     visibility 0s linear 260ms;
+}
+
+/* ── Pantallas de acceso (login, recuperar, restablecer) ─ */
+/* Campos amplios y hundidos; al enfocar se iluminan y suben a la superficie */
+.auth-form .label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgb(var(--slate-600));
+}
+.auth-form .input {
+  height: 3rem;
+  border-radius: 1rem;
+  padding-inline: 1rem;
+  font-size: 0.9375rem;
+  background: rgb(var(--slate-900) / 0.03);
+  border-color: rgb(var(--slate-900) / 0.09);
+  box-shadow: inset 0 1px 2px rgb(23 21 17 / 0.05);
+  transition:
+    background-color var(--dur-quick) ease,
+    border-color var(--dur-quick) ease,
+    box-shadow 260ms var(--ease-premium);
+}
+.auth-form .input:hover {
+  border-color: rgb(var(--slate-900) / 0.18);
+}
+.auth-form .input:focus {
+  background: rgb(var(--surface));
+  border-color: rgb(var(--brand-600));
+  box-shadow: 0 0 0 4px rgb(var(--brand-600) / 0.14);
+}
+.auth-form .input.has-icon {
+  padding-left: 2.75rem;
+}
+.auth-form .btn-primary {
+  height: 3rem;
+  border-radius: 1rem;
+  font-size: 0.9375rem;
+}
+/* Error: 2–3 oscilaciones cortas, sin rebote final (firme) */
+.auth-shake {
+  animation: auth-shake 380ms ease-in-out;
+}
+@keyframes auth-shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translateX(-10px);
+  }
+  45% {
+    transform: translateX(8px);
+  }
+  70% {
+    transform: translateX(-4px);
+  }
 }
 
 /* ── Landing ─────────────────────────────── */
@@ -677,7 +740,7 @@
 @media (hover: hover) {
   .lift:hover {
     transform: translateY(-4px);
-    box-shadow: 0 24px 48px -24px rgb(15 23 42 / 0.28);
+    box-shadow: 0 24px 48px -24px rgb(23 21 17 / 0.28);
   }
   .lift:hover .lift-visual {
     transform: scale(1.02);
@@ -763,7 +826,7 @@
   bottom: 0.02em;
   height: 0.07em;
   border-radius: 999px;
-  background: rgb(var(--gold));
+  background: rgb(var(--accent-light));
   transform-origin: left;
 }
 .hero-grain {
@@ -926,7 +989,7 @@
   .group:hover .play-dot {
     transform: none;
   }
-  .btn-gold::after {
+  .btn-accent::after {
     display: none;
   }
   .app-main,
@@ -942,6 +1005,10 @@
   .side-link:active,
   .rail-key:active {
     transform: none;
+  }
+  /* El error se comunica con el mensaje y el color; sin sacudida */
+  .auth-shake {
+    animation: none;
   }
   .segmented-thumb {
     transition-duration: 1ms;

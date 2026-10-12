@@ -79,7 +79,7 @@ export function LandingNav() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <Link href="/login" className="btn-gold btn-sm group rounded-full px-4">
+          <Link href="/login" className="btn-accent btn-sm group rounded-full px-4">
             Iniciar sesión
             <ArrowRight className="cta-arrow hidden h-3.5 w-3.5 sm:block" aria-hidden />
           </Link>

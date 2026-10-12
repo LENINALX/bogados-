@@ -80,7 +80,7 @@ export function UserMenu({
           aria-label={`Cuenta de ${user.name}`}
           className="flex w-full min-w-0 items-center gap-3 rounded-2xl p-1.5 text-left transition-[background-color,transform] duration-150 ease-out hover:bg-slate-900/[0.04] active:scale-[0.98]"
         >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#3a4558,#121925)] text-sm font-semibold text-white shadow-md shadow-black/25 ring-2 ring-[rgb(var(--raised))]">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#2e5750,#1f3d38)] text-sm font-semibold text-white shadow-md shadow-black/25 ring-2 ring-[rgb(var(--raised))]">
             {initials(user.name)}
           </span>
           <span className="min-w-0 leading-tight">

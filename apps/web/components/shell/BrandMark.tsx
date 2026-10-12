@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Scale } from "lucide-react";
 
-/** Logotipo: balanza sobre el azul de la firma + nombre. `light` para fondos oscuros (portada). */
+/** Logotipo: balanza sobre el Pino de la firma + nombre. `light` para fondos oscuros (portada). */
 export function BrandMark({
   href = "/",
   compact = false,

@@ -140,7 +140,7 @@ function Rail({
       <div className="shell-capsule flex min-h-0 flex-1 flex-col items-center gap-4 rounded-[26px] p-1.5">
         <nav
           aria-label="Secciones"
-          className="flex w-full shrink-0 flex-col items-center gap-1.5 rounded-[22px] bg-rail px-1.5 py-2.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_12px_28px_-12px_rgb(2_6_23/0.55)]"
+          className="flex w-full shrink-0 flex-col items-center gap-1.5 rounded-[22px] bg-rail px-1.5 py-2.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_12px_28px_-12px_rgb(10_9_7/0.55)]"
         >
           <Link
             href={home}

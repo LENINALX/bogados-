@@ -53,7 +53,7 @@ export function StatTile({
       {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
     </>
   );
-  const cls = `block rounded-[22px] border p-5 shadow-[inset_0_1px_0_var(--glass-edge),0_1px_2px_rgb(15_23_42/0.05),0_12px_28px_-18px_rgb(15_23_42/0.3)] ${
+  const cls = `block rounded-[22px] border p-5 shadow-[inset_0_1px_0_var(--glass-edge),0_1px_2px_rgb(23_21_17/0.05),0_12px_28px_-18px_rgb(23_21_17/0.3)] ${
     tone === "critical" && value > 0 ? "border-red-200 bg-red-50/40" : "border-slate-200 bg-surface"
   } ${href ? "transition hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-md" : ""}`;
   return href ? (
@@ -174,17 +174,17 @@ const APPOINTMENT_LABELS = {
   cancelada: "Canceladas",
 } as const;
 const APPOINTMENT_COLORS = {
-  pendiente: "#eda100",
-  confirmada: "#2a78d6",
-  completada: "#1baf7a",
-  cancelada: "#d9534f",
+  pendiente: "#b8862e",
+  confirmada: "#4f7391",
+  completada: "#4a7a63",
+  cancelada: "#b05646",
 } as const;
-/** Tinta de los números dentro de cada tramo: el blanco no llega a 4.5:1 sobre ámbar, verde y rojo. */
+/** Tinta de los números dentro de cada tramo (≥4.5:1 con su relleno). */
 const APPOINTMENT_INK = {
-  pendiente: "#0b0b0b",
+  pendiente: "#171511",
   confirmada: "#ffffff",
-  completada: "#0b0b0b",
-  cancelada: "#0b0b0b",
+  completada: "#ffffff",
+  cancelada: "#ffffff",
 } as const;
 
 export function LawyerAppointmentsChart({ rows }: { rows: LawyerAppointmentsRow[] }) {

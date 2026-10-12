@@ -15,17 +15,19 @@ const config: Config = {
     extend: {
       colors: {
         slate: scale("slate"),
-        /** Azul de la firma. 600 = fondos con texto blanco · 700 = texto y enlaces */
+        /** Pino, el color de la firma. 600 = fondos con texto blanco · 700 = texto y enlaces */
         brand: scale("brand"),
+        /** Escalas semánticas con nombre de Tailwind pero tonos de la paleta (ver docs/paleta-de-colores.md) */
         red: scale("red"),
         emerald: scale("emerald"),
         amber: scale("amber"),
         sky: scale("sky"),
         blue: scale("blue"),
         violet: scale("violet"),
-        /** Acento dorado de la web pública (igual en ambos temas). `gold-ink` = texto sobre dorado */
-        gold: token("gold"),
-        "gold-ink": token("gold-ink"),
+        /** Acento Arcilla (igual en ambos temas). `accent-light`: texto sobre fondos oscuros · `accent-ink`: texto sobre el acento */
+        accent: token("accent"),
+        "accent-light": token("accent-light"),
+        "accent-ink": token("accent-ink"),
         /** Armazón de la app: fondo donde flotan los paneles y riel oscuro de navegación */
         shell: token("shell"),
         rail: token("rail"),

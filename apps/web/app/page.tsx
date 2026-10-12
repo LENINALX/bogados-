@@ -26,7 +26,7 @@ const SECURITY = [
 function SectionHeading({ eyebrow, title, text, light = false }: { eyebrow: string; title: string; text?: string; light?: boolean }) {
   return (
     <Reveal className="mx-auto max-w-3xl text-center">
-      <p className={`text-sm font-semibold ${light ? "text-gold" : "text-brand-700"}`}>{eyebrow}</p>
+      <p className={`text-sm font-semibold ${light ? "text-accent-light" : "text-brand-700"}`}>{eyebrow}</p>
       <h2
         className={`mt-3 text-balance text-[clamp(2rem,4.5vw,3.25rem)] font-semibold leading-[1.06] tracking-[-0.035em] ${
           light ? "text-white" : "text-brand-900"
@@ -86,7 +86,7 @@ export default async function HomePage() {
               {/* Línea que une los pasos en escritorio */}
               <Reveal
                 variant="line"
-                className="absolute left-[16.6%] right-[16.6%] top-7 hidden h-px bg-gradient-to-r from-brand-200 via-gold/70 to-brand-200 md:block"
+                className="absolute left-[16.6%] right-[16.6%] top-7 hidden h-px bg-gradient-to-r from-brand-200 via-accent/50 to-brand-200 md:block"
               >
                 {null}
               </Reveal>
@@ -104,10 +104,10 @@ export default async function HomePage() {
         </section>
 
         {/* Seguridad: banda oscura en ambos temas */}
-        <section id="seguridad" className="relative scroll-mt-16 overflow-hidden border-y border-white/5 bg-[#08111f] py-20 text-white sm:py-28">
+        <section id="seguridad" className="relative scroll-mt-16 overflow-hidden border-y border-white/5 bg-[#0f1a17] py-20 text-white sm:py-28">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(45%_55%_at_50%_0%,rgba(56,130,220,0.28),transparent_70%)]"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(45%_55%_at_50%_0%,rgba(63,107,86,0.42),transparent_70%)]"
           />
           <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <SectionHeading
@@ -124,7 +124,7 @@ export default async function HomePage() {
                   delay={i * 70}
                   className="lift rounded-[24px] border border-white/10 bg-white/[0.04] p-6 hover:border-white/20"
                 >
-                  <span className="pop-in flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-gold">
+                  <span className="pop-in flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-accent-light">
                     <Icon className="h-5 w-5" aria-hidden />
                   </span>
                   <h3 className="mt-4 font-semibold tracking-[-0.01em] text-white">{title}</h3>
@@ -143,7 +143,7 @@ export default async function HomePage() {
             </h2>
             <p className="mt-4 text-lg text-slate-500">Entra con el código de tu firma, tu email y tu contraseña.</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/login" className="btn-gold group rounded-full px-7 py-3.5 text-[0.9375rem] uppercase tracking-[0.06em]">
+              <Link href="/login" className="btn-accent group rounded-full px-7 py-3.5 text-[0.9375rem] uppercase tracking-[0.06em]">
                 Iniciar sesión
                 <ArrowRight className="cta-arrow h-4 w-4" aria-hidden />
               </Link>
