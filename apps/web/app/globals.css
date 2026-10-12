@@ -422,6 +422,67 @@
   }
 }
 
+/* ── Landing ─────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.landing) {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Aparición al hacer scroll. Sin JavaScript el contenido se ve tal cual. */
+@media (scripting: enabled) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 700ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .reveal[data-shown="true"] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * Control segmentado y cambio de vista: curva sin rebote (equivalente a un muelle
+ * críticamente amortiguado). Las transiciones CSS parten del valor actual, así que
+ * se puede cambiar de opción a mitad de movimiento sin saltos.
+ */
+.segmented-thumb {
+  transition: transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.showcase-panel {
+  transition:
+    opacity 260ms ease,
+    transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.showcase-panel[data-active="false"] {
+  opacity: 0;
+  transform: scale(0.985);
+  pointer-events: none;
+}
+
+/* La vista previa se endereza al subir con el scroll (solo navegadores con scroll-driven animations) */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .showcase-tilt {
+      animation: showcase-tilt linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 42%;
+      transform-origin: 50% 100%;
+    }
+  }
+}
+@keyframes showcase-tilt {
+  from {
+    transform: perspective(1800px) rotateX(10deg) scale(0.96);
+  }
+  to {
+    transform: none;
+  }
+}
+
 /* Cambio de tema suave (sin saltos bruscos de brillo); solo durante el cambio */
 .theme-transition,
 .theme-transition * {
@@ -443,6 +504,17 @@
   }
   .animate-pulse {
     animation: none;
+  }
+  /* Solo fundidos: nada se desplaza ni cambia de escala */
+  .reveal,
+  .showcase-panel[data-active="false"] {
+    transform: none;
+  }
+  .reveal {
+    transition: opacity 300ms ease;
+  }
+  .segmented-thumb {
+    transition-duration: 1ms;
   }
 }
 
