@@ -22,6 +22,7 @@ import {
   RequestDecisionTimeChart,
   StatTile,
 } from "@/components/DashboardCharts";
+import { recentMonths } from "@/lib/stats";
 import { CASE_STATUSES, CASE_STATUS_LABELS, CaseStatus, OPEN_CASE_REQUEST_STATES } from "@bogados/shared";
 
 const ACTIVE_STATUSES = ["intake", "abierto", "en_pausa"] as const satisfies readonly CaseStatus[];
@@ -97,7 +98,6 @@ export default async function DashboardPage({
       })
     : [];
 
-  const analyticsStart = new Date(now.getFullYear(), now.getMonth() - 11, 1);
   let caseMonthRows: CountChartRow[] = [];
   let caseMatterRows: CountChartRow[] = [];
   let decisionDays: number | null = null;
@@ -105,11 +105,17 @@ export default async function DashboardPage({
   let lawyerAppointmentRows: LawyerAppointmentsRow[] = [];
 
   if (isAdmin) {
+    // Los meses se agrupan en la zona horaria del bufete ("createdAt" se guarda en UTC)
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { timezone: true } });
+    const timeZone = tenant?.timezone ?? "America/Guayaquil";
+    const months = recentMonths(now, timeZone);
     const [monthBuckets, matterBuckets, decidedRequests] = await Promise.all([
-      prisma.$queryRaw<Array<{ month: Date; total: number }>>`
-        SELECT date_trunc('month', "createdAt") AS month, COUNT(*)::int AS total
+      prisma.$queryRaw<Array<{ month: string; total: number }>>`
+        SELECT to_char(date_trunc('month', "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE ${timeZone}), 'YYYY-MM') AS month,
+               COUNT(*)::int AS total
         FROM "Case"
-        WHERE "tenantId" = ${tenantId} AND "createdAt" >= ${analyticsStart} AND "createdAt" <= ${now}
+        WHERE "tenantId" = ${tenantId}
+          AND to_char("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE ${timeZone}, 'YYYY-MM') >= ${months[0].key}
         GROUP BY 1
         ORDER BY 1
       `,
@@ -128,15 +134,8 @@ export default async function DashboardPage({
       }),
     ]);
 
-    const monthTotals = new Map(monthBuckets.map((row) => [row.month.toISOString().slice(0, 7), row.total]));
-    caseMonthRows = Array.from({ length: 12 }, (_, index) => {
-      const date = new Date(now.getFullYear(), now.getMonth() - 11 + index, 1);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      return {
-        label: date.toLocaleDateString("es-EC", { month: "short" }).replace(".", ""),
-        value: monthTotals.get(key) ?? 0,
-      };
-    });
+    const monthTotals = new Map(monthBuckets.map((row) => [row.month, row.total]));
+    caseMonthRows = months.map(({ key, label }) => ({ label, value: monthTotals.get(key) ?? 0 }));
     caseMatterRows = matterBuckets
       .map((row) => ({ label: row.matterType ?? "Sin especificar", value: row._count._all }))
       .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));

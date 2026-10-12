@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CASE_STATUS_LABELS, CaseStatus } from "@bogados/shared";
 import { STATUS_SERIES_COLOR, STATUS_SERIES_INK } from "@/lib/viz";
+import { formatAverageDuration } from "@/lib/stats";
 
 /** Tooltip CSS (hover + foco de teclado); el padre debe ser `group relative`. */
 function Tip({ children }: { children: React.ReactNode }) {
@@ -78,8 +79,8 @@ export function CasesByMonthChart({ rows }: { rows: CountChartRow[] }) {
       {total === 0 ? (
         <p className="py-8 text-center text-sm text-slate-400">Aún no hay casos en este periodo.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <ul aria-label="Casos creados por mes" className="grid h-48 min-w-[34rem] grid-cols-12 items-end gap-2">
+        <div>
+          <ul aria-label="Casos creados por mes" className="grid h-48 grid-cols-12 items-end gap-1 sm:gap-2">
             {rows.map((row) => (
               <li key={row.label} className="flex h-full flex-col items-center justify-end gap-2">
                 <span className="text-xs font-semibold tabular-nums text-slate-700">{row.value || ""}</span>
@@ -149,10 +150,8 @@ export function RequestDecisionTimeChart({
         <p className="py-6 text-sm text-slate-400">Aún no hay solicitudes con decisión definitiva.</p>
       ) : (
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold tabular-nums text-slate-900">
-            {new Intl.NumberFormat("es-EC", { maximumFractionDigits: 1 }).format(averageDays)}
-          </span>
-          <span className="text-sm text-slate-500">días promedio</span>
+          <span className="text-4xl font-bold tabular-nums text-slate-900">{formatAverageDuration(averageDays).value}</span>
+          <span className="text-sm text-slate-500">{formatAverageDuration(averageDays).unit} de promedio</span>
           <span className="ml-auto text-xs text-slate-500">{requestCount} solicitudes</span>
         </div>
       )}
@@ -179,6 +178,13 @@ const APPOINTMENT_COLORS = {
   completada: "#1baf7a",
   cancelada: "#d9534f",
 } as const;
+/** Tinta de los números dentro de cada tramo: el blanco no llega a 4.5:1 sobre ámbar, verde y rojo. */
+const APPOINTMENT_INK = {
+  pendiente: "#0b0b0b",
+  confirmada: "#ffffff",
+  completada: "#0b0b0b",
+  cancelada: "#0b0b0b",
+} as const;
 
 export function LawyerAppointmentsChart({ rows }: { rows: LawyerAppointmentsRow[] }) {
   const totals = rows.map((row) => APPOINTMENT_STATUSES.reduce((sum, status) => sum + (row.byStatus[status] ?? 0), 0));
@@ -199,7 +205,7 @@ export function LawyerAppointmentsChart({ rows }: { rows: LawyerAppointmentsRow[
         ))}
       </div>
       {rows.length === 0 ? (
-        <p className="py-4 text-sm text-slate-400">No hay abogados activos ni citas en este periodo.</p>
+        <p className="py-4 text-sm text-slate-400">Todavía no hay abogados con citas.</p>
       ) : (
         <ul className="space-y-3">
           {rows.map((row, index) => (
@@ -213,8 +219,13 @@ export function LawyerAppointmentsChart({ rows }: { rows: LawyerAppointmentsRow[
                       return count ? (
                         <span
                           key={status}
-                          className="flex h-full items-center justify-center text-[10px] font-semibold text-white first:rounded-l last:rounded-r"
-                          style={{ flexGrow: count, flexBasis: 0, backgroundColor: APPOINTMENT_COLORS[status] }}
+                          className="flex h-full items-center justify-center text-[10px] font-semibold first:rounded-l last:rounded-r"
+                          style={{
+                            flexGrow: count,
+                            flexBasis: 0,
+                            backgroundColor: APPOINTMENT_COLORS[status],
+                            color: APPOINTMENT_INK[status],
+                          }}
                           title={`${row.name} · ${APPOINTMENT_LABELS[status]}: ${count}`}
                         >
                           {count}
