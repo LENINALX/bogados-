@@ -1,8 +1,17 @@
 # Bogados
 
-Plataforma **SaaS de gestión legal** para firmas de abogados (MVP).
+Plataforma **SaaS de gestión legal** para abogados y despachos pequeños en Ecuador.
 
-Centraliza expedientes, documentos y comunicación segura entre abogado y cliente, con **portal del cliente** y **multi-tenant** (`tenant_id`) desde el día 1.
+**Enfoque:** Bogados vigila los procesos judiciales del despacho, calcula los términos en días hábiles y mantiene informado al cliente, para que ningún abogado pierda un plazo ni pase la tarde contestando «¿cómo va mi caso?».
+
+Sobre una base de expedientes, documentos y comunicación segura entre abogado y cliente, con **portal del cliente** y **multi-tenant** (`tenant_id`) desde el día 1.
+
+| Documentos de producto | |
+|---|---|
+| [Propuesta de producto](docs/producto/propuesta.md) | Problema, cliente objetivo, núcleo, modelo de negocio, métricas, riesgos y hoja de ruta |
+| [Encuesta a abogados](docs/producto/encuesta-abogados.md) | 33 preguntas y reglas para interpretar las respuestas ([script para crearla en Google Forms](docs/producto/crear-encuesta.gs)) |
+| [Guía de entrevista](docs/producto/guia-entrevista.md) | Entrevista en profundidad con el abogado colaborador |
+| [Paleta de colores](docs/paleta-de-colores.md) | Colores, tokens y contrastes |
 
 ## Características (MVP)
 
