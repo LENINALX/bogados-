@@ -8,6 +8,8 @@ export type TimelineNote = {
   author: string;
   body: string;
   isInternal: boolean;
+  /** Solo despacho: se avisó al cliente por email al publicarla. */
+  emailedClient?: boolean;
 };
 
 export type TimelineEvent = {
@@ -17,6 +19,10 @@ export type TimelineEvent = {
   actor: string | null;
   type: string;
   summary: string;
+  /** Explicación escrita para el cliente (p. ej. al cambiar el estado). */
+  detail?: string;
+  /** Solo despacho: se avisó al cliente por email. */
+  emailedClient?: boolean;
 };
 
 export type TimelineItem = TimelineNote | TimelineEvent;
@@ -29,6 +35,8 @@ const CLIENT_VISIBLE = new Set([
   "STATUS_CHANGED",
   "ASSIGNED",
   "DOC_UPLOADED",
+  // El número de proceso es público en el SATJE y le sirve al cliente para seguir su caso
+  "PROCESS_LINKED",
   // Solicitud desde el portal y decisión del despacho (el motivo va dirigido al cliente)
   "CASE_REQUESTED",
   "CASE_ACCEPTED",
@@ -71,18 +79,35 @@ export function toTimelineEvents(
       if (!CLIENT_VISIBLE.has(e.type)) return false;
       return e.type !== "DOC_UPLOADED" || meta(e).sharedWithClient === true;
     })
-    .map((e) => ({
-      kind: "event",
-      id: e.id,
-      createdAt: e.createdAt.toISOString(),
-      actor: e.actor?.name ?? null,
-      type: e.type,
-      summary: describe(e),
-    }));
+    .map((e) => {
+      const m = meta(e);
+      return {
+        kind: "event" as const,
+        id: e.id,
+        createdAt: e.createdAt.toISOString(),
+        actor: e.actor?.name ?? null,
+        type: e.type,
+        summary: describe(e),
+        ...(typeof m.message === "string" && m.message ? { detail: m.message } : {}),
+        ...(audience === "staff" && m.emailedClient === true ? { emailedClient: true } : {}),
+      };
+    });
+}
+
+/** Notas visibles de las que se avisó al cliente por email (según su evento NOTE_ADDED). */
+export function emailedNoteIds(events: ActivityEvent[]): Set<string> {
+  const ids = new Set<string>();
+  for (const e of events) {
+    const m = meta(e);
+    if (e.type === "NOTE_ADDED" && m.emailedClient === true && typeof m.noteId === "string") ids.add(m.noteId);
+  }
+  return ids;
 }
 
 export function toTimelineNotes(
   notes: { id: string; createdAt: Date; body: string; isInternal: boolean; author: { name: string } }[],
+  /** Solo para el despacho: el cliente no necesita saber por qué canal se le avisó. */
+  emailed?: Set<string>,
 ): TimelineNote[] {
   return notes.map((n) => ({
     kind: "note",
@@ -91,5 +116,6 @@ export function toTimelineNotes(
     author: n.author.name,
     body: n.body,
     isInternal: n.isInternal,
+    ...(emailed?.has(n.id) ? { emailedClient: true } : {}),
   }));
 }

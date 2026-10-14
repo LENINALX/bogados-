@@ -1,7 +1,7 @@
 import { Role } from "@prisma/client";
 
 /** Nombre del icono (se resuelve en el cliente: los componentes no viajan del servidor) */
-export type NavIcon = "cases" | "agenda" | "tasks" | "users" | "request";
+export type NavIcon = "cases" | "agenda" | "tasks" | "users" | "request" | "holidays";
 
 export type NavItem = { href: string; label: string; icon: NavIcon };
 
@@ -12,7 +12,11 @@ export function staffLinks(role: Role): NavItem[] {
     { href: "/agenda", label: "Agenda", icon: "agenda" },
     { href: "/tareas", label: "Plazos", icon: "tasks" },
   ];
-  if (role === "ADMIN") links.push({ href: "/admin/usuarios", label: "Usuarios", icon: "users" });
+  if (role === "ADMIN") {
+    links.push({ href: "/admin/usuarios", label: "Usuarios", icon: "users" });
+    // Días no hábiles: de ellos depende el cálculo de los términos
+    links.push({ href: "/admin/feriados", label: "Feriados", icon: "holidays" });
+  }
   return links;
 }
 

@@ -12,4 +12,12 @@ export class CreateNoteDto {
   @IsOptional()
   @IsBoolean()
   isInternal?: boolean;
+
+  @ApiPropertyOptional({
+    default: true,
+    description: 'Solo para notas visibles: avisar por email al cliente del caso',
+  })
+  @IsOptional()
+  @IsBoolean()
+  notifyClient?: boolean;
 }

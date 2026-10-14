@@ -56,6 +56,7 @@ model Tenant {
   tasks          CaseTask[]
   availability   Availability[]
   appointments   Appointment[]
+  holidays       Holiday[]
 }
 
 model User {
@@ -95,6 +96,8 @@ model Case {
   title       String
   description String?
   matterType  String?
+  /// Número del proceso judicial en el SATJE (p. ej. 13284-2024-00123); null si aún no se ha presentado
+  processNumber String?
   status      CaseStatus @default(intake)
   lawyerId    String?
   clientId    String?
@@ -123,6 +126,7 @@ model Case {
   @@index([tenantId, lawyerId])
   @@index([tenantId, clientId])
   @@index([tenantId, requestState])
+  @@index([tenantId, processNumber])
 }
 
 model Document {
@@ -202,6 +206,10 @@ model CaseTask {
   caseId     String
   title      String
   dueAt      DateTime
+  /// Si el plazo es un término procesal: días hábiles y fecha de notificación desde la que se cuentan.
+  /// Permiten mostrar cómo se calculó el vencimiento (dueAt).
+  termDays   Int?
+  notifiedOn DateTime? @db.Date
   done       Boolean  @default(false)
   assigneeId String?
   createdAt  DateTime @default(now())
@@ -294,4 +302,17 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read, createdAt])
+}
+
+/// Día no hábil del bufete (feriado nacional, local o traslado). Los términos procesales no lo cuentan.
+model Holiday {
+  id        String   @id @default(cuid())
+  tenantId  String
+  date      DateTime @db.Date
+  name      String
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, date])
 }

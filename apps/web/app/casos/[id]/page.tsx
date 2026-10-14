@@ -13,9 +13,10 @@ import { CaseDocuments } from "@/components/CaseDocuments";
 import { CaseStatusForm } from "@/components/CaseStatusForm";
 import { CaseNoteForm } from "@/components/CaseNoteForm";
 import { CaseTasks } from "@/components/CaseTasks";
+import { ProcessNumberField } from "@/components/ProcessNumberField";
 import { CaseTimeline } from "@/components/CaseTimeline";
 import { staffLinks } from "@/lib/nav";
-import { toTimelineEvents, toTimelineNotes } from "@/lib/timeline";
+import { emailedNoteIds, toTimelineEvents, toTimelineNotes } from "@/lib/timeline";
 import { documentFields, messageFields } from "@/lib/client-fields";
 
 type Props = { params: { id: string }; searchParams: { aviso?: string } };
@@ -66,7 +67,7 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
   });
 
   const timeline = [
-    ...toTimelineNotes(c.notes),
+    ...toTimelineNotes(c.notes, emailedNoteIds(c.activityEvents)),
     ...toTimelineEvents(c.activityEvents, "staff"),
   ];
 
@@ -129,6 +130,9 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
                   </div>
                 )}
               </dl>
+              <div className="mt-3 text-sm">
+                <ProcessNumberField caseId={c.id} processNumber={c.processNumber} />
+              </div>
             </div>
             {openRequest ? (
               <div className="text-right">
@@ -136,7 +140,7 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
                 <p className="mt-1 text-xs text-slate-500">Solicitud del portal</p>
               </div>
             ) : (
-              <CaseStatusForm caseId={c.id} status={c.status} />
+              <CaseStatusForm caseId={c.id} status={c.status} clientName={c.client?.name ?? null} />
             )}
           </div>
           {c.requestState && c.decisionReason && (
@@ -153,7 +157,7 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-6">
-            <CaseNoteForm caseId={c.id} />
+            <CaseNoteForm caseId={c.id} clientName={c.client?.name ?? null} />
             <CaseTimeline title="Notas y actividad" items={timeline} />
           </div>
           <div className="space-y-6">
@@ -161,12 +165,15 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
               caseId={c.id}
               currentUserId={userId}
               staff={staff}
+              canManageHolidays={role === "ADMIN"}
               initial={c.tasks.map((t) => ({
                 id: t.id,
                 title: t.title,
                 dueAt: t.dueAt.toISOString(),
                 done: t.done,
                 assignee: t.assignee,
+                termDays: t.termDays,
+                notifiedOn: t.notifiedOn ? t.notifiedOn.toISOString().slice(0, 10) : null,
               }))}
             />
             <CaseMessages

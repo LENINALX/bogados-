@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Mail } from "lucide-react";
 import type { TimelineItem } from "@/lib/timeline";
 
 const EVENT_STYLE: Record<string, { dot: string; icon: string; label: string }> = {
@@ -8,8 +9,18 @@ const EVENT_STYLE: Record<string, { dot: string; icon: string; label: string }> 
   STATUS_CHANGED: { dot: "bg-blue-600", icon: "↻", label: "Cambio de estado" },
   ASSIGNED: { dot: "bg-violet-600", icon: "→", label: "Asignación" },
   DOC_UPLOADED: { dot: "bg-slate-500", icon: "▤", label: "Documento" },
+  PROCESS_LINKED: { dot: "bg-brand-700", icon: "§", label: "Proceso judicial" },
 };
 const DEFAULT_EVENT = { dot: "bg-slate-400", icon: "•", label: "Evento" };
+
+function EmailedBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 text-slate-700">
+      <Mail className="h-3 w-3" aria-hidden />
+      Avisado por email
+    </span>
+  );
+}
 
 type Filter = "all" | "note" | "event";
 
@@ -96,6 +107,7 @@ export function CaseTimeline({
                         {item.isInternal ? "Nota interna" : "Visible al cliente"}
                       </span>
                     )}
+                    {audience === "staff" && item.emailedClient && <EmailedBadge />}
                     <span className="ml-auto">{date}</span>
                   </div>
                   <p className="mt-1 whitespace-pre-wrap rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-800">
@@ -116,9 +128,18 @@ export function CaseTimeline({
                 <div className="flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
                   <span className="font-medium text-slate-600">{style.label}</span>
                   {item.actor && <span>· {item.actor}</span>}
+                  {audience === "staff" && item.emailedClient && <EmailedBadge />}
                   <span className="ml-auto">{date}</span>
                 </div>
                 <p className="mt-0.5 text-sm text-slate-700">{item.summary}</p>
+                {item.detail && (
+                  <div className="mt-1.5 rounded-lg border-l-2 border-brand-600 bg-slate-50 px-3 py-2">
+                    <p className="text-xs font-medium text-slate-500">
+                      {audience === "client" ? "Mensaje de tu abogado" : "Explicación para el cliente"}
+                    </p>
+                    <p className="mt-0.5 whitespace-pre-wrap text-sm text-slate-800">{item.detail}</p>
+                  </div>
+                )}
               </li>
             );
           })}

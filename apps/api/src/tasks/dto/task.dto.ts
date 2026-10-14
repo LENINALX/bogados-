@@ -8,7 +8,8 @@ import {
   MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsInt, Max, Min } from 'class-validator';
+import { IsInt, Matches, Max, Min, ValidateIf } from 'class-validator';
+import { MAX_TERM_DAYS, YMD } from '../../terms/business-days';
 import { ToBoolean } from '../../common/decorators/to-boolean.decorator';
 
 export class CreateTaskDto {
@@ -18,9 +19,26 @@ export class CreateTaskDto {
   @MaxLength(200)
   title!: string;
 
-  @ApiProperty({ example: '2026-10-15T18:00:00.000Z' })
+  @ApiPropertyOptional({
+    example: '2026-10-15T18:00:00.000Z',
+    description: 'Obligatorio salvo que se indique un término (termDays + notifiedOn)',
+  })
+  @ValidateIf((o: CreateTaskDto) => o.termDays === undefined)
   @IsDateString()
-  dueAt!: string;
+  dueAt?: string;
+
+  @ApiPropertyOptional({ example: 3, description: 'Término en días hábiles: el vencimiento lo calcula el servidor' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(MAX_TERM_DAYS)
+  termDays?: number;
+
+  @ApiPropertyOptional({ example: '2026-10-08', description: 'Fecha de notificación desde la que corre el término' })
+  @ValidateIf((o: CreateTaskDto) => o.termDays !== undefined)
+  @Matches(YMD, { message: 'notifiedOn debe tener formato AAAA-MM-DD' })
+  notifiedOn?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

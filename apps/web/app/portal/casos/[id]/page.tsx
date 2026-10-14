@@ -86,6 +86,14 @@ export default async function PortalCasePage({ params }: Props) {
                   <span className="font-medium text-slate-700">{c.lawyer?.name ?? "Por asignar"}</span>
                 </p>
               )}
+              {c.processNumber && (
+                <p className="mt-1 text-sm text-slate-500">
+                  Proceso judicial:{" "}
+                  <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[13px] font-medium tracking-wide text-slate-800">
+                    {c.processNumber}
+                  </span>
+                </p>
+              )}
             </div>
             {request ? <CaseRequestBadge state={request} /> : <StatusBadge status={c.status} />}
           </div>

@@ -18,6 +18,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { TasksModule } from './tasks/tasks.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { TermsModule } from './terms/terms.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -44,6 +45,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     TasksModule,
     NotificationsModule,
     AppointmentsModule,
+    TermsModule,
     ScheduleModule.forRoot(),
   ],
 })

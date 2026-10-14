@@ -12,6 +12,7 @@ import {
   toPaginated,
 } from '../common/dto/pagination.dto';
 import { CreateTaskDto, ListTasksQueryDto, UpdateTaskDto } from './dto/task.dto';
+import { TermsService } from '../terms/terms.service';
 
 const taskInclude = {
   assignee: { select: { id: true, name: true, email: true } },
@@ -20,7 +21,10 @@ const taskInclude = {
 
 @Injectable()
 export class TasksService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private terms: TermsService,
+  ) {}
 
   async list(user: JwtPayloadUser, query: ListTasksQueryDto) {
     const { page, pageSize, skip, take } = paginateParams(query);
@@ -84,12 +88,25 @@ export class TasksService {
       if (!assignee) throw new BadRequestException('Asignatario no válido');
     }
 
+    // Término procesal: el vencimiento se calcula aquí (días hábiles y feriados del bufete),
+    // nunca se acepta del cliente, para que coincida con el desglose que vio el abogado
+    let dueAt: Date;
+    if (dto.termDays !== undefined && dto.notifiedOn) {
+      dueAt = new Date((await this.terms.deadline(user.tenantId, dto.notifiedOn, dto.termDays)).dueAt);
+    } else if (dto.dueAt) {
+      dueAt = new Date(dto.dueAt);
+    } else {
+      throw new BadRequestException('Indica la fecha de vencimiento o el término en días hábiles');
+    }
+
     return this.prisma.caseTask.create({
       data: {
         tenantId: user.tenantId,
         caseId: c.id,
         title: dto.title,
-        dueAt: new Date(dto.dueAt),
+        dueAt,
+        termDays: dto.termDays ?? null,
+        notifiedOn: dto.termDays !== undefined && dto.notifiedOn ? new Date(`${dto.notifiedOn}T00:00:00.000Z`) : null,
         assigneeId: dto.assigneeId ?? user.id,
       },
       include: taskInclude,
@@ -100,7 +117,12 @@ export class TasksService {
     const task = await this.findAccessibleTask(id, user);
     const data: Prisma.CaseTaskUpdateInput = {};
     if (dto.title !== undefined) data.title = dto.title;
-    if (dto.dueAt !== undefined) data.dueAt = new Date(dto.dueAt);
+    if (dto.dueAt !== undefined) {
+      data.dueAt = new Date(dto.dueAt);
+      // Fecha puesta a mano: deja de ser un término calculado
+      data.termDays = null;
+      data.notifiedOn = null;
+    }
     if (dto.done !== undefined) data.done = dto.done;
     if (dto.assigneeId !== undefined) {
       if (dto.assigneeId) {

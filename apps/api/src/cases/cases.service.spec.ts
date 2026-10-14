@@ -44,6 +44,7 @@ describe('CasesService.findAll (guards por rol)', () => {
       prisma as never,
       { log: jest.fn() } as never,
       { notifyMany: jest.fn(), create: jest.fn() } as never,
+      { email: jest.fn() } as never,
     );
   });
 
@@ -99,6 +100,7 @@ describe('CasesService.update (validación de lawyerId/clientId)', () => {
   };
   let activity: { log: jest.Mock };
   let notifications: { notifyMany: jest.Mock; create: jest.Mock };
+  let clientUpdates: { email: jest.Mock };
   let service: CasesService;
 
   const admin: JwtPayloadUser = {
@@ -163,7 +165,91 @@ describe('CasesService.update (validación de lawyerId/clientId)', () => {
     };
     activity = { log: jest.fn() };
     notifications = { notifyMany: jest.fn(), create: jest.fn() };
-    service = new CasesService(prisma as never, activity as never, notifications as never);
+    clientUpdates = { email: jest.fn().mockResolvedValue(true) };
+    service = new CasesService(
+      prisma as never,
+      activity as never,
+      notifications as never,
+      clientUpdates as never,
+    );
+  });
+
+  /** Caso con cliente: el aviso por email solo tiene sentido si hay alguien a quien avisar. */
+  function withClient() {
+    const base = { id: 'c1', tenantId: 't1', title: 'Caso', lawyerId: 'law1', clientId: 'cli2' };
+    prisma.case.findFirst.mockResolvedValue({ ...base, status: CaseStatus.abierto });
+    prisma.case.update.mockImplementation(async ({ data }) => ({ ...base, ...data }));
+  }
+
+  it('cambio de estado con aviso: email al cliente después de la transacción, con el mensaje', async () => {
+    withClient();
+    const order: string[] = [];
+    prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
+      const r = await fn(prisma);
+      order.push('commit');
+      return r;
+    });
+    clientUpdates.email.mockImplementation(async () => order.push('email'));
+
+    await service.patchStatus(
+      'c1',
+      { status: CaseStatus.en_pausa, clientMessage: '  Esperamos la audiencia.  ' },
+      lawyer,
+    );
+
+    expect(order).toEqual(['commit', 'email']);
+    expect(clientUpdates.email).toHaveBeenCalledWith('c1', {
+      kind: 'status',
+      from: CaseStatus.abierto,
+      to: CaseStatus.en_pausa,
+      message: 'Esperamos la audiencia.',
+    });
+    expect(activity.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'STATUS_CHANGED',
+        meta: expect.objectContaining({ message: 'Esperamos la audiencia.', emailedClient: true }),
+      }),
+      prisma,
+    );
+    // La notificación en la app usa los nombres de los estados, no los códigos
+    expect(notifications.notifyMany).toHaveBeenCalledWith(
+      ['law1', 'cli2'].filter((id) => id !== lawyer.id),
+      expect.objectContaining({ body: '"Caso": Abierto → En pausa' }),
+      prisma,
+    );
+  });
+
+  it('notifyClient: false no envía email (la notificación en la app sigue)', async () => {
+    withClient();
+    await service.patchStatus('c1', { status: CaseStatus.cerrado, notifyClient: false }, lawyer);
+    expect(clientUpdates.email).not.toHaveBeenCalled();
+    expect(activity.log.mock.calls[0][0].meta).not.toHaveProperty('emailedClient');
+    expect(notifications.notifyMany).toHaveBeenCalled();
+  });
+
+  it('la edición genérica del caso no avisa por email aunque cambie el estado', async () => {
+    withClient();
+    await service.update('c1', { status: CaseStatus.cerrado }, admin);
+    expect(clientUpdates.email).not.toHaveBeenCalled();
+  });
+
+  it('sin cambio real de estado o sin cliente no hay email', async () => {
+    withClient();
+    await service.patchStatus('c1', { status: CaseStatus.abierto }, lawyer);
+    expect(clientUpdates.email).not.toHaveBeenCalled();
+
+    const sinCliente = { id: 'c1', tenantId: 't1', title: 'Caso', lawyerId: 'law1', clientId: null };
+    prisma.case.findFirst.mockResolvedValue({ ...sinCliente, status: CaseStatus.abierto });
+    prisma.case.update.mockImplementation(async ({ data }) => ({ ...sinCliente, ...data }));
+    await service.patchStatus('c1', { status: CaseStatus.cerrado }, admin);
+    expect(clientUpdates.email).not.toHaveBeenCalled();
+  });
+
+  it('si la transacción falla no se envía el email', async () => {
+    withClient();
+    activity.log.mockRejectedValueOnce(new Error('db caída'));
+    await expect(service.patchStatus('c1', { status: CaseStatus.cerrado }, lawyer)).rejects.toThrow('db caída');
+    expect(clientUpdates.email).not.toHaveBeenCalled();
   });
 
   it('cambio de estado: actividad y notificaciones van en la misma transacción', async () => {

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsEnum,
   IsOptional,
   IsString,
@@ -7,11 +8,23 @@ import {
   MinLength,
   IsIn,
   IsInt,
+  Matches,
   Max,
   Min,
+  ValidateIf,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { CaseStatus } from '@prisma/client';
+
+/** Número de proceso del SATJE: judicatura (5 dígitos) - año (4) - secuencial (5), con una letra final opcional */
+export const PROCESS_NUMBER = /^\d{5}-\d{4}-\d{5}[A-Z]?$/;
+
+/** Quita espacios y pasa a mayúsculas; vacío → null (desvincular). */
+export function normalizeProcessNumber(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const clean = value.replace(/\s+/g, '').toUpperCase();
+  return clean === '' ? null : clean;
+}
 
 export class CreateCaseDto {
   @ApiProperty()
@@ -46,6 +59,16 @@ export class CreateCaseDto {
   @IsOptional()
   @IsString()
   clientId?: string | null;
+
+  @ApiPropertyOptional({
+    example: '13284-2024-00123',
+    description: 'Número del proceso en el SATJE: judicatura (5) - año (4) - secuencial (5), con letra final opcional',
+  })
+  @IsOptional()
+  @Transform(({ value }) => normalizeProcessNumber(value))
+  @ValidateIf((_, v) => v !== null)
+  @Matches(PROCESS_NUMBER, { message: 'El número de proceso debe tener el formato 13284-2024-00123' })
+  processNumber?: string | null;
 }
 
 export class UpdateCaseDto {
@@ -82,6 +105,16 @@ export class UpdateCaseDto {
   @IsOptional()
   @IsString()
   clientId?: string | null;
+
+  @ApiPropertyOptional({
+    example: '13284-2024-00123',
+    description: 'Número del proceso en el SATJE: judicatura (5) - año (4) - secuencial (5), con letra final opcional',
+  })
+  @IsOptional()
+  @Transform(({ value }) => normalizeProcessNumber(value))
+  @ValidateIf((_, v) => v !== null)
+  @Matches(PROCESS_NUMBER, { message: 'El número de proceso debe tener el formato 13284-2024-00123' })
+  processNumber?: string | null;
 }
 
 export class AssignLawyerDto {
@@ -94,6 +127,17 @@ export class PatchStatusDto {
   @ApiProperty({ enum: ['intake', 'abierto', 'en_pausa', 'cerrado'] })
   @IsIn(['intake', 'abierto', 'en_pausa', 'cerrado'])
   status!: CaseStatus;
+
+  @ApiPropertyOptional({ default: true, description: 'Avisar por email al cliente del caso' })
+  @IsOptional()
+  @IsBoolean()
+  notifyClient?: boolean;
+
+  @ApiPropertyOptional({ description: 'Explicación para el cliente: se ve en su portal y va en el email' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  clientMessage?: string;
 }
 
 export class ListCasesQueryDto {

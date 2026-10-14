@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CASE_STATUSES, CASE_STATUS_LABELS } from "@bogados/shared";
 import { nestFetch } from "@/lib/nest-api";
+import { PROCESS_NUMBER_EXAMPLE, isValidProcessNumber, normalizeProcessNumber } from "@/lib/process-number";
 
 type Option = { id: string; name: string; email?: string };
 type ClientMode = "none" | "existing" | "new";
@@ -36,6 +37,12 @@ export function NewCaseForm({
     setError(null);
 
     try {
+      // Antes de crear nada: un número de proceso mal escrito no debe dejar un cliente huérfano
+      const processNumber = normalizeProcessNumber(str("processNumber"));
+      if (processNumber && !isValidProcessNumber(processNumber)) {
+        throw new Error(`El número de proceso debe tener el formato del SATJE, por ejemplo ${PROCESS_NUMBER_EXAMPLE}.`);
+      }
+
       let clientId: string | undefined;
       let invitationFailed = false;
       if (clientMode === "existing") clientId = str("clientId") || undefined;
@@ -61,6 +68,7 @@ export function NewCaseForm({
         body: JSON.stringify({
           title: str("title"),
           matterType: str("matterType") || undefined,
+          processNumber: processNumber ?? undefined,
           description: str("description") || undefined,
           status: str("status") || undefined,
           lawyerId: canPickLawyer ? str("lawyerId") || undefined : undefined,
@@ -97,6 +105,22 @@ export function NewCaseForm({
               ))}
             </select>
           </div>
+        </div>
+        <div>
+          <label className={label} htmlFor="processNumber">Número de proceso (SATJE)</label>
+          <input
+            id="processNumber"
+            name="processNumber"
+            maxLength={30}
+            autoComplete="off"
+            spellCheck={false}
+            className={`${input} font-mono tracking-wide sm:max-w-xs`}
+            placeholder={PROCESS_NUMBER_EXAMPLE}
+            aria-describedby="processNumber-help"
+          />
+          <p id="processNumber-help" className="mt-1 text-xs text-slate-500">
+            Opcional. Si el caso aún no está en la Función Judicial, lo puedes vincular más tarde desde la ficha.
+          </p>
         </div>
         <div>
           <label className={label} htmlFor="description">Descripción</label>
