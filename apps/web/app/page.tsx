@@ -67,7 +67,7 @@ export default async function HomePage() {
             <SectionHeading
               eyebrow="Funcionalidades"
               title="Todo lo que tu firma necesita. Nada que no use."
-              text="Pensado para despachos pequeños y medianos que quieren dejar atrás las hojas de cálculo y los chats sueltos."
+              text="Pensado para abogados independientes y estudios jurídicos que quieren dejar atrás las hojas de cálculo y los chats sueltos."
             />
             <div className="mt-14">
               <FeatureBento />

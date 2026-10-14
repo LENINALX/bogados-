@@ -6,7 +6,8 @@
 |---|---|
 | **Estado** | Propuesta para validar. Las cifras de mercado y de precio son hipótesis. |
 | **Versión** | 1.0 · octubre de 2026 |
-| **Equipo** | LENINALX · Israelfas · AbigailPlua08 · Guzman7327 |
+| **Equipo** | Guzmán Chávez Gabriela Patricia · Mejía Chamorro Marcelo Israel · Plua Acosta Abigail Guadalupe · Suárez Carrera Lenin Alexander · Vélez Briones Gibson Jordan |
+| **Asignatura** | Gestión de Proyectos de Software · Carrera de Software · Universidad Laica Eloy Alfaro de Manabí |
 | **Documentos relacionados** | [Encuesta a abogados](encuesta-abogados.md) · [Guía de entrevista](guia-entrevista.md) · [Paleta de colores](../paleta-de-colores.md) |
 
 ---
