@@ -5,11 +5,11 @@ import { Prisma } from "@prisma/client";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { staffLinks } from "@/lib/nav";
-import { dueState, formatDue } from "@/lib/tasks";
 import { StaffLayout } from "@/components/StaffLayout";
 import { StatusBadge } from "@/components/StatusBadge";
-import { DueBadge } from "@/components/DueBadge";
 import { EmptyState } from "@/components/ui";
+import { TodayPanel } from "@/components/TodayPanel";
+import { dayBounds } from "@/lib/today";
 import { CaseRequestBadge } from "@/components/CaseRequestBadge";
 import {
   CasesByStatusChart,
@@ -29,7 +29,8 @@ import { ScrollToHash } from "@/components/ScrollToHash";
 import { CASE_STATUSES, CASE_STATUS_LABELS, CaseStatus, OPEN_CASE_REQUEST_STATES } from "@bogados/shared";
 
 const ACTIVE_STATUSES = ["intake", "abierto", "en_pausa"] as const satisfies readonly CaseStatus[];
-const UPCOMING_DAYS = 7;
+/** Cuántos vencimientos de la semana caben en «Hoy»; el resto, en /tareas. */
+const WEEK_TASKS_SHOWN = 8;
 const PAGE_SIZE = 20;
 
 export default async function DashboardPage({
@@ -60,9 +61,32 @@ export default async function DashboardPage({
     ? { tenantId }
     : { tenantId, OR: [{ assigneeId: userId }, { case: { lawyerId: userId } }] };
   const now = new Date();
-  const horizon = new Date(now.getTime() + UPCOMING_DAYS * 24 * 60 * 60 * 1000);
+  // «Hoy» y «esta semana» se cuentan en la hora del bufete, no en la del servidor
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { timezone: true } });
+  const timeZone = tenant?.timezone ?? "America/Guayaquil";
+  const bounds = dayBounds(now, timeZone);
+  const appointmentScope: Prisma.AppointmentWhereInput = isAdmin ? { tenantId } : { tenantId, lawyerId: userId };
+  const appointmentInclude = {
+    client: { select: { name: true } },
+    lawyer: { select: { name: true } },
+    case: { select: { id: true, title: true } },
+  } as const;
+  const taskInclude = {
+    case: { select: { id: true, title: true } },
+    assignee: { select: { name: true } },
+  } as const;
 
-  const [casesTotal, cases, counts, openTasks, overdueTasks, documents, upcoming] = await Promise.all([
+  const [
+    casesTotal,
+    cases,
+    counts,
+    openTasks,
+    overdueTasks,
+    documents,
+    todayAppointments,
+    weekTasks,
+    weekTaskCount,
+  ] = await Promise.all([
     prisma.case.count({ where }),
     prisma.case.findMany({
       where,
@@ -78,12 +102,41 @@ export default async function DashboardPage({
     prisma.caseTask.count({ where: { ...taskScope, done: false } }),
     prisma.caseTask.count({ where: { ...taskScope, done: false, dueAt: { lt: now } } }),
     prisma.document.count({ where: isAdmin ? { tenantId } : { tenantId, case: { lawyerId: userId } } }),
-    prisma.caseTask.findMany({
-      where: { ...taskScope, done: false, dueAt: { lte: horizon } },
-      include: { case: { select: { id: true, title: true } }, assignee: { select: { name: true } } },
-      orderBy: { dueAt: "asc" },
-      take: 8,
+    prisma.appointment.findMany({
+      where: {
+        ...appointmentScope,
+        status: { not: "cancelada" },
+        startsAt: { gte: bounds.startOfToday, lt: bounds.startOfTomorrow },
+      },
+      include: appointmentInclude,
+      orderBy: { startsAt: "asc" },
     }),
+    // Vencidos y los que vencen hasta el domingo
+    prisma.caseTask.findMany({
+      where: { ...taskScope, done: false, dueAt: { lt: bounds.endOfWeek } },
+      include: taskInclude,
+      orderBy: { dueAt: "asc" },
+      take: WEEK_TASKS_SHOWN,
+    }),
+    prisma.caseTask.count({ where: { ...taskScope, done: false, dueAt: { lt: bounds.endOfWeek } } }),
+  ]);
+
+  // Si el día o la semana están vacíos, se adelanta lo siguiente para que el panel no quede mudo
+  const [nextAppointment, nextTask] = await Promise.all([
+    todayAppointments.length === 0
+      ? prisma.appointment.findFirst({
+          where: { ...appointmentScope, status: { in: ["pendiente", "confirmada"] }, startsAt: { gte: bounds.startOfTomorrow } },
+          include: appointmentInclude,
+          orderBy: { startsAt: "asc" },
+        })
+      : null,
+    weekTasks.length === 0
+      ? prisma.caseTask.findFirst({
+          where: { ...taskScope, done: false, dueAt: { gte: bounds.endOfWeek } },
+          include: taskInclude,
+          orderBy: { dueAt: "asc" },
+        })
+      : null,
   ]);
 
   const byStatus = Object.fromEntries(CASE_STATUSES.map((s) => [s, 0])) as Record<CaseStatus, number>;
@@ -109,8 +162,6 @@ export default async function DashboardPage({
 
   if (isAdmin) {
     // Los meses se agrupan en la zona horaria del bufete ("createdAt" se guarda en UTC)
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { timezone: true } });
-    const timeZone = tenant?.timezone ?? "America/Guayaquil";
     const months = recentMonths(now, timeZone);
     const [monthBuckets, matterBuckets, decidedRequests] = await Promise.all([
       prisma.$queryRaw<Array<{ month: string; total: number }>>`
@@ -258,31 +309,17 @@ export default async function DashboardPage({
           </Link>
         </div>
 
-        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatTile label="Casos activos" value={activeCases} hint={`${byStatus.cerrado} cerrados`} />
-          <StatTile label="Tareas abiertas" value={openTasks} href="/tareas" />
-          <StatTile label="Tareas vencidas" value={overdueTasks} tone="critical" href="/tareas?f=vencidas" />
-          <StatTile label="Documentos" value={documents} />
-        </div>
-
-        {isAdmin && (
-          <section aria-labelledby="office-statistics-title" className="mb-10">
-            <div className="mb-4">
-              <h2 id="office-statistics-title" className="text-lg font-semibold text-slate-900">
-                Estadísticas del despacho
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Casos por mes y materia, decisiones de solicitudes y citas por abogado.
-              </p>
-            </div>
-            <div className="grid gap-6 lg:grid-cols-2">
-              <CasesByMonthChart rows={caseMonthRows} />
-              <CasesByMatterChart rows={caseMatterRows} />
-              <RequestDecisionTimeChart averageDays={decisionDays} requestCount={decidedRequestCount} />
-              <LawyerAppointmentsChart rows={lawyerAppointmentRows} />
-            </div>
-          </section>
-        )}
+        <TodayPanel
+          now={now}
+          bounds={bounds}
+          timeZone={timeZone}
+          appointments={todayAppointments}
+          nextAppointment={nextAppointment}
+          tasks={weekTasks}
+          moreTasks={weekTaskCount - weekTasks.length}
+          nextTask={nextTask}
+          showLawyer={isAdmin}
+        />
 
         {openRequests.length > 0 && (
           <section id="solicitudes" className="card mb-8 scroll-mt-6 rounded-2xl border-amber-200">
@@ -313,46 +350,37 @@ export default async function DashboardPage({
           </section>
         )}
 
-        <div className="mb-10 grid gap-6 lg:grid-cols-2">
-          <CasesByStatusChart counts={byStatus} statuses={CASE_STATUSES} />
+        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatTile label="Casos activos" value={activeCases} hint={`${byStatus.cerrado} cerrados`} />
+          <StatTile label="Tareas abiertas" value={openTasks} href="/tareas" />
+          <StatTile label="Tareas vencidas" value={overdueTasks} tone="critical" href="/tareas?f=vencidas" />
+          <StatTile label="Documentos" value={documents} />
+        </div>
 
-          <section className="card rounded-2xl">
-            <div className="card-header py-4 sm:px-6">
-              <h2 className="text-base font-semibold text-slate-900">Próximos plazos</h2>
-              <Link href="/tareas" className="text-xs font-medium text-brand-700 hover:underline">
-                Ver todos →
-              </Link>
+        {isAdmin && (
+          <section aria-labelledby="office-statistics-title" className="mb-10">
+            <div className="mb-4">
+              <h2 id="office-statistics-title" className="text-lg font-semibold text-slate-900">
+                Estadísticas del despacho
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Casos por mes y materia, decisiones de solicitudes y citas por abogado.
+              </p>
             </div>
-            {upcoming.length === 0 ? (
-              <EmptyState
-                title={`Nada vence en los próximos ${UPCOMING_DAYS} días`}
-                hint="Los plazos que se acerquen aparecerán aquí."
-              />
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {upcoming.map((t) => (
-                  <li key={t.id} className="flex items-start justify-between gap-3 px-4 py-3 text-sm sm:px-6">
-                    <div className="min-w-0">
-                      <div className="truncate text-slate-800">{t.title}</div>
-                      <Link href={`/casos/${t.case.id}`} className="block truncate text-xs text-brand-700 hover:underline">
-                        {t.case.title}
-                      </Link>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <DueBadge state={dueState(t.dueAt, t.done, now.getTime())} />
-                      <div className="mt-0.5 text-[11px] text-slate-500">{formatDue(t.dueAt)}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="grid gap-6 lg:grid-cols-2">
+              <CasesByMonthChart rows={caseMonthRows} />
+              <CasesByMatterChart rows={caseMatterRows} />
+              <RequestDecisionTimeChart averageDays={decisionDays} requestCount={decidedRequestCount} />
+              <LawyerAppointmentsChart rows={lawyerAppointmentRows} />
+            </div>
           </section>
+        )}
 
-          {isAdmin && (
-            <div className="lg:col-span-2">
-              <LawyerLoadChart rows={lawyerRows} statuses={ACTIVE_STATUSES} />
-            </div>
-          )}
+        <div className="mb-10 grid gap-6 lg:grid-cols-2">
+          <div className={isAdmin ? undefined : "lg:col-span-2"}>
+            <CasesByStatusChart counts={byStatus} statuses={CASE_STATUSES} />
+          </div>
+          {isAdmin && <LawyerLoadChart rows={lawyerRows} statuses={ACTIVE_STATUSES} />}
         </div>
 
         <Suspense>
