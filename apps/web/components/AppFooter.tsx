@@ -18,12 +18,21 @@ const columns = [
       { label: "Recuperar contraseña", href: "/recuperar" },
     ],
   },
+  {
+    title: "Contacto de Colaboradores",
+    links: [
+      { label: "jipsonbriones2010@gmail.com", href: "mailto:jipsonbriones2010@gmail.com" },
+      { label: "gpgch1993@gmail.com", href: "mailto:gpgch1993@gmail.com" },
+      { label: "AbigailPlua08@gmail.com", href: "mailto:AbigailPlua08@gmail.com" },
+      { label: "Leninalexander2002@gmail.com", href: "mailto:Leninalexander2002@gmail.com" },
+    ],
+  },
 ];
 
 export function AppFooter() {
   return (
     <footer className="border-t border-slate-200/80">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-[1.5fr_1fr_1fr] sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-[1.5fr_1fr_1fr_1.5fr] sm:px-6 lg:px-8">
         <div className="max-w-xs">
           <BrandMark />
           <p className="mt-3 text-sm leading-relaxed text-slate-500">
