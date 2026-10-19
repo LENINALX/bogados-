@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { CaseMessages } from "@/components/CaseMessages";
 import { CaseDocuments } from "@/components/CaseDocuments";
 import { CaseTimeline } from "@/components/CaseTimeline";
+import { ProcessNumberLink } from "@/components/ProcessNumberLink";
 import { CaseRequestBadge } from "@/components/CaseRequestBadge";
 import { FormMessage } from "@/components/ui";
 import { toTimelineEvents, toTimelineNotes } from "@/lib/timeline";
@@ -86,14 +87,7 @@ export default async function PortalCasePage({ params }: Props) {
                   <span className="font-medium text-slate-700">{c.lawyer?.name ?? "Por asignar"}</span>
                 </p>
               )}
-              {c.processNumber && (
-                <p className="mt-1 text-sm text-slate-500">
-                  Proceso judicial:{" "}
-                  <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[13px] font-medium tracking-wide text-slate-800">
-                    {c.processNumber}
-                  </span>
-                </p>
-              )}
+              {c.processNumber && <ProcessNumberLink processNumber={c.processNumber} />}
             </div>
             {request ? <CaseRequestBadge state={request} /> : <StatusBadge status={c.status} />}
           </div>
