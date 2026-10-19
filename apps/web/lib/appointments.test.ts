@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayKey, formatDay, formatTime, groupByDay } from "./appointments";
+import { dayKey, formatDay, formatShortDay, formatTime, groupByDay } from "./appointments";
 
 const GYE = "America/Guayaquil";
 
@@ -27,5 +27,13 @@ describe("formato de citas en la zona de la firma", () => {
       ["2026-10-05", ["a", "b"]],
       ["2026-10-06", ["c"]],
     ]);
+  });
+});
+
+describe("formatShortDay", () => {
+  it("fecha corta en la zona de la firma, sin puntos ni comas", () => {
+    // 23 oct 2026, 02:00 UTC = jueves 22 en Guayaquil
+    expect(formatShortDay("2026-10-23T02:00:00Z", "America/Guayaquil")).toBe("jue 22 oct");
+    expect(formatShortDay("2026-10-23T15:00:00Z", "America/Guayaquil")).toBe("vie 23 oct");
   });
 });

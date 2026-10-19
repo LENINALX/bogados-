@@ -5,11 +5,14 @@ import { PortalLayout } from "@/components/PortalLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CaseRequestBadge } from "@/components/CaseRequestBadge";
 import { EmptyState } from "@/components/ui";
+import { formatShortDay, formatTime } from "@/lib/appointments";
+import { OPEN_CASE_REQUEST_STATES } from "@bogados/shared";
 
 export default async function PortalPage() {
   const session = await requireRole("CLIENTE");
   const { tenantId, id: userId } = session.user;
-  const [cases, sharedDocuments, pendingRequests, nextAppointment] = await Promise.all([
+  const [tenant, cases, sharedDocuments, nextAppointment] = await Promise.all([
+    prisma.tenant.findUnique({ where: { id: tenantId }, select: { timezone: true } }),
     prisma.case.findMany({
       where: { tenantId, clientId: userId },
       include: { lawyer: { select: { name: true } } },
@@ -17,9 +20,6 @@ export default async function PortalPage() {
     }),
     prisma.document.count({
       where: { tenantId, sharedWithClient: true, case: { clientId: userId } },
-    }),
-    prisma.case.count({
-      where: { tenantId, clientId: userId, requestState: { in: ["pendiente", "aplazada"] } },
     }),
     prisma.appointment.findFirst({
       where: {
@@ -35,6 +35,16 @@ export default async function PortalPage() {
       orderBy: { startsAt: "asc" },
     }),
   ]);
+
+  // La hora de la cita, en la del bufete: el servidor puede estar en otra zona (en la nube, UTC)
+  const timeZone = tenant?.timezone ?? "America/Guayaquil";
+  // Una solicitud sin aceptar no es todavía un caso activo: se cuenta solo como solicitud
+  const isOpenRequest = (c: (typeof cases)[number]) =>
+    c.requestState !== null && OPEN_CASE_REQUEST_STATES.includes(c.requestState);
+  const pendingRequests = cases.filter(isOpenRequest).length;
+  const activeCases = cases.filter(
+    (c) => c.status !== "cerrado" && (c.requestState === null || c.requestState === "aceptada"),
+  ).length;
 
   const firstName = session.user.name.split(" ")[0];
 
@@ -55,7 +65,7 @@ export default async function PortalPage() {
 
         <section aria-label="Resumen de tu actividad" className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="card border-t-2 border-t-brand-500 p-4">
-            <div className="text-2xl font-semibold text-brand-900">{cases.filter((item) => item.status !== "cerrado").length}</div>
+            <div className="text-2xl font-semibold text-brand-900">{activeCases}</div>
             <div className="mt-1 text-xs text-slate-500">Casos activos</div>
           </div>
           <div className="card p-4">
@@ -66,34 +76,28 @@ export default async function PortalPage() {
             <div className="text-2xl font-semibold text-brand-900">{pendingRequests}</div>
             <div className="mt-1 text-xs text-slate-500">Solicitudes pendientes</div>
           </div>
-          <Link href="/portal/citas" className="card p-4 transition hover:border-brand-400 hover:shadow-sm">
-            <div className="text-2xl font-semibold text-brand-900">{nextAppointment ? "1" : "-"}</div>
-            <div className="mt-1 text-xs text-slate-500">Próxima cita</div>
-          </Link>
-        </section>
-
-        {nextAppointment && (
           <Link
             href="/portal/citas"
-            className="card mb-6 flex items-center justify-between gap-4 px-4 py-3 transition hover:border-brand-400 sm:px-5"
+            className="card min-w-0 p-4 transition hover:border-brand-400 hover:shadow-sm"
+            title={nextAppointment ? `${nextAppointment.lawyer.name} · ${nextAppointment.case?.title ?? "Consulta general"}` : undefined}
           >
-            <div className="min-w-0">
-              <div className="text-xs font-semibold uppercase tracking-wide text-brand-700">Próxima cita</div>
-              <div className="mt-1 truncate font-semibold text-brand-900">
-                {nextAppointment.startsAt.toLocaleDateString("es-EC", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}{" "}
-                · {nextAppointment.startsAt.toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" })}
-              </div>
-              <div className="mt-1 truncate text-sm text-slate-600">
-                {nextAppointment.lawyer.name} · {nextAppointment.case?.title ?? "Consulta general"}
-              </div>
-            </div>
-            <span className="shrink-0 text-sm font-semibold text-brand-700">Ver agenda →</span>
+            {nextAppointment ? (
+              <>
+                <div className="truncate text-2xl font-semibold text-brand-900">
+                  {formatShortDay(nextAppointment.startsAt.toISOString(), timeZone)}
+                </div>
+                <div className="mt-1 truncate text-xs text-slate-500">
+                  Próxima cita · {formatTime(nextAppointment.startsAt.toISOString(), timeZone)}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-semibold text-slate-400">—</div>
+                <div className="mt-1 text-xs text-slate-500">Sin citas · pedir una →</div>
+              </>
+            )}
           </Link>
-        )}
+        </section>
 
         {cases.length === 0 ? (
           <div className="card">

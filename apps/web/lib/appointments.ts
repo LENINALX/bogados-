@@ -46,6 +46,14 @@ export function formatDay(iso: string, timeZone: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** "vie 16 oct" en la zona horaria de la firma: cabe en una línea junto a otro texto. */
+export function formatShortDay(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("es-EC", { timeZone, weekday: "short", day: "numeric", month: "short" })
+    .format(new Date(iso))
+    .replace(/\./g, "")
+    .replace(",", "");
+}
+
 /** Agrupa por día local manteniendo el orden de entrada. */
 export function groupByDay<T extends { startsAt: string }>(items: T[], timeZone: string) {
   const groups: { day: string; label: string; items: T[] }[] = [];

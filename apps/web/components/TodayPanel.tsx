@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CalendarClock, Scale } from "lucide-react";
 import { APPOINTMENT_STATUS_LABELS, AppointmentStatus } from "@bogados/shared";
-import { formatDay, formatTime, STATUS_BADGE } from "@/lib/appointments";
+import { formatDay, formatShortDay, formatTime, STATUS_BADGE } from "@/lib/appointments";
 import { DayBounds, DueBucket, dueBucket } from "@/lib/today";
 
 export type TodayAppointment = {
@@ -62,12 +62,7 @@ export function TodayPanel({
 }) {
   const time = (d: Date) => formatTime(d.toISOString(), timeZone);
   const day = (d: Date) => formatDay(d.toISOString(), timeZone);
-  // «vie 16 oct»: cabe junto al título sin partir la línea
-  const shortDay = (d: Date) =>
-    new Intl.DateTimeFormat("es-EC", { timeZone, weekday: "short", day: "numeric", month: "short" })
-      .format(d)
-      .replace(/\./g, "")
-      .replace(",", "");
+  const shortDay = (d: Date) => formatShortDay(d.toISOString(), timeZone);
   const dueLabel = (t: TodayTask, bucket: DueBucket) =>
     bucket === "today" ? `hoy, ${time(t.dueAt)}` : `${shortDay(t.dueAt)}, ${time(t.dueAt)}`;
 

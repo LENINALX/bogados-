@@ -84,7 +84,15 @@ async function clientData({ id, tenantId }: ShellUser): Promise<ShellData> {
       take: 6,
       select: { id: true, title: true, status: true },
     }),
-    prisma.case.count({ where: { tenantId, clientId: id, status: { not: "cerrado" } } }),
+    // Igual que el resumen del portal: una solicitud sin aceptar (o rechazada) no es un caso activo
+    prisma.case.count({
+      where: {
+        tenantId,
+        clientId: id,
+        status: { not: "cerrado" },
+        OR: [{ requestState: null }, { requestState: "aceptada" }],
+      },
+    }),
     prisma.appointment.count({
       where: { tenantId, clientId: id, status: { in: ["pendiente", "confirmada"] }, startsAt: { gte: now } },
     }),
