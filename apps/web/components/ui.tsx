@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 
 export function Spinner({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -21,11 +22,15 @@ export function FormMessage({
   return (
     <p
       role={isError ? "alert" : "status"}
-      className={`flex items-start gap-2 rounded-lg px-3 py-2 text-sm ${
-        isError ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"
+      className={`flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-sm leading-snug ${
+        isError ? "border-red-200 bg-red-50 text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"
       }`}
     >
-      <span aria-hidden className="font-bold">{isError ? "!" : "✓"}</span>
+      {isError ? (
+        <AlertCircle className="mt-px h-4 w-4 shrink-0 text-red-600" aria-hidden />
+      ) : (
+        <CheckCircle2 className="mt-px h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+      )}
       <span>{children}</span>
     </p>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, MailCheck, RotateCw } from "lucide-react";
+import { ArrowLeft, CheckCircle2, MailCheck, RotateCw } from "lucide-react";
 import type { LoginChallenge } from "@/lib/auth-errors";
 import { nestPublicFetch, NestApiError } from "@/lib/nest-api";
 import { FormMessage, Spinner } from "../ui";
@@ -42,6 +42,7 @@ export function LoginCodeStep({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [resending, setResending] = useState(false);
   const boxes = useRef<Array<HTMLInputElement | null>>([]);
   const formRef = useRef<HTMLFormElement>(null);
@@ -68,7 +69,11 @@ export function LoginCodeStep({
       setError(null);
       setNotice(null);
       const failure = await onVerify(challenge.challengeId, code);
-      if (!failure) return; // se mantiene «Verificando…» mientras se navega
+      if (!failure) {
+        // Confirmación en verde mientras se navega (la navegación ya está en marcha: no añade espera)
+        setVerified(true);
+        return;
+      }
       setVerifying(false);
       if (failure.restart) {
         onRestart(failure.message);
@@ -141,8 +146,16 @@ export function LoginCodeStep({
 
   return (
     <div>
-      <div className="mb-6 flex items-start gap-3 rounded-2xl bg-brand-600/[0.07] p-4">
-        <MailCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand-700" aria-hidden />
+      <div className="mb-6 flex items-center gap-3" aria-hidden>
+        <span className="flex gap-1">
+          <span className="h-1 w-6 rounded-full bg-brand-600" />
+          <span className="h-1 w-6 rounded-full bg-brand-600" />
+        </span>
+        <span className="text-xs font-medium text-slate-500">Paso 2 de 2 · código de verificación</span>
+      </div>
+      <p className="sr-only">Paso 2 de 2: código de verificación.</p>
+      <div className="mb-6 flex items-start gap-3 rounded-[0.625rem] border border-slate-900/[0.1] bg-surface p-3.5">
+        <MailCheck className="mt-0.5 h-[18px] w-[18px] shrink-0 text-brand-700" aria-hidden />
         <p className="text-sm leading-relaxed text-slate-700">
           Enviamos un código de 6 dígitos a <span className="font-medium text-slate-900">{challenge.emailHint}</span>.
           Escríbelo para entrar.
@@ -191,14 +204,28 @@ export function LoginCodeStep({
                 maxLength={i === 0 ? LENGTH : 1}
                 aria-label={`Dígito ${i + 1} de ${LENGTH}`}
                 aria-invalid={error ? true : undefined}
-                className="input otp-box min-w-0 flex-1"
+                className={`input otp-box min-w-0 flex-1 ${d ? "has-digit" : ""} ${verified ? "is-success" : ""}`}
+                style={verified ? { transitionDelay: `${i * 30}ms` } : undefined}
               />
             ))}
           </div>
         </fieldset>
 
-        <p className={`mt-3 text-[13px] ${expired ? "text-red-600" : "text-slate-500"}`} aria-live="polite">
-          {expired ? "El código ha caducado. Pide uno nuevo." : `El código caduca en ${clock(expiresIn)}.`}
+        <p
+          className={`mt-3 flex items-center gap-1.5 text-[13px] ${
+            verified ? "font-medium text-emerald-700" : expired ? "text-red-600" : "text-slate-500"
+          }`}
+          aria-live="polite"
+        >
+          {verified ? (
+            <>
+              <CheckCircle2 className="h-4 w-4" aria-hidden /> Código correcto. Entrando…
+            </>
+          ) : expired ? (
+            "El código ha caducado. Pide uno nuevo."
+          ) : (
+            `El código caduca en ${clock(expiresIn)}.`
+          )}
         </p>
 
         <button

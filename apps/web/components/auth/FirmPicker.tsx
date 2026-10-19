@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useRef, useState } from "react";
-import { Building2, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { nestPublicFetch, NestApiError } from "@/lib/nest-api";
 import { normalizeFirmSlug } from "@/lib/firm-memory";
 import { Spinner } from "../ui";
@@ -48,14 +48,23 @@ export function useFirmLookup(rawSlug: string, enabled = true): FirmLookup {
   return lookup;
 }
 
+/** «Firma Demo Abogados» → «FD»: identifica la firma como un espacio de trabajo. */
+function monogram(name: string) {
+  const words = name.split(/\s+/).filter((w) => /^[A-Za-zÁÉÍÓÚÑáéíóúñ]/.test(w) && w.length > 2);
+  return ((words[0]?.[0] ?? name[0] ?? "") + (words[1]?.[0] ?? "")).toUpperCase();
+}
+
 /** Firma recordada en este navegador: se muestra su nombre y se puede cambiar. */
 export function FirmChip({ name, slug, onChange }: { name: string; slug: string; onChange: () => void }) {
   return (
     <div>
       <p className="label mb-1.5">Firma</p>
-      <div className="flex items-center gap-3 rounded-2xl border border-slate-900/[0.09] bg-slate-900/[0.03] px-4 py-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">
-          <Building2 className="h-4 w-4" aria-hidden />
+      <div className="flex items-center gap-3 rounded-[0.625rem] border border-slate-900/[0.16] bg-surface px-3 py-2.5 shadow-[0_1px_1px_rgb(23_21_17/0.04)]">
+        <span
+          aria-hidden
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-700 text-[13px] font-semibold tracking-wide text-white"
+        >
+          {monogram(name)}
         </span>
         <span className="min-w-0 flex-1 leading-tight">
           <span className="block truncate text-[0.9375rem] font-medium text-slate-900">{name}</span>
@@ -64,7 +73,8 @@ export function FirmChip({ name, slug, onChange }: { name: string; slug: string;
         <button
           type="button"
           onClick={onChange}
-          className="shrink-0 rounded-lg px-2 py-1 text-[13px] font-medium text-brand-700 hover:bg-brand-600/10"
+          className="shrink-0 rounded-md px-2 py-1 text-[13px] font-medium text-brand-700 hover:bg-brand-600/10"
+          aria-label={`Cambiar de firma (ahora ${name})`}
         >
           Cambiar
         </button>
@@ -96,7 +106,6 @@ export const FirmCodeField = forwardRef<
       ref={ref}
       id="tenantSlug"
       label="Código de firma"
-      icon={Building2}
       type="text"
       required
       autoFocus={autoFocus}

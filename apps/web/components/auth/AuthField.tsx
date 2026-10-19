@@ -4,7 +4,8 @@ import { AlertCircle, LucideIcon } from "lucide-react";
 type Props = {
   id: string;
   label: string;
-  icon: LucideIcon;
+  /** Opcional: las pantallas de acceso van sin iconos en los campos */
+  icon?: LucideIcon;
   /** A la derecha de la etiqueta (p. ej. «¿La olvidaste?») */
   aside?: React.ReactNode;
   /** Dentro del campo, a la derecha (p. ej. mostrar la contraseña) */
@@ -15,7 +16,7 @@ type Props = {
   hint?: React.ReactNode;
 } & React.InputHTMLAttributes<HTMLInputElement>;
 
-/** Campo de las pantallas de acceso: icono a la izquierda, que toma el color de la marca al enfocar. */
+/** Campo de las pantallas de acceso, con error y ayuda conectados para el lector de pantalla. */
 export const AuthField = forwardRef<HTMLInputElement, Props>(function AuthField(
   { id, label, icon: Icon, aside, trailing, error, hint, ...input },
   ref,
@@ -35,15 +36,17 @@ export const AuthField = forwardRef<HTMLInputElement, Props>(function AuthField(
           id={id}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
-          className={`input has-icon peer ${trailing ? "pr-12" : ""}`}
+          className={`input peer ${Icon ? "has-icon" : ""} ${trailing ? "pr-12" : ""}`}
           {...input}
         />
-        <Icon
-          aria-hidden
-          className={`pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 transition-colors duration-200 ${
-            error ? "text-red-500" : "text-slate-400 peer-focus:text-brand-700"
-          }`}
-        />
+        {Icon && (
+          <Icon
+            aria-hidden
+            className={`pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 transition-colors duration-200 ${
+              error ? "text-red-500" : "text-slate-400 peer-focus:text-brand-700"
+            }`}
+          />
+        )}
         {trailing}
       </div>
       {error ? (

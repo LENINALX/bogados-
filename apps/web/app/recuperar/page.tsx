@@ -53,10 +53,7 @@ function RecoverForm() {
   }
 
   return (
-    <AuthShell title="Recuperar contraseña">
-      <p className="mb-4 text-sm text-slate-600">
-        Te enviaremos por email un enlace para elegir una contraseña nueva.
-      </p>
+    <AuthShell title="Recuperar contraseña" subtitle="Te enviaremos por email un enlace para elegir una contraseña nueva.">
       {error && (
         <div className="mb-4">
           <FormMessage type="error">{error}</FormMessage>
