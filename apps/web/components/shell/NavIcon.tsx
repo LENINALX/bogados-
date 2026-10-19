@@ -1,4 +1,4 @@
-import { Briefcase, CalendarDays, CalendarOff, FilePlus, ListChecks, LucideProps, Users } from "lucide-react";
+import { Briefcase, CalendarDays, CalendarOff, FilePlus, ListChecks, LucideProps, ShieldCheck, Users } from "lucide-react";
 import type { NavIcon as NavIconName } from "@/lib/nav";
 
 const ICONS: Record<NavIconName, React.ComponentType<LucideProps>> = {
@@ -8,6 +8,7 @@ const ICONS: Record<NavIconName, React.ComponentType<LucideProps>> = {
   users: Users,
   request: FilePlus,
   holidays: CalendarOff,
+  security: ShieldCheck,
 };
 
 export function NavIcon({ name, ...props }: { name: NavIconName } & LucideProps) {

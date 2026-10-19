@@ -8,6 +8,8 @@ import { AccountTokensService } from './account-tokens.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { loginThrottlerOptions } from './login-throttle';
+import { LoginEventsService } from './login-events.service';
+import { TwoFactorService } from './two-factor.service';
 
 @Module({
   imports: [
@@ -25,7 +27,7 @@ import { loginThrottlerOptions } from './login-throttle';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AccountTokensService, JwtStrategy],
+  providers: [AuthService, AccountTokensService, LoginEventsService, TwoFactorService, JwtStrategy],
   exports: [AuthService, AccountTokensService, JwtModule],
 })
 export class AuthModule {}

@@ -12,6 +12,19 @@ import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 export class TenantsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Para la pantalla de acceso: confirma el código de firma y muestra su nombre.
+   * Solo nombre y código, que ya figuran en las invitaciones; nada más de la firma.
+   */
+  async findPublic(slug: string) {
+    const t = await this.prisma.tenant.findUnique({
+      where: { slug: slug.toLowerCase().trim() },
+      select: { name: true, slug: true },
+    });
+    if (!t) throw new NotFoundException('No encontramos ninguna firma con ese código');
+    return t;
+  }
+
   findAll(actor: JwtPayloadUser) {
     return this.prisma.tenant.findMany({ where: { id: actor.tenantId } });
   }

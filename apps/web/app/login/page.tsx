@@ -2,34 +2,76 @@
 
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { FormEvent, useRef, useState, Suspense } from "react";
-import { ArrowRight, Building2, Eye, EyeOff, Lock, LucideIcon, Mail } from "lucide-react";
+import { FormEvent, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { clearNestToken } from "@/lib/nest-api";
-import { TOO_MANY_ATTEMPTS } from "@/lib/auth-errors";
+import { decodeLoginOutcome, LoginChallenge, loginOutcomeMessage } from "@/lib/auth-errors";
+import { normalizeFirmSlug, readRememberedFirm, RememberedFirm, rememberFirm } from "@/lib/firm-memory";
+import { safeCallbackPath } from "@/lib/safe-redirect";
 import { AuthShell } from "@/components/AuthShell";
+import { AuthField } from "@/components/auth/AuthField";
+import { FirmChip, FirmCodeField, useFirmLookup } from "@/components/auth/FirmPicker";
+import { LoginCodeStep } from "@/components/auth/LoginCodeStep";
 import { FormMessage, Spinner } from "@/components/ui";
 
-const PARAM_ERRORS: Record<string, string> = {
-  forbidden: "No tienes permiso para entrar en esa sección. Inicia sesión con otra cuenta.",
-  expired: "Tu sesión ha caducado. Vuelve a iniciar sesión.",
-  revoked: "Tu cuenta está desactivada. Contacta con el administrador de tu firma.",
+const PARAM_MESSAGES: Record<string, { type: "error" | "success"; text: string }> = {
+  forbidden: { type: "error", text: "No tienes permiso para entrar en esa sección. Inicia sesión con otra cuenta." },
+  expired: { type: "error", text: "Tu sesión ha caducado. Vuelve a iniciar sesión." },
+  revoked: { type: "error", text: "Tu cuenta está desactivada. Contacta con el administrador de tu firma." },
 };
+const OK_MESSAGES: Record<string, string> = {
+  password: "Contraseña guardada. Ya puedes iniciar sesión.",
+  "password-changed": "Contraseña cambiada. Por seguridad cerramos tus sesiones: entra con la nueva.",
+  "signed-out": "Has cerrado la sesión.",
+};
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Las cuentas de demostración solo se ofrecen en desarrollo o en una instalación de demo. */
+const SHOW_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "true" || process.env.NODE_ENV !== "production";
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  // /restablecer redirige aquí con ?firma=&email= para no tener que reescribirlos
+  const firmParam = params.get("firma");
+
+  // /restablecer y los enlaces de invitación llegan con ?firma=&email=
+  const [remembered, setRemembered] = useState<RememberedFirm | null>(null);
+  const [editingFirm, setEditingFirm] = useState(Boolean(firmParam));
+  const [tenantSlug, setTenantSlug] = useState(firmParam ?? "");
   const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
-  const [tenantSlug, setTenantSlug] = useState(params.get("firma") ?? "firma-demo");
+  const [remember, setRemember] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [challenge, setChallenge] = useState<LoginChallenge | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
+  const firmRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
-  /** Sacudida breve del formulario al fallar: el error se siente además de leerse */
+  // La firma recordada se lee en el navegador (no existe en el servidor)
+  useEffect(() => {
+    if (firmParam) return;
+    const firm = readRememberedFirm();
+    if (firm) {
+      setRemembered(firm);
+      setTenantSlug(firm.slug);
+    } else {
+      setEditingFirm(true);
+    }
+  }, [firmParam]);
+
+  const useChip = Boolean(remembered && !editingFirm && normalizeFirmSlug(tenantSlug) === remembered.slug);
+  const lookup = useFirmLookup(tenantSlug, !useChip);
+  const firmName = useChip ? remembered!.name : lookup.state === "found" ? lookup.name : null;
+  const emailError = emailTouched && email && !EMAIL.test(email.trim()) ? "Escribe un email válido, como nombre@firma.com." : null;
+
   function shake() {
     const form = formRef.current;
     if (!form) return;
@@ -39,6 +81,7 @@ function LoginForm() {
   }
 
   function fillDemo(demoEmail: string) {
+    setEditingFirm(true);
     setTenantSlug("firma-demo");
     setEmail(demoEmail);
     setPassword("demo1234");
@@ -46,91 +89,161 @@ function LoginForm() {
     submitRef.current?.focus();
   }
 
+  const finish = useCallback(() => {
+    const slug = normalizeFirmSlug(tenantSlug);
+    if (firmName) rememberFirm({ slug, name: firmName });
+    clearNestToken(); // descartar un token en caché de una sesión anterior
+    router.replace(safeCallbackPath(params.get("callbackUrl"), window.location.origin));
+    router.refresh();
+  }, [firmName, params, router, tenantSlug]);
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    setEmailTouched(true);
+    // Errores que se ven sin preguntar al servidor: se señala el campo y se pone el foco en él
+    if (lookup.state === "missing") {
+      shake();
+      firmRef.current?.focus();
+      return;
+    }
+    if (!EMAIL.test(email.trim())) {
+      shake();
+      emailRef.current?.focus();
+      return;
+    }
+
     setLoading(true);
     setError(null);
     // NextAuth valida contra la API Nest y guarda su JWT en la sesión
     const res = await signIn("credentials", {
-      email,
+      email: email.trim(),
       password,
-      tenantSlug,
+      tenantSlug: normalizeFirmSlug(tenantSlug),
+      remember: String(remember),
       redirect: false,
     }).catch(() => null);
-    if (!res || res.error) {
-      setLoading(false);
-      shake();
-      setError(
-        res?.error === "CredentialsSignin"
-          ? "El código de firma, el email o la contraseña no son correctos. Revísalos e inténtalo de nuevo."
-          : res?.error === TOO_MANY_ATTEMPTS
-            ? "Demasiados intentos con esta cuenta. Espera 15 minutos e inténtalo de nuevo."
-            : "No pudimos conectar con el servidor. Comprueba tu conexión o inténtalo en unos minutos.",
-      );
+
+    if (res && !res.error) {
+      finish(); // se mantiene «Entrando…» mientras se navega
       return;
     }
-    clearNestToken(); // descartar un token en caché de una sesión anterior
-    // Se mantiene el indicador de carga mientras se navega
-    router.push("/");
-    router.refresh();
+    setLoading(false);
+    const outcome = decodeLoginOutcome(res?.error);
+    if (outcome.kind === "two_factor") {
+      setChallenge(outcome.challenge);
+      return;
+    }
+    shake();
+    setError(loginOutcomeMessage(outcome));
+    if (outcome.kind === "invalid") {
+      setPassword("");
+      passwordRef.current?.focus();
+    }
   }
 
-  const paramError = PARAM_ERRORS[params.get("error") ?? ""];
-  const passwordSaved = params.get("ok") === "password";
-  const prefilled = Boolean(params.get("email"));
-  const recoverHref = `/recuperar?${new URLSearchParams({ firma: tenantSlug, email }).toString()}`;
+  const verifyCode = useCallback(
+    async (challengeId: string, code: string) => {
+      const res = await signIn("credentials", { challengeId, code, redirect: false }).catch(() => null);
+      if (res && !res.error) {
+        finish();
+        return null;
+      }
+      const outcome = decodeLoginOutcome(res?.error);
+      return { message: loginOutcomeMessage(outcome), restart: outcome.kind === "restart" || outcome.kind === "locked" };
+    },
+    [finish],
+  );
+
+  const restart = useCallback((message?: string) => {
+    setChallenge(null);
+    setPassword("");
+    setError(message ?? null);
+    setTimeout(() => passwordRef.current?.focus(), 0);
+  }, []);
+
+  const paramMessage = PARAM_MESSAGES[params.get("error") ?? ""];
+  const okMessage = OK_MESSAGES[params.get("ok") ?? ""];
+  const recoverHref = `/recuperar?${new URLSearchParams({ firma: normalizeFirmSlug(tenantSlug), email }).toString()}`;
+
+  if (challenge) {
+    return (
+      <AuthShell
+        title="Verifica que eres tú"
+        subtitle="Tu cuenta pide un código además de la contraseña."
+      >
+        <LoginCodeStep challenge={challenge} onVerify={verifyCode} onRestart={restart} />
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell
       title="Bienvenido de nuevo"
-      subtitle="Entra en el despacho de tu firma."
-      footer={<DemoAccounts onPick={fillDemo} />}
+      subtitle={firmName ? `Entra en ${firmName}.` : "Entra en el despacho de tu firma."}
+      footer={SHOW_DEMO ? <DemoAccounts onPick={fillDemo} /> : undefined}
     >
-      {(paramError || error) && (
+      {(error || (paramMessage && !okMessage)) && (
         <div className="mb-5">
-          <FormMessage type="error">{error || paramError}</FormMessage>
+          <FormMessage type="error">{error || paramMessage.text}</FormMessage>
         </div>
       )}
-      {passwordSaved && !error && (
+      {okMessage && !error && (
         <div className="mb-5">
-          <FormMessage type="success">Contraseña guardada. Ya puedes iniciar sesión.</FormMessage>
+          <FormMessage type="success">{okMessage}</FormMessage>
         </div>
       )}
 
-      <form ref={formRef} onSubmit={onSubmit} className="space-y-4">
-        <Field
-          id="tenantSlug"
-          label="Código de firma"
-          icon={Building2}
-          type="text"
-          required
-          autoComplete="organization"
-          value={tenantSlug}
-          onChange={(e) => setTenantSlug(e.target.value)}
-          placeholder="firma-demo"
-        />
-        <Field
+      <form ref={formRef} onSubmit={onSubmit} className="space-y-4" noValidate>
+        {useChip ? (
+          <FirmChip
+            name={remembered!.name}
+            slug={remembered!.slug}
+            onChange={() => {
+              setEditingFirm(true);
+              setTimeout(() => firmRef.current?.select(), 0);
+            }}
+          />
+        ) : (
+          <FirmCodeField ref={firmRef} value={tenantSlug} onChange={setTenantSlug} lookup={lookup} autoFocus={!firmParam && !params.get("email")} />
+        )}
+        <AuthField
+          ref={emailRef}
           id="email"
           label="Email"
           icon={Mail}
           type="email"
           required
-          autoFocus={!prefilled}
-          autoComplete="email"
+          autoFocus={useChip && !email}
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onBlur={() => setEmailTouched(true)}
           placeholder="tu@firma.com"
+          error={emailError}
         />
-        <Field
+        <AuthField
+          ref={passwordRef}
           id="password"
           label="Contraseña"
           icon={Lock}
           type={showPassword ? "text" : "password"}
           required
-          autoFocus={prefilled}
+          autoFocus={Boolean(params.get("email"))}
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => setCapsLock(e.getModifierState("CapsLock"))}
+          onKeyUp={(e) => setCapsLock(e.getModifierState("CapsLock"))}
+          onBlur={() => setCapsLock(false)}
+          hint={
+            capsLock ? (
+              <span className="font-medium text-amber-700" role="status">
+                Bloq Mayús está activado
+              </span>
+            ) : undefined
+          }
           aside={
             <Link href={recoverHref} className="text-[13px] font-medium text-brand-700 hover:underline">
               ¿La olvidaste?
@@ -148,48 +261,35 @@ function LoginForm() {
             </button>
           }
         />
-        <button type="submit" ref={submitRef} disabled={loading} className="btn-primary group mt-2 w-full">
+
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl py-1">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-[rgb(var(--brand-600))]"
+          />
+          <span className="leading-tight">
+            <span className="block text-sm font-medium text-slate-700">Mantener la sesión iniciada</span>
+            <span className="mt-0.5 block text-xs text-slate-500">30 días en este dispositivo. No en ordenadores compartidos.</span>
+          </span>
+        </label>
+
+        <button type="submit" ref={submitRef} disabled={loading} className="btn-primary group mt-1 w-full">
           {loading && <Spinner />}
           {loading ? "Entrando…" : "Iniciar sesión"}
           {!loading && <ArrowRight className="cta-arrow h-4 w-4" aria-hidden />}
         </button>
       </form>
-    </AuthShell>
-  );
-}
 
-/** Campo con icono a la izquierda; el icono toma el color de la marca al enfocar. */
-function Field({
-  id,
-  label,
-  icon: Icon,
-  aside,
-  trailing,
-  ...input
-}: {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  aside?: React.ReactNode;
-  trailing?: React.ReactNode;
-} & React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <div>
-      <div className="mb-1.5 flex items-baseline justify-between gap-3">
-        <label htmlFor={id} className="label">
-          {label}
-        </label>
-        {aside}
+      <div className="mt-6 space-y-2 border-t border-slate-900/[0.06] pt-5 text-[13px] text-slate-500">
+        <p>¿Primera vez? Usa el enlace del correo de invitación de tu firma.</p>
+        <p className="flex items-center gap-2 text-slate-400">
+          <ShieldCheck className="h-4 w-4 shrink-0 text-brand-700/70" aria-hidden />
+          Datos aislados por firma · verificación en dos pasos
+        </p>
       </div>
-      <div className="relative">
-        <input id={id} className={`input has-icon peer ${trailing ? "pr-12" : ""}`} {...input} />
-        <Icon
-          aria-hidden
-          className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400 transition-colors duration-200 peer-focus:text-brand-700"
-        />
-        {trailing}
-      </div>
-    </div>
+    </AuthShell>
   );
 }
 

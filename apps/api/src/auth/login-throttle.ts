@@ -1,8 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard, ThrottlerModuleOptions } from '@nestjs/throttler';
 
-/** Intentos de login permitidos por cuenta (firma + email) en la ventana `ttl`. */
-export const LOGIN_THROTTLE = { ttl: 15 * 60_000, limit: 10 };
+/**
+ * Freno contra avalanchas de peticiones por cuenta (firma + email) o por desafío en la ventana
+ * `ttl`. Cuenta todas las peticiones, también las correctas; el bloqueo por contraseñas
+ * fallidas, que es el que ve la persona, está en AuthService (ACCOUNT_LOCKOUT).
+ */
+export const LOGIN_THROTTLE = { ttl: 15 * 60_000, limit: 20 };
 
 export const LOGIN_THROTTLE_MESSAGE =
   'Demasiados intentos de inicio de sesión. Espera unos minutos e inténtalo de nuevo.';
@@ -20,8 +24,11 @@ export const loginThrottlerOptions: ThrottlerModuleOptions = {
 @Injectable()
 export class LoginThrottlerGuard extends ThrottlerGuard {
   protected async getTracker(req: Record<string, unknown>): Promise<string> {
-    const body = (req.body ?? {}) as { email?: unknown; tenantSlug?: unknown };
+    const body = (req.body ?? {}) as { email?: unknown; tenantSlug?: unknown; challengeId?: unknown };
     const normalize = (v: unknown) => (typeof v === 'string' ? v.toLowerCase().trim() : '');
+    // Segundo paso (código por email): se cuenta por desafío, que identifica a la cuenta
+    const challengeId = normalize(body.challengeId);
+    if (challengeId) return `login-challenge:${challengeId}`;
     const email = normalize(body.email);
     if (!email) return super.getTracker(req);
     return `login:${normalize(body.tenantSlug)}:${email}`;

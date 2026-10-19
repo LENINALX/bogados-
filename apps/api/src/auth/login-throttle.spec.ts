@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AccountTokensService } from './account-tokens.service';
+import { LoginEventsService } from './login-events.service';
 import { LOGIN_THROTTLE, LOGIN_THROTTLE_MESSAGE, loginThrottlerOptions } from './login-throttle';
 import { HttpExceptionFilter } from '../common/filters/http-exception.filter';
 
@@ -11,14 +12,16 @@ describe('Límite de intentos en POST /auth/login', () => {
   let app: INestApplication;
   let baseUrl: string;
   const login = jest.fn().mockResolvedValue({ accessToken: 't' });
+  const verifyLogin = jest.fn().mockResolvedValue({ accessToken: 't' });
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [ThrottlerModule.forRoot(loginThrottlerOptions)],
       controllers: [AuthController],
       providers: [
-        { provide: AuthService, useValue: { login } },
+        { provide: AuthService, useValue: { login, verifyLogin } },
         { provide: AccountTokensService, useValue: {} },
+        { provide: LoginEventsService, useValue: {} },
       ],
     }).compile();
 
@@ -31,10 +34,11 @@ describe('Límite de intentos en POST /auth/login', () => {
   afterEach(async () => {
     await app.close();
     login.mockClear();
+    verifyLogin.mockClear();
   });
 
-  const attempt = (body: Record<string, string>) =>
-    fetch(`${baseUrl}/auth/login`, {
+  const attempt = (body: Record<string, string>, path = 'login') =>
+    fetch(`${baseUrl}/auth/${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -63,5 +67,13 @@ describe('Límite de intentos en POST /auth/login', () => {
     expect((await attempt(account)).status).toBe(429);
     expect((await attempt({ ...account, email: 'abogado@demo.bogados' })).status).toBe(201);
     expect((await attempt({ ...account, tenantSlug: 'otra-firma' })).status).toBe(201);
+  });
+
+  it('el paso del código se limita por desafío, no por IP (todas las verificaciones llegan desde Next)', async () => {
+    const verify = (challengeId: string) => attempt({ challengeId, code: '000000' }, 'login/verify');
+    for (let i = 0; i < LOGIN_THROTTLE.limit; i++) expect((await verify('ch-1')).status).toBe(200);
+    expect((await verify('ch-1')).status).toBe(429);
+    // Otro usuario verificando desde el mismo servidor no queda bloqueado
+    expect((await verify('ch-2')).status).toBe(200);
   });
 });

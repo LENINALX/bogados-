@@ -29,14 +29,16 @@ export function AuthShell({
     <div className="min-h-dvh bg-shell lg:grid lg:h-dvh lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-3 lg:p-3">
       <BrandPanel />
 
-      <main className="relative flex min-h-dvh flex-col items-center justify-center px-4 py-10 sm:px-8 lg:min-h-0 lg:overflow-y-auto">
+      {/* Centrado con my-auto y no con justify-center: si el formulario no cabe (pantallas bajas),
+          se desplaza desde arriba en vez de quedar recortado por encima */}
+      <main className="relative flex min-h-dvh flex-col items-center px-4 py-10 sm:px-8 lg:min-h-0 lg:overflow-y-auto">
         {/* Halo muy suave detrás del formulario */}
         <div
           aria-hidden
           className="pointer-events-none absolute left-1/2 top-[8%] -z-0 h-[26rem] w-[34rem] max-w-full -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(var(--brand-200)/0.55),transparent)] blur-2xl"
         />
 
-        <div className="relative w-full max-w-[27rem]">
+        <div className="relative my-auto w-full max-w-[27rem]">
           <div className="mb-8 flex justify-center lg:hidden">
             <BrandMark />
           </div>

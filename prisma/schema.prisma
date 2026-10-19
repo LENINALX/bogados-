@@ -37,15 +37,17 @@ enum AppointmentStatus {
 }
 
 model Tenant {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
+  id                 String   @id @default(cuid())
+  name               String
+  slug               String   @unique
   /// Zona horaria IANA de la firma: la disponibilidad se expresa en hora local
-  timezone  String   @default("America/Guayaquil")
+  timezone           String   @default("America/Guayaquil")
   /// Duración de cada cita reservable, en minutos
-  appointmentMinutes Int @default(60)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  appointmentMinutes Int      @default(60)
+  /// Exige verificación en dos pasos al equipo (admin y abogados; los clientes, si la activan ellos)
+  requireTwoFactor   Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   users          User[]
   cases          Case[]
@@ -57,60 +59,66 @@ model Tenant {
   availability   Availability[]
   appointments   Appointment[]
   holidays       Holiday[]
+  loginEvents    LoginEvent[]
 }
 
 model User {
-  id           String   @id @default(cuid())
-  tenantId     String
-  email        String
-  passwordHash String
-  name         String
-  role         Role
-  active       Boolean  @default(true)
+  id                String    @id @default(cuid())
+  tenantId          String
+  email             String
+  passwordHash      String
+  name              String
+  role              Role
+  active            Boolean   @default(true)
   /// Los JWT emitidos antes de esta fecha dejan de ser válidos
   passwordChangedAt DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  /// Al entrar, además de la contraseña, se pide un código enviado por email
+  twoFactorEnabled  Boolean   @default(false)
+  lastLoginAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  casesAsLawyer     Case[]         @relation("CaseLawyer")
-  casesAsClient     Case[]         @relation("CaseClient")
-  documentsUploaded Document[]     @relation("DocumentUploader")
-  messagesSent      Message[]      @relation("MessageSender")
-  notesAuthored     CaseNote[]     @relation("NoteAuthor")
-  activityEvents    ActivityEvent[] @relation("ActivityActor")
-  tasksAssigned     CaseTask[]     @relation("TaskAssignee")
-  notifications     Notification[]
-  tokens            UserToken[]
-  availability      Availability[]
-  appointmentsAsLawyer Appointment[] @relation("AppointmentLawyer")
-  appointmentsAsClient Appointment[] @relation("AppointmentClient")
+  tenant               Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  casesAsLawyer        Case[]           @relation("CaseLawyer")
+  casesAsClient        Case[]           @relation("CaseClient")
+  documentsUploaded    Document[]       @relation("DocumentUploader")
+  messagesSent         Message[]        @relation("MessageSender")
+  notesAuthored        CaseNote[]       @relation("NoteAuthor")
+  activityEvents       ActivityEvent[]  @relation("ActivityActor")
+  tasksAssigned        CaseTask[]       @relation("TaskAssignee")
+  notifications        Notification[]
+  tokens               UserToken[]
+  loginEvents          LoginEvent[]
+  loginChallenges      LoginChallenge[]
+  availability         Availability[]
+  appointmentsAsLawyer Appointment[]    @relation("AppointmentLawyer")
+  appointmentsAsClient Appointment[]    @relation("AppointmentClient")
 
   @@unique([tenantId, email])
   @@index([tenantId, role])
 }
 
 model Case {
-  id          String     @id @default(cuid())
-  tenantId    String
-  title       String
-  description String?
-  matterType  String?
+  id             String            @id @default(cuid())
+  tenantId       String
+  title          String
+  description    String?
+  matterType     String?
   /// Número del proceso judicial en el SATJE (p. ej. 13284-2024-00123); null si aún no se ha presentado
-  processNumber String?
-  status      CaseStatus @default(intake)
-  lawyerId    String?
-  clientId    String?
-  openedAt    DateTime   @default(now())
-  closedAt    DateTime?
+  processNumber  String?
+  status         CaseStatus        @default(intake)
+  lawyerId       String?
+  clientId       String?
+  openedAt       DateTime          @default(now())
+  closedAt       DateTime?
   /// Solo en casos pedidos por el cliente desde el portal (null = creado por el despacho)
   requestState   CaseRequestState?
   /// Motivo que se comunica al cliente al aplazar o rechazar
   decisionReason String?
   decidedAt      DateTime?
   decidedById    String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   lawyer         User?           @relation("CaseLawyer", fields: [lawyerId], references: [id])
@@ -201,7 +209,7 @@ model ActivityEvent {
 
 /// Tareas / plazos asociados a un caso
 model CaseTask {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   tenantId   String
   caseId     String
   title      String
@@ -210,10 +218,10 @@ model CaseTask {
   /// Permiten mostrar cómo se calculó el vencimiento (dueAt).
   termDays   Int?
   notifiedOn DateTime? @db.Date
-  done       Boolean  @default(false)
+  done       Boolean   @default(false)
   assigneeId String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   case     Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
@@ -315,4 +323,46 @@ model Holiday {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, date])
+}
+
+/// Intento de acceso, correcto o fallido: registro de seguridad de la firma
+model LoginEvent {
+  id        String   @id @default(cuid())
+  tenantId  String
+  /// Nulo si el email no corresponde a ningún usuario de la firma
+  userId    String?
+  email     String
+  success   Boolean
+  /// Éxito: password | two_factor. Fallo: bad_password | unknown_user | inactive | bad_code | expired_code
+  reason    String
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([userId, createdAt])
+}
+
+/// Segundo paso del acceso: código de 6 dígitos enviado por email
+model LoginChallenge {
+  id         String    @id @default(cuid())
+  userId     String
+  /// Solo el hash: quien lea la tabla no puede usar el código
+  codeHash   String
+  remember   Boolean   @default(false)
+  attempts   Int       @default(0)
+  sends      Int       @default(1)
+  expiresAt  DateTime
+  lastSentAt DateTime  @default(now())
+  consumedAt DateTime?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

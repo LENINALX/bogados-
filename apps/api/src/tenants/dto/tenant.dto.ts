@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, MinLength, MaxLength, Matches, IsOptional } from 'class-validator';
+import { IsBoolean, IsString, MinLength, MaxLength, Matches, IsOptional } from 'class-validator';
 
 export class UpdateTenantDto {
   @ApiProperty({ required: false })
@@ -16,4 +16,12 @@ export class UpdateTenantDto {
   @MaxLength(60)
   @Matches(/^[a-z0-9-]+$/, { message: 'slug solo minúsculas, números y guiones' })
   slug?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Exige verificación en dos pasos a admin y abogados (los clientes la activan si quieren)',
+  })
+  @IsOptional()
+  @IsBoolean()
+  requireTwoFactor?: boolean;
 }

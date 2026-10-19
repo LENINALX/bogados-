@@ -8,5 +8,6 @@ export const config = {
     "/agenda/:path*",
     "/admin/:path*",
     "/portal/:path*",
+    "/cuenta/:path*",
   ],
 };

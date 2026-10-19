@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({ example: 'admin@demo.bogados' })
@@ -20,4 +20,12 @@ export class LoginDto {
   @IsString()
   @MinLength(1)
   tenantSlug!: string;
+
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Mantener la sesión iniciada: el token dura 30 días en vez de 12 horas',
+  })
+  @IsOptional()
+  @IsBoolean()
+  remember?: boolean;
 }

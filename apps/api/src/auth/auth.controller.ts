@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { AuthService } from './auth.service';
@@ -11,6 +11,15 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { Client, ClientMeta } from './client-meta';
+import { LoginEventsService } from './login-events.service';
+import {
+  ChangePasswordDto,
+  ListLoginEventsQueryDto,
+  ResendLoginCodeDto,
+  UpdateTwoFactorDto,
+  VerifyLoginDto,
+} from './dto/login-security.dto';
 
 @ApiTags('auth')
 @Controller({ path: 'auth', version: '1' })
@@ -18,13 +27,67 @@ export class AuthController {
   constructor(
     private auth: AuthService,
     private tokens: AccountTokensService,
+    private loginEvents: LoginEventsService,
   ) {}
 
   @Post('login')
   @UseGuards(LoginThrottlerGuard)
-  @ApiOperation({ summary: 'Login con email/contraseña → JWT (máx. 10 intentos / 15 min por cuenta)' })
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto);
+  @ApiOperation({
+    summary: 'Login con email/contraseña → JWT, o desafío de código por email si la cuenta usa dos pasos',
+    description: 'Máx. 10 intentos / 15 min por cuenta',
+  })
+  login(@Body() dto: LoginDto, @Client() meta: ClientMeta) {
+    return this.auth.login(dto, meta);
+  }
+
+  @Post('login/verify')
+  @HttpCode(200)
+  @UseGuards(LoginThrottlerGuard)
+  @ApiOperation({ summary: 'Segundo paso: código de 6 dígitos enviado por email → JWT' })
+  verifyLogin(@Body() dto: VerifyLoginDto) {
+    return this.auth.verifyLogin(dto);
+  }
+
+  @Post('login/resend')
+  @HttpCode(200)
+  @UseGuards(LoginThrottlerGuard)
+  @ApiOperation({ summary: 'Reenvía el código de acceso (cada 30 s, máx. 4 envíos)' })
+  resendLoginCode(@Body() dto: ResendLoginCodeDto) {
+    return this.auth.resendLoginCode(dto);
+  }
+
+  @Get('security')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Seguridad de la propia cuenta: dos pasos y últimos accesos' })
+  security(@CurrentUser() user: JwtPayloadUser) {
+    return this.auth.security(user);
+  }
+
+  @Patch('two-factor')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Activa o desactiva la verificación en dos pasos (pide la contraseña)' })
+  updateTwoFactor(@Body() dto: UpdateTwoFactorDto, @CurrentUser() user: JwtPayloadUser) {
+    return this.auth.updateTwoFactor(dto, user);
+  }
+
+  @Post('change-password')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cambia la contraseña y cierra todas las sesiones abiertas' })
+  changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: JwtPayloadUser) {
+    return this.auth.changePassword(dto, user);
+  }
+
+  @Get('login-events')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Registro de accesos de la firma (solo admin)' })
+  listLoginEvents(@Query() query: ListLoginEventsQueryDto, @CurrentUser() user: JwtPayloadUser) {
+    return this.loginEvents.listForTenant(user.tenantId, query);
   }
 
   @Post('forgot-password')
