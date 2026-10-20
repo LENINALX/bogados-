@@ -20,6 +20,7 @@ import { EmptyState, FormMessage, Spinner, errorMessage } from "./ui";
 import { FieldError, INVALID_INPUT, fieldA11y } from "./form/FieldError";
 import { useFieldErrors } from "./form/useFieldErrors";
 import { Badge } from "./staff/primitives";
+import { applyFilter, filters } from "@/lib/input-filters";
 
 export type TaskItem = {
   id: string;
@@ -317,15 +318,16 @@ export function CaseTasks({
                 Días hábiles
                 <input
                   {...a11y("termDays")}
-                  type="number"
+                  // Texto con teclado numérico: type="number" deja escribir «e», comas y signos
+                  type="text"
                   inputMode="numeric"
-                  min={1}
-                  max={MAX_TERM_DAYS}
-                  step={1}
+                  pattern="[0-9]*"
+                  maxLength={2}
                   value={termDays}
                   onChange={(e) => {
-                    setTermDays(e.target.value);
-                    v.change("termDays", e.target.value);
+                    const days = applyFilter(e.target, filters.digits);
+                    setTermDays(days);
+                    v.change("termDays", days);
                   }}
                   onBlur={(e) => v.blur("termDays", e.target.value)}
                   required

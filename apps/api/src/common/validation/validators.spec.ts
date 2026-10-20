@@ -129,7 +129,7 @@ describe('EmailField', () => {
   });
 
   it('rechaza emails no válidos o de más de 254 caracteres', async () => {
-    expect((await check({ email: 'no-es-email' })).messages).toContain('Escribe un email válido');
+    expect((await check({ email: 'no-es-email' })).messages).toContain('Escribe un email válido, como nombre@firma.com');
     const long = `${'a'.repeat(64)}@${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(63)}.ec`;
     expect((await check({ email: long })).errors).not.toHaveLength(0);
   });

@@ -6,6 +6,7 @@ import { nestPublicFetch, NestApiError } from "@/lib/nest-api";
 import { normalizeFirmSlug } from "@/lib/firm-memory";
 import { Spinner } from "../ui";
 import { AuthField } from "./AuthField";
+import { applyFilter, filters } from "@/lib/input-filters";
 
 export type FirmLookup =
   | { state: "idle" }
@@ -120,10 +121,10 @@ export const FirmCodeField = forwardRef<
       autoCapitalize="none"
       spellCheck={false}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => onChange(applyFilter(e.target, filters.firmSlug))}
       onBlur={onBlur}
       maxLength={60}
-      placeholder="p. ej. estudio-mejia"
+      placeholder="codigo-de-tu-firma"
       error={error ?? (lookup.state === "missing" ? "No encontramos ninguna firma con ese código." : null)}
       hint={<span aria-live="polite">{status}</span>}
     />

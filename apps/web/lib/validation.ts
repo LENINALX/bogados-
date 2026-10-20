@@ -40,7 +40,16 @@ export const LIMITS = {
 } as const;
 
 /** Mismo criterio práctico que la API (class-validator IsEmail rechaza más casos raros). */
-export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+/** Como la API (EmailField): solo ASCII, parte local con los caracteres habituales y dominio con TLD */
+export const EMAIL_RE = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*\.[A-Za-z]{2,}$/;
+
+/** El motivo concreto por el que un email no vale (mismos textos que la API). */
+export function emailProblem(value: string): string | null {
+  if (/[^\x00-\x7F]/.test(value)) return "El email no puede llevar tildes, ñ ni otros caracteres especiales.";
+  if (/[,;]/.test(value)) return "El email no puede llevar comas ni punto y coma.";
+  if (/\s/.test(value)) return "El email no puede llevar espacios.";
+  return null;
+}
 export const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 export const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$|^24:00$/;
 /** Valor de un <input type="datetime-local"> (los segundos son opcionales) */
@@ -65,8 +74,12 @@ export const rules = {
       v.length <= n ? null : (message ?? `Máximo ${n.toLocaleString("es-EC")} caracteres (llevas ${v.length.toLocaleString("es-EC")}).`),
   email:
     (message = "Escribe un email válido, como nombre@firma.com."): Rule =>
-    (v) =>
-      !v.trim() || (EMAIL_RE.test(v.trim()) && v.trim().length <= LIMITS.email) ? null : message,
+    (v) => {
+      const e = v.trim();
+      if (!e) return null;
+      if (e.length > LIMITS.email) return `El email admite como máximo ${LIMITS.email} caracteres.`;
+      return emailProblem(e) ?? (EMAIL_RE.test(e) ? null : message);
+    },
   pattern:
     (re: RegExp, message: string): Rule =>
     (v) =>

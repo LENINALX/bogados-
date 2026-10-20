@@ -15,6 +15,7 @@ import { AuthField } from "@/components/auth/AuthField";
 import { FirmChip, FirmCodeField, useFirmLookup } from "@/components/auth/FirmPicker";
 import { LoginCodeStep } from "@/components/auth/LoginCodeStep";
 import { FormMessage, Spinner } from "@/components/ui";
+import { applyFilter, filters } from "@/lib/input-filters";
 
 const PARAM_MESSAGES: Record<string, { type: "error" | "success"; text: string }> = {
   forbidden: { type: "error", text: "No tienes permiso para entrar en esa sección. Inicia sesión con otra cuenta." },
@@ -251,7 +252,7 @@ function LoginForm() {
           autoCapitalize="none"
           spellCheck={false}
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => setEmail(applyFilter(e.target, filters.email))}
           onBlur={() => touch("email")}
           placeholder="tu@firma.com"
           maxLength={LIMITS.email}

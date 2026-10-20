@@ -9,11 +9,16 @@ import { LIMITS, Schema, clean, rules } from "@/lib/validation";
 import { errorMessage } from "./ui";
 import { CharCount, FieldError, INVALID_INPUT, countId, fieldA11y } from "./form/FieldError";
 import { useFieldErrors } from "./form/useFieldErrors";
+import { applyFilter, filters } from "@/lib/input-filters";
 
 type Option = { id: string; name: string; email?: string };
 type ClientMode = "none" | "existing" | "new";
 type Field = "title" | "matterType" | "processNumber" | "description" | "clientName" | "clientEmail" | "clientPassword";
 
+const FIELD_FILTERS: Partial<Record<Field, (v: string) => string>> = {
+  clientEmail: filters.email,
+  processNumber: filters.processNumber,
+};
 const ORDER: readonly Field[] = ["title", "matterType", "processNumber", "description", "clientName", "clientEmail", "clientPassword"];
 
 const input = "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm";
@@ -66,7 +71,11 @@ export function NewCaseForm({
     id: name,
     name,
     onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => v.blur(name, e.target.value),
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => v.change(name, e.target.value),
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      // Campos con formato fijo: lo que no puede ir ahí no llega a escribirse
+      const filter = FIELD_FILTERS[name];
+      v.change(name, filter ? applyFilter(e.target, filter) : e.target.value);
+    },
     ...fieldA11y(name, errors[name], ...extra),
   });
   const cls = (name: Field, base = input) => `${base} ${errors[name] ? INVALID_INPUT : ""}`;
@@ -149,7 +158,7 @@ export function NewCaseForm({
             required
             maxLength={LIMITS.caseTitle.max}
             className={cls("title")}
-            placeholder="Ej. Demanda laboral — Pérez vs. ACME"
+            placeholder="Ej. Demanda laboral"
           />
           <FieldError id="title" error={errors.title} />
         </div>

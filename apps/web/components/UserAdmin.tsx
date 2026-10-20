@@ -9,6 +9,7 @@ import { errorMessage } from "./ui";
 import { useToast } from "./Toaster";
 import { FieldError, INVALID_INPUT, fieldA11y } from "./form/FieldError";
 import { useFieldErrors } from "./form/useFieldErrors";
+import { applyFilter, filters } from "@/lib/input-filters";
 
 const input = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm";
 
@@ -61,8 +62,10 @@ export function InviteUserForm() {
     name: k,
     onBlur: (e: React.FocusEvent<HTMLInputElement>) =>
       e.target.value && v.blur(k, k.startsWith("password") ? e.target.value : clean(e.target.value)),
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-      v.change(k, k.startsWith("password") ? e.target.value : clean(e.target.value)),
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (k === "email") applyFilter(e.target, filters.email);
+      v.change(k, k.startsWith("password") ? e.target.value : clean(e.target.value));
+    },
     ...fieldA11y(inviteId(k), errors[k], ...extra),
     className: `${input} ${errors[k] ? INVALID_INPUT : ""}`,
   });

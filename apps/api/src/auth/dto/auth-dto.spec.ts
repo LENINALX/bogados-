@@ -86,3 +86,23 @@ describe('ForgotPasswordDto y VerifyLoginDto', () => {
     expect((await errorsOf(VerifyLoginDto, { ...ok, code: '12a456' })).fields).toEqual(['code']);
   });
 });
+
+describe('emails: solo ASCII, sin comas ni espacios', () => {
+  it.each([
+    ['josé@firma.ec', 'tildes'],
+    ['ana@firmá.ec', 'tildes'],
+    ['peña@firma.ec', 'ñ'],
+    ['ana,perez@firma.ec', 'comas'],
+    ['ana@firma.ec;otro@x.ec', 'punto y coma'],
+    ['ana perez@firma.ec', 'espacios'],
+  ])('%s → rechazado (%s)', async (email, motivo) => {
+    const dto = plainToInstance(LoginDto, { ...login, email });
+    const [error] = await validate(dto);
+    expect(error?.property).toBe('email');
+    expect(Object.values(error.constraints ?? {}).join(' ')).toContain(motivo);
+  });
+
+  it('un email normal pasa', async () => {
+    expect((await errorsOf(LoginDto, { ...login, email: 'Ana.Perez+casos@Mi-Firma.com.ec' })).fields).toEqual([]);
+  });
+});

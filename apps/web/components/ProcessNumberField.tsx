@@ -8,6 +8,7 @@ import { PROCESS_NUMBER_EXAMPLE, SATJE_URL, normalizeProcessNumber } from "@/lib
 import { LIMITS, clean, rules } from "@/lib/validation";
 import { errorMessage } from "./ui";
 import { INVALID_INPUT } from "./form/FieldError";
+import { applyFilter, filters } from "@/lib/input-filters";
 
 const checkProcessNumber = rules.processNumber();
 
@@ -73,7 +74,7 @@ export function ProcessNumberField({ caseId, processNumber }: { caseId: string; 
             id="processNumber"
             value={value}
             onChange={(e) => {
-              setValue(e.target.value);
+              setValue(applyFilter(e.target, filters.processNumber));
               // Al corregirlo, el error se va en cuanto el formato es válido
               if (error && !checkProcessNumber(clean(e.target.value))) setError(null);
             }}

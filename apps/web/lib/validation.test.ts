@@ -16,6 +16,17 @@ describe("rules", () => {
     expect(email(`${"a".repeat(250)}@x.ec`)).toBeTruthy();
   });
 
+  it("email: sin tildes, ñ, comas ni espacios, con el motivo exacto", () => {
+    const email = rules.email();
+    expect(email("josé@firma.ec")).toContain("tildes");
+    expect(email("ana@firmá.ec")).toContain("tildes");
+    expect(email("peña@firma.ec")).toContain("ñ");
+    expect(email("ana,perez@firma.ec")).toContain("comas");
+    expect(email("ana@firma.ec;otro@x.ec")).toContain("punto y coma");
+    expect(email("ana..perez@firma")).toBeTruthy();
+    expect(email("ana.perez+casos@mi-firma.com.ec")).toBeNull();
+  });
+
   it("maxLength dice cuánto sobra", () => {
     expect(rules.maxLength(5)("123456")).toContain("llevas 6");
     expect(rules.maxLength(5)("12345")).toBeNull();

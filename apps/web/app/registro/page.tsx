@@ -11,8 +11,9 @@ import { FormMessage, Spinner } from "@/components/ui";
 import { clearNestToken, NEST_API_BASE } from "@/lib/nest-api";
 import { rememberFirm } from "@/lib/firm-memory";
 import { FIRM_SLUG, passwordStrength, slugifyFirm } from "@/lib/signup";
+import { rules } from "@/lib/validation";
+import { applyFilter, filters } from "@/lib/input-filters";
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type SlugCheck =
   | { state: "idle" }
@@ -81,7 +82,7 @@ export default function RegisterPage() {
             ? "Elige un código para tu firma."
             : null,
     name: name.trim().length < 2 ? "Escribe tu nombre." : null,
-    email: !EMAIL.test(email.trim()) ? "Escribe un email válido, como nombre@firma.com." : null,
+    email: rules.required("Escribe tu email.")(email) ?? rules.email()(email),
     password: password.length < 8 ? "Al menos 8 caracteres." : null,
   };
   const show = (k: keyof typeof errors) => (touched[k] ? errors[k] : null);
@@ -194,7 +195,7 @@ export default function RegisterPage() {
             value={firmName}
             onChange={(e) => setFirmName(e.target.value)}
             onBlur={() => setTouched((t) => ({ ...t, firmName: true }))}
-            placeholder="Estudio Jurídico Mejía"
+            placeholder="Nombre de la firma"
             maxLength={120}
             error={show("firmName")}
           />
@@ -206,10 +207,10 @@ export default function RegisterPage() {
             value={slug}
             onChange={(e) => {
               setSlugEdited(true);
-              setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"));
+              setSlug(applyFilter(e.target, filters.firmSlug));
             }}
             onBlur={() => setTouched((t) => ({ ...t, slug: true }))}
-            placeholder="estudio-mejia"
+            placeholder="codigo-de-tu-firma"
             maxLength={40}
             className="font-mono"
             error={(touched.slug || check.state === "taken") ? errors.slug : null}
@@ -240,7 +241,7 @@ export default function RegisterPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={() => setTouched((t) => ({ ...t, name: true }))}
-            placeholder="Paola Mejía"
+            placeholder="Nombre"
             maxLength={120}
             error={show("name")}
           />
@@ -252,7 +253,7 @@ export default function RegisterPage() {
             autoCapitalize="none"
             spellCheck={false}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => setEmail(applyFilter(e.target, filters.email))}
             onBlur={() => setTouched((t) => ({ ...t, email: true }))}
             placeholder="tu@firma.com"
             error={show("email")}

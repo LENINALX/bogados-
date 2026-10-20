@@ -9,6 +9,7 @@ import { AuthField } from "@/components/auth/AuthField";
 import { FormMessage, Spinner } from "@/components/ui";
 import { normalizeFirmSlug } from "@/lib/firm-memory";
 import { clean, firstError, LIMITS, rules, validate } from "@/lib/validation";
+import { applyFilter, filters } from "@/lib/input-filters";
 
 const TENANT_SLUG = /^[a-z0-9-]{2,60}$/;
 
@@ -99,10 +100,10 @@ function RecoverForm() {
           autoCapitalize="none"
           spellCheck={false}
           value={tenantSlug}
-          onChange={(e) => setTenantSlug(e.target.value)}
+          onChange={(e) => setTenantSlug(applyFilter(e.target, filters.firmSlug))}
           onBlur={() => setTouched((t) => ({ ...t, tenantSlug: true }))}
           maxLength={60}
-          placeholder="p. ej. estudio-mejia"
+          placeholder="codigo-de-tu-firma"
           error={shown("tenantSlug")}
         />
         <AuthField
@@ -115,7 +116,7 @@ function RecoverForm() {
           autoCapitalize="none"
           spellCheck={false}
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => setEmail(applyFilter(e.target, filters.email))}
           onBlur={() => setTouched((t) => ({ ...t, email: true }))}
           maxLength={LIMITS.email}
           placeholder="tu@firma.com"

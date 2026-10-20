@@ -118,10 +118,35 @@ export function TextField({ label, max, min = 0, multiline = false, minMessage }
 /** RFC 5321: una dirección no pasa de 254 caracteres. */
 export const EMAIL_MAX_LENGTH = 254;
 
+/**
+ * Qué falla en un email, en palabras de la persona. Las direcciones con tildes o ñ existen en
+ * teoría (correo internacionalizado) pero en la práctica casi siempre son erratas y muchos
+ * servidores no las entregan: se exige ASCII.
+ */
+export function emailCharsetProblem(value: string): string | null {
+  if (/[^\x00-\x7F]/.test(value)) return 'El email no puede llevar tildes, ñ ni otros caracteres especiales';
+  if (/[,;]/.test(value)) return 'El email no puede llevar comas ni punto y coma';
+  if (/\s/.test(value)) return 'El email no puede llevar espacios';
+  if (/[<>()[\]\\:"]/.test(value)) return 'El email lleva caracteres que no son válidos';
+  return null;
+}
+
+function EmailCharset(): PropertyDecorator {
+  return ValidateBy({
+    name: 'emailCharset',
+    validator: {
+      validate: (value: unknown) => typeof value !== 'string' || emailCharsetProblem(value) === null,
+      defaultMessage: (args) => emailCharsetProblem(String(args?.value ?? '')) ?? 'Escribe un email válido',
+    },
+  });
+}
+
+/** Email normalizado (minúsculas, sin espacios alrededor), solo ASCII y acotado. */
 export function EmailField(): PropertyDecorator {
   return applyDecorators(
     TrimLower(),
-    IsEmail({}, { message: 'Escribe un email válido' }),
+    EmailCharset(),
+    IsEmail({ allow_utf8_local_part: false, require_tld: true }, { message: 'Escribe un email válido, como nombre@firma.com' }),
     MaxLength(EMAIL_MAX_LENGTH, { message: `El email admite como máximo ${EMAIL_MAX_LENGTH} caracteres` }),
   );
 }
