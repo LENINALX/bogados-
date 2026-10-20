@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowUpRight, TriangleAlert } from "lucide-react";
 import { CASE_STATUS_LABELS, CaseStatus } from "@bogados/shared";
 import { STATUS_SERIES_COLOR, STATUS_SERIES_INK } from "@/lib/viz";
 import { formatAverageDuration } from "@/lib/stats";
@@ -9,20 +10,45 @@ function Tip({ children }: { children: React.ReactNode }) {
   return (
     <span
       role="tooltip"
-      className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+      className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-slate-50 opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
     >
       {children}
     </span>
   );
 }
 
-function Swatch({ status }: { status: CaseStatus }) {
+function Swatch({ color }: { color: string }) {
+  return <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ backgroundColor: color }} aria-hidden />;
+}
+
+/** Cabecera común de las gráficas: título a la izquierda, contexto a la derecha. */
+function ChartHeader({
+  title,
+  meta,
+  as: Tag = "h3",
+  children,
+}: {
+  title: string;
+  meta?: React.ReactNode;
+  as?: "h2" | "h3";
+  children?: React.ReactNode;
+}) {
   return (
-    <span
-      className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
-      style={{ backgroundColor: STATUS_SERIES_COLOR[status] }}
-      aria-hidden
-    />
+    <div className="mb-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <Tag className="card-title">{title}</Tag>
+        {meta && <span className="text-xs tabular-nums text-slate-500">{meta}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ChartEmpty({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="rounded-[10px] border border-dashed border-slate-900/[0.1] px-4 py-8 text-center text-[13px] text-slate-500">
+      {children}
+    </p>
   );
 }
 
@@ -39,23 +65,38 @@ export function StatTile({
   tone?: "default" | "critical";
   href?: string;
 }) {
+  const alert = tone === "critical" && value > 0;
   const body = (
     <>
-      <div className="text-[0.9375rem] font-medium text-slate-600">{label}</div>
-      <div className="mt-3 flex flex-wrap items-center gap-2.5">
-        <span className="text-[2.75rem] font-light leading-none tracking-[-0.04em] tabular-nums text-slate-900">{value}</span>
-        {tone === "critical" && value > 0 && (
-          <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-800">
-            ! Requiere atención
-          </span>
+      <div className="flex items-center justify-between gap-2">
+        <span className={`flex items-center gap-1.5 text-[13px] font-medium ${alert ? "text-red-700" : "text-slate-600"}`}>
+          {alert && <TriangleAlert className="h-3.5 w-3.5" aria-hidden />}
+          {label}
+        </span>
+        {href && (
+          <ArrowUpRight
+            className="h-4 w-4 text-slate-400 transition-[color,transform] duration-150 group-hover:text-brand-700 motion-safe:group-hover:-translate-y-px motion-safe:group-hover:translate-x-px"
+            aria-hidden
+          />
         )}
       </div>
-      {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
+      <div
+        className={`mt-4 font-display text-[2.625rem] font-normal leading-none tracking-[-0.02em] tabular-nums ${
+          alert ? "text-red-700" : "text-slate-900"
+        }`}
+      >
+        {value}
+      </div>
+      <div className={`mt-2 min-h-4 text-xs ${alert ? "text-red-700" : "text-slate-500"}`}>
+        {hint ?? (alert ? "Requieren atención" : tone === "critical" ? "Todo al día" : "")}
+      </div>
     </>
   );
-  const cls = `block rounded-[22px] border p-5 shadow-[inset_0_1px_0_var(--glass-edge),0_1px_2px_rgb(23_21_17/0.05),0_12px_28px_-18px_rgb(23_21_17/0.3)] ${
-    tone === "critical" && value > 0 ? "border-red-200 bg-red-50/40" : "border-slate-200 bg-surface"
-  } ${href ? "transition hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-md" : ""}`;
+  const cls = `card group block p-4 sm:p-5 ${alert ? "border-red-200 bg-red-50/50" : ""} ${
+    href
+      ? "transition-[border-color,box-shadow,transform] duration-150 [transition-timing-function:var(--ease-premium)] hover:border-slate-900/[0.16] motion-safe:hover:-translate-y-px"
+      : ""
+  }`;
   return href ? (
     <Link href={href} className={cls}>
       {body}
@@ -72,31 +113,26 @@ export function CasesByMonthChart({ rows }: { rows: CountChartRow[] }) {
   const total = rows.reduce((sum, row) => sum + row.value, 0);
 
   return (
-    <section className="card rounded-2xl p-5 sm:p-6">
-      <div className="mb-4 flex items-baseline justify-between gap-2">
-        <h3 className="text-base font-semibold text-slate-900">Casos por mes</h3>
-        <span className="text-xs text-slate-500">Últimos 12 meses · {total} casos</span>
-      </div>
+    <section className="card p-5 sm:p-6">
+      <ChartHeader title="Casos por mes" meta={`Últimos 12 meses · ${total} casos`} />
       {total === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-400">Aún no hay casos en este periodo.</p>
+        <ChartEmpty>Aún no hay casos en este periodo.</ChartEmpty>
       ) : (
-        <div>
-          <ul aria-label="Casos creados por mes" className="grid h-48 grid-cols-12 items-end gap-1 sm:gap-2">
-            {rows.map((row) => (
-              <li key={row.label} className="flex h-full flex-col items-center justify-end gap-2">
-                <span className="text-xs font-semibold tabular-nums text-slate-700">{row.value || ""}</span>
-                <span className="flex h-32 w-full items-end rounded-sm bg-slate-100">
-                  <span
-                    className="w-full rounded-t-sm bg-brand-600"
-                    style={{ height: row.value ? `${Math.max(4, (row.value / max) * 100)}%` : 0 }}
-                    title={`${row.label}: ${row.value} casos`}
-                  />
-                </span>
-                <span className="text-[10px] capitalize text-slate-500">{row.label}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <ul aria-label="Casos creados por mes" className="grid h-44 grid-cols-12 items-end gap-1 sm:gap-2">
+          {rows.map((row) => (
+            <li key={row.label} className="flex h-full flex-col items-center justify-end gap-1.5">
+              <span className="text-xs font-medium tabular-nums text-slate-700">{row.value || ""}</span>
+              <span className="flex h-28 w-full items-end border-b border-slate-900/[0.12]">
+                <span
+                  className={`w-full rounded-t-[3px] ${row.value ? "bg-brand-700" : "bg-slate-900/[0.06]"}`}
+                  style={{ height: row.value ? `${Math.max(4, (row.value / max) * 100)}%` : 2 }}
+                  title={`${row.label}: ${row.value} casos`}
+                />
+              </span>
+              <span className="text-[11px] capitalize text-slate-500">{row.label}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );
@@ -107,25 +143,24 @@ export function CasesByMatterChart({ rows }: { rows: CountChartRow[] }) {
   const total = rows.reduce((sum, row) => sum + row.value, 0);
 
   return (
-    <section className="card rounded-2xl p-5 sm:p-6">
-      <div className="mb-4 flex items-baseline justify-between gap-2">
-        <h3 className="text-base font-semibold text-slate-900">Casos por materia</h3>
-        <span className="text-xs text-slate-500">Histórico · {total} casos</span>
-      </div>
+    <section className="card p-5 sm:p-6">
+      <ChartHeader title="Casos por materia" meta={`Histórico · ${total} casos`} />
       {rows.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-400">Aún no hay casos registrados.</p>
+        <ChartEmpty>Aún no hay casos registrados.</ChartEmpty>
       ) : (
-        <ul className="max-h-48 space-y-3 overflow-y-auto pr-1">
+        <ul className="max-h-44 space-y-3.5 overflow-y-auto pr-1">
           {rows.map((row) => (
-            <li key={row.label} className="grid grid-cols-[minmax(0,8rem)_1fr_auto] items-center gap-3">
-              <span className="truncate text-sm text-slate-600" title={row.label}>{row.label}</span>
-              <span className="h-3 rounded-sm bg-slate-100">
+            <li key={row.label} className="grid grid-cols-[minmax(0,8rem)_1fr_2rem] items-center gap-3">
+              <span className="truncate text-sm text-slate-600" title={row.label}>
+                {row.label}
+              </span>
+              <span className="h-2 rounded-full bg-slate-900/[0.05]">
                 <span
-                  className="block h-full rounded-sm bg-emerald-600"
+                  className="block h-full rounded-full bg-brand-700"
                   style={{ width: `${Math.max(2, (row.value / max) * 100)}%` }}
                 />
               </span>
-              <span className="w-8 text-right text-sm font-semibold tabular-nums text-slate-800">{row.value}</span>
+              <span className="text-right text-sm font-medium tabular-nums text-slate-900">{row.value}</span>
             </li>
           ))}
         </ul>
@@ -141,19 +176,23 @@ export function RequestDecisionTimeChart({
   averageDays: number | null;
   requestCount: number;
 }) {
+  const formatted = averageDays === null ? null : formatAverageDuration(averageDays);
   return (
-    <section className="card rounded-2xl p-5 sm:p-6">
-      <div className="mb-4">
-        <h3 className="text-base font-semibold text-slate-900">Tiempo hasta decidir una solicitud</h3>
-        <p className="mt-1 text-xs text-slate-500">Promedio desde su creación hasta la aceptación o el rechazo.</p>
-      </div>
-      {averageDays === null ? (
-        <p className="py-6 text-sm text-slate-400">Aún no hay solicitudes con decisión definitiva.</p>
+    <section className="card flex flex-col p-5 sm:p-6">
+      <ChartHeader title="Tiempo hasta decidir una solicitud">
+        <p className="mt-1 text-xs text-slate-500">Promedio desde que el cliente la envía hasta que se acepta o se rechaza.</p>
+      </ChartHeader>
+      {formatted === null ? (
+        <ChartEmpty>Aún no hay solicitudes con decisión definitiva.</ChartEmpty>
       ) : (
-        <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold tabular-nums text-slate-900">{formatAverageDuration(averageDays).value}</span>
-          <span className="text-sm text-slate-500">{formatAverageDuration(averageDays).unit} de promedio</span>
-          <span className="ml-auto text-xs text-slate-500">{requestCount} solicitudes</span>
+        <div className="mt-auto flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+          <span className="font-display text-[2.625rem] font-normal leading-none tracking-[-0.02em] tabular-nums text-slate-900">
+            {formatted.value}
+          </span>
+          <span className="text-sm text-slate-500">{formatted.unit} de promedio</span>
+          <span className="ml-auto text-xs tabular-nums text-slate-500">
+            {requestCount} {requestCount === 1 ? "solicitud decidida" : "solicitudes decididas"}
+          </span>
         </div>
       )}
     </section>
@@ -173,18 +212,22 @@ const APPOINTMENT_LABELS = {
   completada: "Completadas",
   cancelada: "Canceladas",
 } as const;
+/**
+ * Mismos tonos que las insignias de las citas (ámbar, salvia, pizarra, gris), leídos de los tokens
+ * para que se adapten al modo oscuro.
+ */
 const APPOINTMENT_COLORS = {
-  pendiente: "#b8862e",
-  confirmada: "#4f7391",
-  completada: "#4a7a63",
-  cancelada: "#b05646",
+  pendiente: "rgb(var(--amber-500))",
+  confirmada: "rgb(var(--emerald-600))",
+  completada: "rgb(var(--sky-600))",
+  cancelada: "rgb(var(--slate-300))",
 } as const;
-/** Tinta de los números dentro de cada tramo (≥4.5:1 con su relleno). */
+/** Tinta de los números dentro de cada tramo (≥4.5:1 con su relleno en ambos temas). */
 const APPOINTMENT_INK = {
   pendiente: "#171511",
-  confirmada: "#ffffff",
-  completada: "#ffffff",
-  cancelada: "#ffffff",
+  confirmada: "rgb(var(--surface))",
+  completada: "rgb(var(--surface))",
+  cancelada: "rgb(var(--slate-800))",
 } as const;
 
 export function LawyerAppointmentsChart({ rows }: { rows: LawyerAppointmentsRow[] }) {
@@ -192,35 +235,31 @@ export function LawyerAppointmentsChart({ rows }: { rows: LawyerAppointmentsRow[
   const max = Math.max(1, ...totals);
 
   return (
-    <section className="card rounded-2xl p-5 sm:p-6">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-base font-semibold text-slate-900">Citas por abogado</h3>
-        <span className="text-xs text-slate-500">Todas las citas</span>
-      </div>
-      <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-        {APPOINTMENT_STATUSES.map((status) => (
-          <span key={status} className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: APPOINTMENT_COLORS[status] }} />
-            {APPOINTMENT_LABELS[status]}
-          </span>
-        ))}
-      </div>
+    <section className="card p-5 sm:p-6">
+      <ChartHeader title="Citas por abogado" meta="Todas las citas">
+        <Legend items={APPOINTMENT_STATUSES.map((s) => ({ key: s, label: APPOINTMENT_LABELS[s], color: APPOINTMENT_COLORS[s] }))} />
+      </ChartHeader>
       {rows.length === 0 ? (
-        <p className="py-4 text-sm text-slate-400">Todavía no hay abogados con citas.</p>
+        <ChartEmpty>Todavía no hay abogados con citas.</ChartEmpty>
       ) : (
         <ul className="space-y-3">
           {rows.map((row, index) => (
             <li key={row.id} className="grid grid-cols-[minmax(0,8rem)_1fr] items-center gap-3">
-              <span className="truncate text-sm text-slate-600" title={row.name}>{row.name}</span>
-              <span className="flex items-center gap-2">
+              <span className="truncate text-sm text-slate-600" title={row.name}>
+                {row.name}
+              </span>
+              <span className="flex items-center gap-3">
                 <span className="flex h-5 flex-1">
-                  <span className="flex h-full" style={{ width: totals[index] ? `${(totals[index] / max) * 100}%` : 0 }}>
+                  <span
+                    className="flex h-full gap-[2px]"
+                    style={{ width: totals[index] ? `${(totals[index] / max) * 100}%` : 0 }}
+                  >
                     {APPOINTMENT_STATUSES.map((status) => {
                       const count = row.byStatus[status] ?? 0;
                       return count ? (
                         <span
                           key={status}
-                          className="flex h-full items-center justify-center text-[10px] font-semibold first:rounded-l last:rounded-r"
+                          className="flex h-full items-center justify-center text-[11px] font-semibold tabular-nums first:rounded-l-[4px] last:rounded-r-[4px]"
                           style={{
                             flexGrow: count,
                             flexBasis: 0,
@@ -235,13 +274,26 @@ export function LawyerAppointmentsChart({ rows }: { rows: LawyerAppointmentsRow[
                     })}
                   </span>
                 </span>
-                <span className="w-8 text-right text-sm font-semibold tabular-nums text-slate-800">{totals[index]}</span>
+                <span className="w-6 text-right text-sm font-medium tabular-nums text-slate-900">{totals[index]}</span>
               </span>
             </li>
           ))}
         </ul>
       )}
     </section>
+  );
+}
+
+function Legend({ items }: { items: { key: string; label: string; color: string }[] }) {
+  return (
+    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+      {items.map((i) => (
+        <span key={i.key} className="flex items-center gap-1.5">
+          <Swatch color={i.color} />
+          {i.label}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -257,12 +309,9 @@ export function CasesByStatusChart({
   const total = statuses.reduce((a, s) => a + counts[s], 0);
 
   return (
-    <div className="card rounded-2xl p-5 sm:p-6">
-      <div className="mb-5 flex items-baseline justify-between">
-        <h2 className="text-base font-semibold text-slate-900">Casos por estado</h2>
-        <span className="text-xs text-slate-500">{total} en total</span>
-      </div>
-      <ul className="space-y-3">
+    <div className="card h-full p-5 sm:p-6">
+      <ChartHeader as="h2" title="Casos por estado" meta={`${total} en total`} />
+      <ul className="space-y-1">
         {statuses.map((s) => {
           const n = counts[s];
           const pct = total ? Math.round((n / total) * 100) : 0;
@@ -270,24 +319,22 @@ export function CasesByStatusChart({
             <li key={s}>
               <Link
                 href={casesByStatusHref(s)}
-                className="group relative grid grid-cols-[6.5rem_1fr] items-center gap-3 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                className="group relative -mx-2 grid grid-cols-[6.5rem_1fr_2rem] items-center gap-3 rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-slate-900/[0.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               >
-                <span className="flex items-center gap-2 text-sm text-slate-600">
-                  <Swatch status={s} />
+                <span className="flex items-center gap-2 text-sm text-slate-600 group-hover:text-slate-900">
+                  <Swatch color={STATUS_SERIES_COLOR[s]} />
                   {CASE_STATUS_LABELS[s]}
                 </span>
-                <span className="flex items-center gap-2">
-                  <span className="relative h-5 flex-1">
-                    <span
-                      className="absolute inset-y-0 left-0 rounded-r transition-[filter] group-hover:brightness-95"
-                      style={{
-                        width: n ? `${Math.max(2, (n / max) * 100)}%` : 0,
-                        backgroundColor: STATUS_SERIES_COLOR[s],
-                      }}
-                    />
-                  </span>
-                  <span className="w-8 text-right text-sm font-semibold tabular-nums text-slate-800">{n}</span>
+                <span className="h-2.5 rounded-full bg-slate-900/[0.05]">
+                  <span
+                    className="block h-full rounded-full"
+                    style={{
+                      width: n ? `${Math.max(2, (n / max) * 100)}%` : 0,
+                      backgroundColor: STATUS_SERIES_COLOR[s],
+                    }}
+                  />
                 </span>
+                <span className="text-right text-sm font-medium tabular-nums text-slate-900">{n}</span>
                 <Tip>
                   {CASE_STATUS_LABELS[s]}: {n} caso{n === 1 ? "" : "s"} ({pct}%)
                 </Tip>
@@ -319,22 +366,13 @@ export function LawyerLoadChart({
   const max = Math.max(1, ...totals);
 
   return (
-    <div className="card rounded-2xl p-5 sm:p-6">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold text-slate-900">Carga por abogado</h2>
-        <span className="text-xs text-slate-500">Casos activos (sin cerrados)</span>
-      </div>
-      <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-        {statuses.map((s) => (
-          <span key={s} className="flex items-center gap-1.5">
-            <Swatch status={s} />
-            {CASE_STATUS_LABELS[s]}
-          </span>
-        ))}
-      </div>
+    <div className="card h-full p-5 sm:p-6">
+      <ChartHeader as="h2" title="Carga por abogado" meta="Casos activos (sin cerrados)">
+        <Legend items={statuses.map((s) => ({ key: s, label: CASE_STATUS_LABELS[s], color: STATUS_SERIES_COLOR[s] }))} />
+      </ChartHeader>
 
       {rows.length === 0 ? (
-        <p className="py-4 text-sm text-slate-400">Sin abogados activos</p>
+        <ChartEmpty>Sin abogados activos.</ChartEmpty>
       ) : (
         <ul className="space-y-3">
           {rows.map((r, i) => {
@@ -345,7 +383,7 @@ export function LawyerLoadChart({
                 <span className="truncate text-sm text-slate-600" title={r.name}>
                   {r.name}
                 </span>
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-3">
                   <span className="flex h-5 flex-1">
                     <span
                       className="flex h-full gap-[2px]"
@@ -358,9 +396,9 @@ export function LawyerLoadChart({
                           <span
                             key={s}
                             tabIndex={0}
-                            className={`group relative flex h-full items-center justify-center text-[11px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
-                              idx === segments.length - 1 ? "rounded-r" : ""
-                            }`}
+                            className={`group relative flex h-full items-center justify-center text-[11px] font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
+                              idx === 0 ? "rounded-l-[4px]" : ""
+                            } ${idx === segments.length - 1 ? "rounded-r-[4px]" : ""}`}
                             style={{
                               flexGrow: n,
                               flexBasis: 0,
@@ -377,11 +415,20 @@ export function LawyerLoadChart({
                       })}
                     </span>
                   </span>
-                  <span className="w-8 text-right text-sm font-semibold tabular-nums text-slate-800">{total}</span>
+                  <span className="w-6 text-right text-sm font-medium tabular-nums text-slate-900">{total}</span>
                   <span
-                    className={`w-20 text-right text-xs ${r.overdueTasks ? "font-semibold text-red-700" : "text-slate-400"}`}
+                    className={`flex w-24 items-center justify-end gap-1 text-xs tabular-nums ${
+                      r.overdueTasks ? "font-medium text-red-700" : "text-slate-400"
+                    }`}
                   >
-                    {r.overdueTasks ? `! ${r.overdueTasks} vencida${r.overdueTasks === 1 ? "" : "s"}` : "al día"}
+                    {r.overdueTasks ? (
+                      <>
+                        <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        {r.overdueTasks} vencida{r.overdueTasks === 1 ? "" : "s"}
+                      </>
+                    ) : (
+                      "al día"
+                    )}
                   </span>
                 </span>
               </li>
@@ -390,28 +437,34 @@ export function LawyerLoadChart({
         </ul>
       )}
 
-      <details className="mt-4 text-xs text-slate-600">
-        <summary className="cursor-pointer text-slate-500 hover:text-brand-700">Ver como tabla</summary>
-        <table className="mt-2 w-full text-left">
-          <thead className="text-slate-500">
-            <tr>
-              <th className="py-1 pr-2 font-medium">Abogado</th>
+      <details className="group/table mt-5 text-xs text-slate-600">
+        <summary className="cursor-pointer select-none text-slate-500 transition-colors hover:text-brand-700">
+          Ver como tabla
+        </summary>
+        <table className="mt-3 w-full text-left">
+          <thead>
+            <tr className="text-[11px] uppercase tracking-[0.06em] text-slate-500">
+              <th className="py-1.5 pr-2 font-medium">Abogado</th>
               {statuses.map((s) => (
-                <th key={s} className="py-1 pr-2 text-right font-medium">{CASE_STATUS_LABELS[s]}</th>
+                <th key={s} className="py-1.5 pr-2 text-right font-medium">
+                  {CASE_STATUS_LABELS[s]}
+                </th>
               ))}
-              <th className="py-1 pr-2 text-right font-medium">Total</th>
-              <th className="py-1 text-right font-medium">Tareas vencidas</th>
+              <th className="py-1.5 pr-2 text-right font-medium">Total</th>
+              <th className="py-1.5 text-right font-medium">Tareas vencidas</th>
             </tr>
           </thead>
           <tbody className="tabular-nums">
             {rows.map((r, i) => (
-              <tr key={r.id} className="border-t border-slate-100">
-                <td className="py-1 pr-2">{r.name}</td>
+              <tr key={r.id} className="border-t border-slate-900/[0.06]">
+                <td className="py-1.5 pr-2">{r.name}</td>
                 {statuses.map((s) => (
-                  <td key={s} className="py-1 pr-2 text-right">{r.byStatus[s] ?? 0}</td>
+                  <td key={s} className="py-1.5 pr-2 text-right">
+                    {r.byStatus[s] ?? 0}
+                  </td>
                 ))}
-                <td className="py-1 pr-2 text-right font-semibold">{totals[i]}</td>
-                <td className="py-1 text-right">{r.overdueTasks}</td>
+                <td className="py-1.5 pr-2 text-right font-semibold">{totals[i]}</td>
+                <td className="py-1.5 text-right">{r.overdueTasks}</td>
               </tr>
             ))}
           </tbody>

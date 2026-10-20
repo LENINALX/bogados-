@@ -67,3 +67,20 @@ describe('LoginDto', () => {
     expect(dto.tenantSlug).toBe('firma-demo');
   });
 });
+
+describe('swagger', () => {
+  const original = { ...process.env };
+  afterEach(() => {
+    process.env = { ...original };
+  });
+  const load = async () => (await import('./configuration')).default();
+
+  it('en desarrollo está activa; en producción, solo si se pide expresamente', async () => {
+    process.env = { ...original, NODE_ENV: 'development', SWAGGER_ENABLED: '' };
+    expect((await load()).swagger).toBe(true);
+    process.env = { ...original, NODE_ENV: 'production', JWT_SECRET: 'x', SWAGGER_ENABLED: '' };
+    expect((await load()).swagger).toBe(false);
+    process.env = { ...original, NODE_ENV: 'production', JWT_SECRET: 'x', SWAGGER_ENABLED: 'true' };
+    expect((await load()).swagger).toBe(true);
+  });
+});

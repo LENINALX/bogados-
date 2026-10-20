@@ -1,22 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsBoolean,
-  IsDateString,
-  IsOptional,
-  IsString,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsInt, Matches, Max, Min, ValidateIf } from 'class-validator';
-import { MAX_TERM_DAYS, YMD } from '../../terms/business-days';
+import { IsBoolean, IsInt, IsOptional, Max, Min, ValidateIf } from 'class-validator';
+import { MAX_TERM_DAYS } from '../../terms/business-days';
 import { ToBoolean } from '../../common/decorators/to-boolean.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
+import { EmptyToNull, IsId, IsIsoDateTime, IsYmd, TextField } from '../../common/validation/validators';
+
+export const TASK_TITLE_MIN = 2;
+export const TASK_TITLE_MAX = 200;
 
 export class CreateTaskDto {
-  @ApiProperty()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(200)
+  @ApiProperty({ minLength: TASK_TITLE_MIN, maxLength: TASK_TITLE_MAX })
+  @TextField({ label: 'Título', min: TASK_TITLE_MIN, max: TASK_TITLE_MAX })
   title!: string;
 
   @ApiPropertyOptional({
@@ -24,87 +19,73 @@ export class CreateTaskDto {
     description: 'Obligatorio salvo que se indique un término (termDays + notifiedOn)',
   })
   @ValidateIf((o: CreateTaskDto) => o.termDays === undefined)
-  @IsDateString()
+  @IsIsoDateTime('dueAt')
   dueAt?: string;
 
   @ApiPropertyOptional({ example: 3, description: 'Término en días hábiles: el vencimiento lo calcula el servidor' })
   @IsOptional()
   @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(MAX_TERM_DAYS)
+  @IsInt({ message: 'termDays debe ser un número entero de días hábiles' })
+  @Min(1, { message: `El término debe ser de 1 a ${MAX_TERM_DAYS} días hábiles` })
+  @Max(MAX_TERM_DAYS, { message: `El término debe ser de 1 a ${MAX_TERM_DAYS} días hábiles` })
   termDays?: number;
 
   @ApiPropertyOptional({ example: '2026-10-08', description: 'Fecha de notificación desde la que corre el término' })
   @ValidateIf((o: CreateTaskDto) => o.termDays !== undefined)
-  @Matches(YMD, { message: 'notifiedOn debe tener formato AAAA-MM-DD' })
+  @IsYmd('notifiedOn')
   notifiedOn?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsString()
+  @EmptyToNull()
+  @IsId('El responsable')
   assigneeId?: string | null;
 
   @ApiPropertyOptional({ description: 'Requerido si se crea vía /tasks' })
   @IsOptional()
-  @IsString()
+  @IsId('El caso')
   caseId?: string;
 }
 
 export class UpdateTaskDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ minLength: TASK_TITLE_MIN, maxLength: TASK_TITLE_MAX })
   @IsOptional()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(200)
+  @TextField({ label: 'Título', min: TASK_TITLE_MIN, max: TASK_TITLE_MAX })
   title?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsDateString()
+  @IsIsoDateTime('dueAt')
   dueAt?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsBoolean()
+  @ToBoolean()
+  @IsBoolean({ message: 'done debe ser true o false' })
   done?: boolean;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'null quita el responsable' })
   @IsOptional()
-  @IsString()
+  @EmptyToNull()
+  @IsId('El responsable')
   assigneeId?: string | null;
 }
 
-export class ListTasksQueryDto {
-  @ApiPropertyOptional({ default: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ default: 20 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  pageSize?: number = 20;
-
+export class ListTasksQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ description: 'Filtrar por caso' })
   @IsOptional()
-  @IsString()
+  @IsId('El caso')
   caseId?: string;
 
   @ApiPropertyOptional({ description: 'solo vencidas sin completar' })
   @IsOptional()
   @ToBoolean()
-  @IsBoolean()
+  @IsBoolean({ message: 'overdue debe ser true o false' })
   overdue?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()
   @ToBoolean()
-  @IsBoolean()
+  @IsBoolean({ message: 'done debe ser true o false' })
   done?: boolean;
 }

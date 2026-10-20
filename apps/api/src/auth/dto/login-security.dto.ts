@@ -1,12 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, IsUUID, Matches, MaxLength, MinLength } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { PASSWORD_MAX, PASSWORD_MIN } from './password.dto';
 
 export class VerifyLoginDto {
   @ApiProperty()
-  @IsString()
-  @MaxLength(64)
+  @IsUUID('4', { message: 'La verificación no es válida. Vuelve a iniciar sesión.' })
   challengeId!: string;
 
   @ApiProperty({ example: '123456' })
@@ -16,8 +15,7 @@ export class VerifyLoginDto {
 
 export class ResendLoginCodeDto {
   @ApiProperty()
-  @IsString()
-  @MaxLength(64)
+  @IsUUID('4', { message: 'La verificación no es válida. Vuelve a iniciar sesión.' })
   challengeId!: string;
 }
 
@@ -44,6 +42,7 @@ export class ChangePasswordDto {
   @IsString()
   @MinLength(PASSWORD_MIN, { message: `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres` })
   @MaxLength(PASSWORD_MAX)
+  @Matches(/\S/, { message: 'La contraseña no puede ser solo espacios' })
   newPassword!: string;
 }
 

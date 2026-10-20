@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { CalendarPlus, Download, Trash2 } from "lucide-react";
 import { nestFetch } from "@/lib/nest-api";
 import { formatYmdLong } from "@/lib/terms";
-import { EmptyState, FormMessage } from "./ui";
+import { LIMITS, clean, rules } from "@/lib/validation";
+import { EmptyState, FormMessage, errorMessage } from "./ui";
+import { FieldError, INVALID_INPUT, fieldA11y } from "./form/FieldError";
+import { useFieldErrors } from "./form/useFieldErrors";
 
 type Holiday = { id: string; date: string; name: string };
 
@@ -18,6 +21,22 @@ export function HolidaysManager({ year, initial }: { year: number; initial: Holi
   const [name, setName] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const v = useFieldErrors<"date" | "name">(
+    {
+      date: [
+        rules.required("Elige la fecha del día no hábil."),
+        rules.date(),
+        rules.dateBetween(`${year}-01-01`, `${year}-12-31`, `La fecha debe ser de ${year}.`),
+      ],
+      name: [
+        rules.required("Escribe el motivo, por ejemplo «Fundación de Manta»."),
+        rules.minLength(LIMITS.holidayName.min, `El motivo debe tener al menos ${LIMITS.holidayName.min} caracteres.`),
+        rules.maxLength(LIMITS.holidayName.max),
+      ],
+    },
+    ["date", "name"],
+    (k) => `holiday-${k}`,
+  );
 
   async function run(key: string, action: () => Promise<string>) {
     setBusy(key);
@@ -26,7 +45,9 @@ export function HolidaysManager({ year, initial }: { year: number; initial: Holi
       setMessage({ type: "success", text: await action() });
       router.refresh();
     } catch (err) {
-      setMessage({ type: "error", text: err instanceof Error ? err.message : "No se pudo completar la acción." });
+      const text = errorMessage(err, "No se pudo completar la acción.");
+      if (key === "add" && /feriado registrado en esa fecha/i.test(text)) v.set("date", "Ya hay un feriado registrado en esa fecha.");
+      else setMessage({ type: "error", text });
     } finally {
       setBusy(null);
     }
@@ -34,12 +55,15 @@ export function HolidaysManager({ year, initial }: { year: number; initial: Holi
 
   function add(e: FormEvent) {
     e.preventDefault();
-    if (!date || name.trim().length < 2) return;
+    if (busy === "add") return;
+    const cleanName = clean(name);
+    if (!v.submit({ date, name: cleanName })) return;
     run("add", async () => {
-      await nestFetch("/holidays", { method: "POST", body: JSON.stringify({ date, name: name.trim() }) });
+      await nestFetch("/holidays", { method: "POST", body: JSON.stringify({ date, name: cleanName }) });
       setDate("");
       setName("");
-      return `Añadido: ${name.trim()}.`;
+      v.reset();
+      return `Añadido: ${cleanName}.`;
     });
   }
 
@@ -114,7 +138,7 @@ export function HolidaysManager({ year, initial }: { year: number; initial: Holi
       <aside className="space-y-4">
         {message && <FormMessage type={message.type}>{message.text}</FormMessage>}
 
-        <form onSubmit={add} className="card space-y-3 p-4">
+        <form onSubmit={add} noValidate className="card space-y-3 p-4">
           <h2 className="card-title flex items-center gap-2">
             <CalendarPlus className="h-4 w-4 text-slate-500" aria-hidden />
             Añadir un día no hábil
@@ -122,27 +146,40 @@ export function HolidaysManager({ year, initial }: { year: number; initial: Holi
           <label className="block text-xs font-medium text-slate-600">
             Fecha
             <input
+              id="holiday-date"
               type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => {
+                setDate(e.target.value);
+                v.change("date", e.target.value);
+              }}
+              onBlur={(e) => e.target.value && v.blur("date", e.target.value)}
               min={`${year}-01-01`}
               max={`${year}-12-31`}
               required
-              className="input mt-1"
+              {...fieldA11y("holiday-date", v.errors.date)}
+              className={`input mt-1 ${v.errors.date ? INVALID_INPUT : ""}`}
             />
           </label>
+          <FieldError id="holiday-date" error={v.errors.date} className="-mt-1.5" />
           <label className="block text-xs font-medium text-slate-600">
             Motivo
             <input
+              id="holiday-name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                v.change("name", clean(e.target.value));
+              }}
+              onBlur={(e) => e.target.value && v.blur("name", clean(e.target.value))}
               placeholder="Ej.: Fundación de Manta, traslado del 10 de agosto…"
-              minLength={2}
-              maxLength={100}
+              maxLength={LIMITS.holidayName.max}
               required
-              className="input mt-1"
+              {...fieldA11y("holiday-name", v.errors.name)}
+              className={`input mt-1 ${v.errors.name ? INVALID_INPUT : ""}`}
             />
           </label>
+          <FieldError id="holiday-name" error={v.errors.name} className="-mt-1.5" />
           <button type="submit" disabled={busy === "add"} className="btn-primary w-full">
             {busy === "add" ? "Añadiendo…" : "Añadir"}
           </button>

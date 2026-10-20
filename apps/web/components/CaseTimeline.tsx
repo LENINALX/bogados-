@@ -1,24 +1,81 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Mail } from "lucide-react";
+import {
+  Ban,
+  BadgeCheck,
+  Circle,
+  Clock,
+  FileText,
+  FolderPlus,
+  Gavel,
+  History,
+  Inbox,
+  Lock,
+  Mail,
+  MessageSquareText,
+  Repeat2,
+  UserCheck,
+  type LucideIcon,
+} from "lucide-react";
 import type { TimelineItem } from "@/lib/timeline";
+import { EmptyState } from "./ui";
+import { Badge } from "./staff/primitives";
 
-const EVENT_STYLE: Record<string, { dot: string; icon: string; label: string }> = {
-  CASE_CREATED: { dot: "bg-brand-600", icon: "+", label: "Caso creado" },
-  STATUS_CHANGED: { dot: "bg-blue-600", icon: "↻", label: "Cambio de estado" },
-  ASSIGNED: { dot: "bg-violet-600", icon: "→", label: "Asignación" },
-  DOC_UPLOADED: { dot: "bg-slate-500", icon: "▤", label: "Documento" },
-  PROCESS_LINKED: { dot: "bg-brand-700", icon: "§", label: "Proceso judicial" },
+/** Marcador de cada tipo: icono lucide sobre un círculo tintado con el tono de la paleta. */
+type Marker = { icon: LucideIcon; tone: string; label: string };
+
+const TONE = {
+  brand: "bg-brand-50 text-brand-700 ring-brand-200",
+  emerald: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  amber: "bg-amber-50 text-amber-700 ring-amber-200",
+  red: "bg-red-50 text-red-700 ring-red-200",
+  sky: "bg-sky-50 text-sky-700 ring-sky-200",
+  slate: "bg-slate-50 text-slate-600 ring-slate-200",
+} as const;
+
+const EVENT_STYLE: Record<string, Marker> = {
+  CASE_CREATED: { icon: FolderPlus, tone: TONE.brand, label: "Caso creado" },
+  STATUS_CHANGED: { icon: Repeat2, tone: TONE.emerald, label: "Cambio de estado" },
+  ASSIGNED: { icon: UserCheck, tone: TONE.sky, label: "Asignación" },
+  DOC_UPLOADED: { icon: FileText, tone: TONE.slate, label: "Documento" },
+  PROCESS_LINKED: { icon: Gavel, tone: TONE.brand, label: "Proceso judicial" },
+  CASE_REQUESTED: { icon: Inbox, tone: TONE.amber, label: "Solicitud" },
+  CASE_ACCEPTED: { icon: BadgeCheck, tone: TONE.emerald, label: "Solicitud aceptada" },
+  CASE_POSTPONED: { icon: Clock, tone: TONE.amber, label: "Solicitud aplazada" },
+  CASE_REJECTED: { icon: Ban, tone: TONE.red, label: "Solicitud rechazada" },
 };
-const DEFAULT_EVENT = { dot: "bg-slate-400", icon: "•", label: "Evento" };
+const DEFAULT_EVENT: Marker = { icon: Circle, tone: TONE.slate, label: "Evento" };
+const NOTE_INTERNAL: Marker = { icon: Lock, tone: TONE.amber, label: "Nota interna" };
+const NOTE_PUBLIC: Marker = { icon: MessageSquareText, tone: TONE.emerald, label: "Nota" };
+
+const DATE_FORMAT: Intl.DateTimeFormatOptions = {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+};
+
+function MarkerDot({ marker }: { marker: Marker }) {
+  const Icon = marker.icon;
+  return (
+    <span
+      className={`absolute left-0 top-0 flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-inset ${marker.tone}`}
+      aria-hidden
+    >
+      {/* Anillo del color de la tarjeta: corta la línea de tiempo alrededor del marcador */}
+      <span className="absolute -inset-[3px] -z-10 rounded-full bg-surface" />
+      <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+    </span>
+  );
+}
 
 function EmailedBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 text-slate-700">
-      <Mail className="h-3 w-3" aria-hidden />
+    <Badge tone="slate" icon={Mail}>
       Avisado por email
-    </span>
+    </Badge>
   );
 }
 
@@ -53,11 +110,14 @@ export function CaseTimeline({
   };
 
   return (
-    <div className="card">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
-        <span className="text-sm font-semibold text-slate-800">{title}</span>
+    <section className="card">
+      <div className="card-header flex-wrap">
+        <h2 className="card-title flex items-center gap-2">
+          <History className="h-4 w-4 text-slate-500" aria-hidden />
+          {title}
+        </h2>
         {showFilters && (
-          <div className="flex gap-1 text-xs">
+          <div role="group" aria-label="Filtrar actividad" className="flex gap-0.5 rounded-lg bg-slate-900/[0.04] p-0.5 text-xs">
             {(
               [
                 ["all", "Todo"],
@@ -69,82 +129,87 @@ export function CaseTimeline({
                 key={f}
                 type="button"
                 onClick={() => setFilter(f)}
-                className={`rounded-full px-2.5 py-0.5 font-medium ${
-                  filter === f ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                aria-pressed={filter === f}
+                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium transition-[background-color,color,box-shadow] duration-150 ${
+                  filter === f
+                    ? "bg-surface text-slate-900 shadow-[0_1px_2px_rgb(23_21_17/0.08)]"
+                    : "text-slate-500 hover:text-slate-900"
                 }`}
               >
-                {label} ({counts[f]})
+                {label}
+                <span className="tabular-nums text-slate-400">{counts[f]}</span>
               </button>
             ))}
           </div>
         )}
       </div>
 
-      <div className="max-h-[32rem] overflow-y-auto px-4 py-4">
-        {sorted.length === 0 && <p className="py-4 text-sm text-slate-400">Sin actividad</p>}
-        <ol className="relative ml-3 border-l border-slate-200">
-          {sorted.map((item) => {
-            const date = new Date(item.createdAt).toLocaleString("es-EC");
-            if (item.kind === "note") {
+      <div className="max-h-[34rem] overflow-y-auto px-4 py-5 sm:px-5">
+        {sorted.length === 0 ? (
+          <EmptyState
+            icon={History}
+            title={filter === "note" ? "Sin notas" : filter === "event" ? "Sin eventos" : "Sin actividad todavía"}
+            hint={
+              audience === "client"
+                ? "Aquí verás cada avance de tu caso."
+                : "Las notas, cambios de estado y documentos quedarán registrados aquí."
+            }
+          />
+        ) : (
+          <ol className="relative isolate">
+            {/* Línea vertical que une los marcadores */}
+            <span className="absolute bottom-3 left-[13.5px] top-3 -z-20 w-px bg-slate-900/[0.1]" aria-hidden />
+            {sorted.map((item) => {
+              const date = new Date(item.createdAt).toLocaleString("es-EC", DATE_FORMAT);
+              if (item.kind === "note") {
+                return (
+                  <li key={`n-${item.id}`} className="relative pb-6 pl-11 last:pb-0">
+                    <MarkerDot marker={item.isInternal ? NOTE_INTERNAL : NOTE_PUBLIC} />
+                    <div className="flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                      <span className="font-medium text-slate-800">{item.author}</span>
+                      {audience === "staff" && (
+                        <Badge tone={item.isInternal ? "amber" : "emerald"}>
+                          {item.isInternal ? "Nota interna" : "Visible al cliente"}
+                        </Badge>
+                      )}
+                      {audience === "staff" && item.emailedClient && <EmailedBadge />}
+                      <time dateTime={item.createdAt} className="ml-auto tabular-nums">
+                        {date}
+                      </time>
+                    </div>
+                    <p className="mt-1.5 whitespace-pre-wrap rounded-[10px] border border-slate-900/[0.06] bg-slate-50 px-3 py-2.5 text-sm leading-relaxed text-slate-800">
+                      {item.body}
+                    </p>
+                  </li>
+                );
+              }
+              const style = EVENT_STYLE[item.type] ?? DEFAULT_EVENT;
               return (
-                <li key={`n-${item.id}`} className="relative mb-5 pl-6 last:mb-0">
-                  <span
-                    className={`absolute -left-[9px] flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] text-white ring-4 ring-white ${
-                      item.isInternal ? "bg-amber-500" : "bg-emerald-600"
-                    }`}
-                    aria-hidden
-                  >
-                    ✎
-                  </span>
-                  <div className="flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
-                    <span className="font-medium text-slate-700">{item.author}</span>
-                    {audience === "staff" && (
-                      <span
-                        className={`rounded px-1.5 ${
-                          item.isInternal ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
-                        }`}
-                      >
-                        {item.isInternal ? "Nota interna" : "Visible al cliente"}
-                      </span>
-                    )}
+                <li key={`e-${item.id}`} className="relative pb-6 pl-11 last:pb-0">
+                  <MarkerDot marker={style} />
+                  <div className="flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                    <span className="font-medium text-slate-700">{style.label}</span>
+                    {item.actor && <span>· {item.actor}</span>}
                     {audience === "staff" && item.emailedClient && <EmailedBadge />}
-                    <span className="ml-auto">{date}</span>
+                    <time dateTime={item.createdAt} className="ml-auto tabular-nums">
+                      {date}
+                    </time>
                   </div>
-                  <p className="mt-1 whitespace-pre-wrap rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-800">
-                    {item.body}
-                  </p>
+                  <p className="mt-0.5 text-sm text-slate-900">{item.summary}</p>
+                  {item.detail && (
+                    <div className="mt-2 rounded-[10px] border border-slate-900/[0.06] bg-slate-50 px-3 py-2.5">
+                      <p className="text-xs font-medium text-brand-700">
+                        {audience === "client" ? "Mensaje de tu abogado" : "Explicación para el cliente"}
+                      </p>
+                      <p className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{item.detail}</p>
+                    </div>
+                  )}
                 </li>
               );
-            }
-            const style = EVENT_STYLE[item.type] ?? DEFAULT_EVENT;
-            return (
-              <li key={`e-${item.id}`} className="relative mb-5 pl-6 last:mb-0">
-                <span
-                  className={`absolute -left-[9px] flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] text-white ring-4 ring-white ${style.dot}`}
-                  aria-hidden
-                >
-                  {style.icon}
-                </span>
-                <div className="flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
-                  <span className="font-medium text-slate-600">{style.label}</span>
-                  {item.actor && <span>· {item.actor}</span>}
-                  {audience === "staff" && item.emailedClient && <EmailedBadge />}
-                  <span className="ml-auto">{date}</span>
-                </div>
-                <p className="mt-0.5 text-sm text-slate-700">{item.summary}</p>
-                {item.detail && (
-                  <div className="mt-1.5 rounded-lg border-l-2 border-brand-600 bg-slate-50 px-3 py-2">
-                    <p className="text-xs font-medium text-slate-500">
-                      {audience === "client" ? "Mensaje de tu abogado" : "Explicación para el cliente"}
-                    </p>
-                    <p className="mt-0.5 whitespace-pre-wrap text-sm text-slate-800">{item.detail}</p>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ol>
+            })}
+          </ol>
+        )}
       </div>
-    </div>
+    </section>
   );
 }

@@ -37,9 +37,14 @@ export function TaskDoneToggle({ taskId, done }: { taskId: string; done: boolean
         checked={checked}
         disabled={pending}
         onChange={onChange}
+        className="h-4 w-4 accent-brand-600 disabled:opacity-60"
         aria-label={checked ? "Marcar como pendiente" : "Marcar como completada"}
       />
-      {error && <FormMessage type="error">{error}</FormMessage>}
+      {error && (
+        <div className="mt-2 w-56">
+          <FormMessage type="error">{error}</FormMessage>
+        </div>
+      )}
     </div>
   );
 }

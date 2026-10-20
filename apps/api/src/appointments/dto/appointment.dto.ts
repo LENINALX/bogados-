@@ -3,22 +3,22 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
-  IsDateString,
   IsEnum,
   IsIn,
   IsInt,
   IsOptional,
-  IsString,
   Matches,
   Max,
-  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { AppointmentStatus } from '@prisma/client';
+import { EmptyToNull, IsId, IsIsoDateTime, IsYmd, TextField } from '../../common/validation/validators';
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$|^24:00$/;
-const YMD = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Motivo de la cita y comentario al confirmar/cancelar. */
+export const APPOINTMENT_TEXT_MAX = 500;
 
 export class AvailabilityBlockDto {
   @ApiProperty({ description: '0 = domingo … 6 = sábado', example: 1 })
@@ -48,12 +48,12 @@ export class SetAvailabilityDto {
 
 export class SlotsQueryDto {
   @ApiProperty()
-  @IsString()
+  @IsId('El abogado')
   lawyerId!: string;
 
   @ApiPropertyOptional({ description: 'Primer día (YYYY-MM-DD, hora local de la firma). Por defecto, hoy.' })
   @IsOptional()
-  @Matches(YMD, { message: 'from debe tener formato YYYY-MM-DD' })
+  @IsYmd('from')
   from?: string;
 
   @ApiPropertyOptional({ default: 14, minimum: 1, maximum: 31 })
@@ -68,21 +68,24 @@ export class SlotsQueryDto {
 export class CreateAppointmentDto {
   @ApiPropertyOptional({ description: 'Abogado. Obligatorio para clientes; el staff lo puede omitir (él mismo).' })
   @IsOptional()
-  @IsString()
+  @EmptyToNull()
+  @IsId('El abogado')
   lawyerId?: string;
 
   @ApiPropertyOptional({ description: 'Cliente. Obligatorio cuando la crea el despacho.' })
   @IsOptional()
-  @IsString()
+  @EmptyToNull()
+  @IsId('El cliente')
   clientId?: string;
 
   @ApiPropertyOptional({ description: 'Caso relacionado (debe ser del cliente)' })
   @IsOptional()
-  @IsString()
+  @EmptyToNull()
+  @IsId('El caso')
   caseId?: string;
 
   @ApiProperty({ example: '2026-10-05T14:00:00.000Z' })
-  @IsDateString()
+  @IsIsoDateTime('startsAt')
   startsAt!: string;
 
   @ApiPropertyOptional({ description: 'Solo staff. Por defecto, la duración configurada en la firma.' })
@@ -93,22 +96,21 @@ export class CreateAppointmentDto {
   @Max(480)
   durationMinutes?: number;
 
-  @ApiPropertyOptional({ maxLength: 500 })
+  @ApiPropertyOptional({ maxLength: APPOINTMENT_TEXT_MAX })
   @IsOptional()
-  @IsString()
-  @MaxLength(500)
+  @TextField({ label: 'Motivo', max: APPOINTMENT_TEXT_MAX, multiline: true })
   reason?: string;
 }
 
 export class ListAppointmentsQueryDto {
   @ApiPropertyOptional({ description: 'Desde (ISO). Por defecto, ahora.' })
   @IsOptional()
-  @IsDateString()
+  @IsIsoDateTime('from')
   from?: string;
 
-  @ApiPropertyOptional({ description: 'Hasta (ISO)' })
+  @ApiPropertyOptional({ description: 'Hasta (ISO). Debe ser posterior a «from».' })
   @IsOptional()
-  @IsDateString()
+  @IsIsoDateTime('to')
   to?: string;
 
   @ApiPropertyOptional({ enum: AppointmentStatus })
@@ -118,18 +120,17 @@ export class ListAppointmentsQueryDto {
 
   @ApiPropertyOptional({ description: 'Solo admin: filtrar por abogado' })
   @IsOptional()
-  @IsString()
+  @IsId('El abogado')
   lawyerId?: string;
 }
 
 export class UpdateAppointmentStatusDto {
   @ApiProperty({ enum: ['confirmada', 'cancelada', 'completada'] })
-  @IsIn(['confirmada', 'cancelada', 'completada'])
+  @IsIn(['confirmada', 'cancelada', 'completada'], { message: 'status debe ser confirmada, cancelada o completada' })
   status!: 'confirmada' | 'cancelada' | 'completada';
 
-  @ApiPropertyOptional({ maxLength: 500, description: 'Comentario para la otra parte' })
+  @ApiPropertyOptional({ maxLength: APPOINTMENT_TEXT_MAX, description: 'Comentario para la otra parte' })
   @IsOptional()
-  @IsString()
-  @MaxLength(500)
+  @TextField({ label: 'Comentario', max: APPOINTMENT_TEXT_MAX, multiline: true })
   note?: string;
 }

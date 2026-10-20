@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 import { TermsService } from './terms.service';
 import { CreateHolidayDto, HolidaysQueryDto, TermDeadlineQueryDto } from './dto/terms.dto';
 
@@ -46,7 +47,7 @@ export class TermsController {
   @Delete('holidays/:id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Eliminar un feriado' })
-  remove(@CurrentUser() user: JwtPayloadUser, @Param('id') id: string) {
+  remove(@CurrentUser() user: JwtPayloadUser, @Param('id', ParseIdPipe) id: string) {
     return this.terms.removeHoliday(user.tenantId, id);
   }
 }

@@ -2,8 +2,12 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { nestFetch, nestDownloadBlob } from "@/lib/nest-api";
+import { NestApiError, nestFetch, nestDownloadBlob } from "@/lib/nest-api";
+import { LIMITS, checkUpload } from "@/lib/validation";
+import { Download, Eye, FileText, Lock, Paperclip, Upload } from "lucide-react";
 import { EmptyState, FormMessage, Spinner, errorMessage } from "./ui";
+import { Badge } from "./staff/primitives";
+import { FieldError, fieldA11y } from "./form/FieldError";
 
 type Doc = {
   id: string;
@@ -32,6 +36,7 @@ export function CaseDocuments({
   const [docs, setDocs] = useState(initial);
   const [shared, setShared] = useState(true);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -39,13 +44,17 @@ export function CaseDocuments({
 
   async function onUpload(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (loading) return;
     const form = e.currentTarget;
     const fd = new FormData(form);
     const file = fd.get("file");
-    if (!(file instanceof File) || file.size > 10 * 1024 * 1024) {
-      setMessage({ type: "error", text: "El archivo debe existir y pesar como máximo 10 MB." });
+    const invalid = checkUpload(file instanceof File ? file : null);
+    if (invalid) {
+      setFileError(invalid);
+      document.getElementById(fileInputId)?.focus();
       return;
     }
+    setFileError(null);
     if (canMarkInternal) fd.set("sharedWithClient", shared ? "true" : "false");
     setLoading(true);
     setMessage(null);
@@ -61,10 +70,13 @@ export function CaseDocuments({
       setMessage({ type: "success", text: `"${document.fileName}" se subió correctamente.` });
       router.refresh();
     } catch (err) {
-      setMessage({
-        type: "error",
-        text: errorMessage(err, "No se pudo subir el documento. Inténtalo de nuevo."),
-      });
+      // 413: el servidor cortó la subida por tamaño; 400 de tipo: el filtro de la API
+      const text =
+        err instanceof NestApiError && err.status === 413
+          ? `El archivo supera el máximo de ${LIMITS.upload.maxBytes / 1024 / 1024} MB.`
+          : errorMessage(err, "No se pudo subir el documento. Inténtalo de nuevo.");
+      if (/tipo de archivo|demasiado grande|supera el máximo/i.test(text)) setFileError(text);
+      else setMessage({ type: "error", text });
     } finally {
       setLoading(false);
     }
@@ -82,73 +94,127 @@ export function CaseDocuments({
     }
   }
 
+  const fileInputId = `doc-file-${caseId}`;
+
   return (
     <section className="card">
       <div className="card-header">
-        <h2 className="card-title">Documentos</h2>
-        <span className="text-xs text-slate-400">{docs.length}</span>
+        <h2 className="card-title flex items-center gap-2">
+          <Paperclip className="h-4 w-4 text-slate-500" aria-hidden />
+          Documentos
+        </h2>
+        <span className="text-xs tabular-nums text-slate-500">{docs.length}</span>
       </div>
       {docs.length === 0 ? (
         <EmptyState
+          icon={FileText}
           title="Aún no hay documentos"
-          hint={canMarkInternal ? "Sube el primero con el formulario de abajo." : undefined}
+          hint={canMarkInternal ? "Sube el primero abajo y decide si lo ve el cliente." : "Cuando tu abogado comparta un documento, aparecerá aquí."}
         />
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-slate-900/[0.06]">
           {docs.map((d) => (
-            <li key={d.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm sm:px-5">
-              <div className="min-w-0">
+            <li
+              key={d.id}
+              className="flex min-h-[52px] items-center gap-3 px-4 py-2.5 text-sm transition-colors duration-150 hover:bg-slate-900/[0.02] sm:px-5"
+            >
+              <span
+                className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-lg border border-slate-900/[0.08] bg-slate-50 text-slate-500"
+                aria-hidden
+              >
+                {downloading === d.id ? (
+                  <Spinner className="h-3.5 w-3.5" />
+                ) : (
+                  <>
+                    <FileText className="h-3.5 w-3.5" />
+                    <span className="mt-px text-[8px] font-semibold uppercase leading-none tracking-wide">
+                      {extension(d.fileName)}
+                    </span>
+                  </>
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
                 <button
                   type="button"
                   onClick={() => onDownload(d)}
                   disabled={downloading === d.id}
-                  className="inline-flex max-w-full items-center gap-2 truncate text-left font-medium text-brand-700 hover:underline disabled:opacity-60"
+                  className="group inline-flex max-w-full items-center gap-1.5 text-left font-medium text-slate-900 underline-offset-2 hover:text-brand-700 hover:underline disabled:opacity-60"
                   title={`Descargar ${d.fileName}`}
                 >
-                  {downloading === d.id && <Spinner className="h-3 w-3" />}
                   <span className="truncate">{d.fileName}</span>
+                  <Download
+                    className="h-3.5 w-3.5 shrink-0 text-slate-400 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+                    aria-hidden
+                  />
                 </button>
-                <div className="mt-0.5 text-xs text-slate-500">
-                  {d.uploadedBy.name} · {formatSize(d.sizeBytes)} ·{" "}
-                  {new Date(d.createdAt).toLocaleDateString("es-EC")}
+                <div className="mt-0.5 text-xs tabular-nums text-slate-500">
+                  {d.uploadedBy.name} · {formatSize(d.sizeBytes)} · {new Date(d.createdAt).toLocaleDateString("es-EC")}
                 </div>
               </div>
               {canMarkInternal && (
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                    d.sharedWithClient ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"
-                  }`}
-                >
+                <Badge tone={d.sharedWithClient ? "emerald" : "amber"} icon={d.sharedWithClient ? Eye : Lock}>
                   {d.sharedWithClient ? "Compartido" : "Interno"}
-                </span>
+                </Badge>
               )}
             </li>
           ))}
         </ul>
       )}
-      <form onSubmit={onUpload} className="space-y-3 border-t border-slate-100 px-4 py-4 sm:px-5">
-        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 px-3 py-3 text-sm text-slate-600 transition hover:border-brand-500 hover:bg-slate-50 focus-within:border-brand-500">
-          <span className="btn-secondary btn-sm pointer-events-none">Elegir archivo</span>
-          <span className="truncate">{fileName ?? "Ningún archivo seleccionado"}</span>
-          <input
-            name="file"
-            type="file"
-            required
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.txt"
-            className="sr-only"
-            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
-          />
-        </label>
+      <form onSubmit={onUpload} noValidate className="space-y-3 border-t border-slate-900/[0.06] px-4 py-4 sm:px-5">
+        <div>
+          <label
+            htmlFor={fileInputId}
+            className={`group flex cursor-pointer items-center gap-3 rounded-[10px] border border-dashed px-3 py-3 ${
+              fileError ? "border-red-300" : "border-slate-900/[0.18]"
+            } text-sm text-slate-600 transition-colors duration-150 hover:border-brand-500 hover:bg-slate-900/[0.02] focus-within:border-brand-500 focus-within:ring-[3px] focus-within:ring-brand-600/15`}
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700" aria-hidden>
+              <Upload className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className={`block truncate ${fileName ? "font-medium text-slate-900" : "text-slate-700"}`}>
+                {fileName ?? "Elige un archivo"}
+              </span>
+              <span id={`${fileInputId}-hint`} className="block text-xs text-slate-500">
+                PDF, Word, Excel, imagen o texto · hasta {LIMITS.upload.maxBytes / 1024 / 1024} MB
+              </span>
+            </span>
+            <input
+              id={fileInputId}
+              name="file"
+              type="file"
+              required
+              accept={LIMITS.upload.extensions.join(",")}
+              {...fieldA11y(fileInputId, fileError, `${fileInputId}-hint`)}
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                // Se comprueba al elegirlo: no hace falta esperar a subirlo para saber que no vale
+                const invalid = file ? checkUpload(file) : null;
+                setFileError(invalid && file ? `«${file.name}»: ${invalid}` : null);
+                if (invalid) e.target.value = "";
+                setFileName(invalid ? null : (file?.name ?? null));
+                if (message?.type === "error") setMessage(null);
+              }}
+            />
+          </label>
+          <FieldError id={fileInputId} error={fileError} />
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           {canMarkInternal ? (
-            <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-brand-600"
+                checked={shared}
+                onChange={(e) => setShared(e.target.checked)}
+              />
               Compartir con el cliente
             </label>
           ) : (
             <span className="text-xs text-slate-500">El archivo se compartirá con tu abogado.</span>
           )}
-          <button type="submit" disabled={loading || !fileName} className="btn-primary btn-sm">
+          <button type="submit" disabled={loading} className="btn-primary btn-sm">
             {loading && <Spinner className="h-3 w-3" />}
             {loading ? "Subiendo…" : "Subir archivo"}
           </button>
@@ -157,4 +223,10 @@ export function CaseDocuments({
       </form>
     </section>
   );
+}
+
+/** Extensión corta para el icono del archivo ("pdf", "docx"…). */
+function extension(name: string) {
+  const ext = name.includes(".") ? name.split(".").pop() ?? "" : "";
+  return ext.slice(0, 4);
 }

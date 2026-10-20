@@ -1,44 +1,43 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Building2, ChevronRight, FileLock, KeyRound, LogOut } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { AppFooter } from "@/components/AppFooter";
 import { LandingNav } from "@/components/landing/LandingNav";
-import { ProductShowcase } from "@/components/landing/ProductShowcase";
-import { FeatureBento } from "@/components/landing/FeatureBento";
-import { Reveal } from "@/components/landing/Reveal";
 import { Hero } from "@/components/landing/Hero";
+import { Features } from "@/components/landing/Features";
+import { Security } from "@/components/landing/Security";
+import { Reveal } from "@/components/landing/Reveal";
 
 const STEPS = [
-  { title: "Solicita tu caso", text: "Describe tu situación desde el portal. Sin llamadas ni formularios en papel." },
-  { title: "El despacho lo revisa", text: "Te avisamos por email si lo aceptamos y quién será tu abogado." },
-  { title: "Sigue el avance", text: "Consulta el estado, comparte documentos y pide citas cuando lo necesites." },
+  {
+    title: "Registra tu despacho",
+    text: "Das de alta tu firma y quedas como administrador. Recibes el código de firma con el que entra todo tu equipo.",
+  },
+  {
+    title: "Prepara la firma",
+    text: "Los feriados nacionales de Ecuador ya vienen cargados: añade los locales y los traslados. Después invita a tu equipo por email.",
+  },
+  {
+    title: "Trabaja con tus clientes",
+    text: "Abre casos, cuenta términos y agenda citas. Cada cliente recibe su invitación y sigue el avance desde su portal.",
+  },
 ];
 
-const SECURITY = [
-  { icon: Building2, title: "Cada firma, aislada", text: "Cada consulta se filtra por firma: nadie ve datos de otro despacho." },
-  { icon: FileLock, title: "Documentos sin enlaces abiertos", text: "Se descargan con permiso, nunca con una URL pública." },
-  { icon: KeyRound, title: "Enlaces de un solo uso", text: "Invitaciones y recuperación de contraseña caducan y no se reutilizan." },
-  { icon: LogOut, title: "Sesiones bajo control", text: "Cambiar la contraseña cierra las sesiones abiertas en otros dispositivos." },
-];
-
-/** Cabecera de sección: título grande con tracking negativo y entradilla. */
-function SectionHeading({ eyebrow, title, text, light = false }: { eyebrow: string; title: string; text?: string; light?: boolean }) {
+/** Cabecera de sección editorial: rótulo al margen, titular serif y entradilla. */
+function SectionHeading({ id, label, title, text }: { id: string; label: string; title: string; text?: string }) {
   return (
-    <Reveal className="mx-auto max-w-3xl text-center">
-      <p className={`text-sm font-semibold ${light ? "text-accent-light" : "text-brand-700"}`}>{eyebrow}</p>
-      <h2
-        className={`mt-3 text-balance text-[clamp(2rem,4.5vw,3.25rem)] font-semibold leading-[1.06] tracking-[-0.035em] ${
-          light ? "text-white" : "text-brand-900"
-        }`}
-      >
-        {title}
-      </h2>
-      {text && (
-        <p className={`mx-auto mt-4 max-w-2xl text-pretty text-lg leading-relaxed ${light ? "text-white/65" : "text-slate-500"}`}>
-          {text}
-        </p>
-      )}
+    <Reveal className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16">
+      <p className="text-[13px] font-medium text-slate-500 lg:pt-3">{label}</p>
+      <div>
+        <h2
+          id={id}
+          className="text-balance font-display text-[clamp(2rem,3.6vw,2.875rem)] font-normal leading-[1.08] tracking-[-0.02em] text-slate-900"
+        >
+          {title}
+        </h2>
+        {text && <p className="mt-4 max-w-xl text-pretty text-[1.0625rem] leading-relaxed text-slate-600">{text}</p>}
+      </div>
     </Reveal>
   );
 }
@@ -48,108 +47,84 @@ export default async function HomePage() {
   if (session?.user) redirect(session.user.role === "CLIENTE" ? "/portal" : "/dashboard");
 
   return (
-    <div className="landing min-h-dvh overflow-x-clip">
+    <div className="landing min-h-dvh overflow-x-clip bg-canvas">
       <LandingNav />
 
       <main>
         <Hero />
 
-        {/* Demostración: se apoya sobre el borde inferior de la portada */}
-        <section id="demo" aria-label="Demostración" className="relative z-10 -mt-24 scroll-mt-20 px-4 pb-20 sm:-mt-28 sm:px-6 lg:px-8 lg:pb-28">
-          <div className="hero-rise mx-auto max-w-5xl" style={{ animationDelay: "650ms" }}>
-            <ProductShowcase />
-          </div>
-        </section>
-
         {/* Funcionalidades */}
-        <section id="funciones" className="scroll-mt-16 bg-surface/50 py-20 sm:py-28">
+        <section id="funciones" aria-labelledby="funciones-title" className="scroll-mt-16 pb-20 sm:pb-28">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <SectionHeading
-              eyebrow="Funcionalidades"
-              title="Todo lo que tu firma necesita. Nada que no use."
-              text="Pensado para abogados independientes y estudios jurídicos que quieren dejar atrás las hojas de cálculo y los chats sueltos."
+              id="funciones-title"
+              label="Funcionalidades"
+              title="Pensado para cómo trabaja un despacho en Ecuador."
+              text="Para abogados independientes y estudios jurídicos que quieren dejar atrás la hoja de cálculo, el calendario de pared y los chats sueltos."
             />
-            <div className="mt-14">
-              <FeatureBento />
+            <div className="mt-12 sm:mt-16">
+              <Features />
             </div>
           </div>
         </section>
 
-        {/* Cómo funciona (para el cliente) */}
-        <section id="como-funciona" className="scroll-mt-16 py-20 sm:py-28">
+        {/* Cómo funciona */}
+        <section
+          id="como-funciona"
+          aria-labelledby="como-funciona-title"
+          className="scroll-mt-16 border-t border-slate-900/[0.08] bg-surface/50 py-20 sm:py-28"
+        >
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <SectionHeading
-              eyebrow="Para tus clientes"
-              title="De la primera consulta al caso resuelto, en tres pasos."
+              id="como-funciona-title"
+              label="Cómo funciona"
+              title="De la firma registrada al primer cliente informado."
             />
-            <ol className="relative mt-14 grid gap-4 md:grid-cols-3 md:gap-6">
-              {/* Línea que une los pasos en escritorio */}
-              <Reveal
-                variant="line"
-                className="absolute left-[16.6%] right-[16.6%] top-7 hidden h-px bg-gradient-to-r from-brand-200 via-accent/50 to-brand-200 md:block"
-              >
-                {null}
-              </Reveal>
+            <ol className="mt-12 grid gap-x-10 gap-y-10 sm:mt-16 md:grid-cols-3">
               {STEPS.map((s, i) => (
-                <Reveal as="li" key={s.title} delay={i * 140} className="relative text-center">
-                  <span className="pop-in relative mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-brand-200 bg-surface text-lg font-semibold tabular-nums text-brand-700 shadow-sm shadow-brand-900/5">
+                <Reveal
+                  as="li"
+                  key={s.title}
+                  delay={i * 100}
+                  className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 border-t border-slate-900/[0.14] pt-6 md:block"
+                >
+                  <span className="block font-display text-[2.25rem] font-light leading-none tabular-nums tracking-[-0.02em] text-red-700 md:text-[3rem]">
                     {i + 1}
                   </span>
-                  <h3 className="mt-5 text-[1.1875rem] font-semibold tracking-[-0.017em] text-slate-900">{s.title}</h3>
-                  <p className="mx-auto mt-2 max-w-xs text-[0.9375rem] leading-relaxed text-slate-500">{s.text}</p>
+                  <div>
+                    <h3 className="text-[1.125rem] font-semibold tracking-[-0.012em] text-slate-900 md:mt-6">{s.title}</h3>
+                    <p className="mt-2 max-w-sm text-[0.9375rem] leading-relaxed text-slate-600">{s.text}</p>
+                  </div>
                 </Reveal>
               ))}
             </ol>
           </div>
         </section>
 
-        {/* Seguridad: banda oscura en ambos temas */}
-        <section id="seguridad" className="relative scroll-mt-16 overflow-hidden border-y border-white/5 bg-[#0f1a17] py-20 text-white sm:py-28">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(45%_55%_at_50%_0%,rgba(63,107,86,0.42),transparent_70%)]"
-          />
-          <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <SectionHeading
-              light
-              eyebrow="Seguridad"
-              title="La confidencialidad no es opcional."
-              text="Trabajas con información sensible. Bogados está construido para protegerla desde el primer día."
-            />
-            <ul className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {SECURITY.map(({ icon: Icon, title, text }, i) => (
-                <Reveal
-                  as="li"
-                  key={title}
-                  delay={i * 70}
-                  className="lift rounded-[24px] border border-white/10 bg-white/[0.04] p-6 hover:border-white/20"
-                >
-                  <span className="pop-in flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-accent-light">
-                    <Icon className="h-5 w-5" aria-hidden />
-                  </span>
-                  <h3 className="mt-4 font-semibold tracking-[-0.01em] text-white">{title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-white/60">{text}</p>
-                </Reveal>
-              ))}
-            </ul>
-          </div>
-        </section>
+        <Security />
 
-        {/* Llamada final */}
-        <section className="py-20 sm:py-28">
-          <Reveal className="mx-auto max-w-3xl px-4 text-center sm:px-6">
-            <h2 className="text-balance text-[clamp(2rem,4.5vw,3.25rem)] font-semibold leading-[1.06] tracking-[-0.035em] text-brand-900">
-              Tu despacho, en orden desde hoy.
-            </h2>
-            <p className="mt-4 text-lg text-slate-500">Entra con el código de tu firma, tu email y tu contraseña.</p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/login" className="btn-accent group rounded-full px-7 py-3.5 text-[0.9375rem] uppercase tracking-[0.06em]">
-                Iniciar sesión
+        {/* Cierre */}
+        <section aria-labelledby="cierre-title" className="py-20 sm:py-28">
+          <Reveal className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-16 lg:px-8">
+            <div>
+              <h2
+                id="cierre-title"
+                className="text-balance font-display text-[clamp(2.25rem,4.6vw,3.75rem)] font-normal leading-[1.04] tracking-[-0.022em] text-slate-900"
+              >
+                Tu despacho, <em className="font-light italic text-red-700">en&nbsp;orden</em> desde&nbsp;hoy.
+              </h2>
+              <p className="mt-5 max-w-lg text-[1.0625rem] leading-relaxed text-slate-600">
+                Registra tu firma y empieza con los feriados de Ecuador ya cargados. Si tu firma ya usa Bogados, entra con
+                su código, tu email y tu contraseña.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
+              <Link href="/registro" className="btn-primary group px-5 py-2.5 text-[0.9375rem]">
+                Registrar mi despacho
                 <ArrowRight className="cta-arrow h-4 w-4" aria-hidden />
               </Link>
-              <Link href="/recuperar" className="btn-ghost rounded-full px-5 py-3 text-[0.9375rem] text-brand-700 hover:text-brand-700">
-                Recuperar contraseña
-                <ChevronRight className="h-4 w-4" aria-hidden />
+              <Link href="/login" className="btn-secondary px-5 py-2.5 text-[0.9375rem]">
+                Iniciar sesión
               </Link>
             </div>
           </Reveal>

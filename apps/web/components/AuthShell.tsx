@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowLeft, Lock } from "lucide-react";
-import { authDisplay, authSans } from "@/app/fonts/auth-fonts";
 import { BrandMark } from "./shell/BrandMark";
 import { TermVignette } from "./auth/TermVignette";
 
@@ -28,7 +27,7 @@ export function AuthShell({
 }) {
   return (
     <div
-      className={`${authDisplay.variable} ${authSans.variable} auth-root min-h-dvh bg-canvas lg:grid lg:h-dvh lg:grid-cols-[minmax(0,11fr)_minmax(0,13fr)]`}
+      className={`auth-root min-h-dvh bg-canvas lg:grid lg:h-dvh lg:grid-cols-[minmax(0,11fr)_minmax(0,13fr)]`}
     >
       <BrandPanel />
 
@@ -80,7 +79,7 @@ function BrandPanel() {
       <BrandMark light />
 
       <div>
-        <h2 className="hero-rise max-w-[28rem] font-[family-name:var(--font-display)] text-[clamp(2.4rem,3.6vw,3.25rem)] font-normal leading-[1.04] tracking-[-0.022em] text-[#f4efe4]">
+        <h2 className="hero-rise max-w-[28rem] font-display text-[clamp(2.4rem,3.6vw,3.25rem)] font-normal leading-[1.04] tracking-[-0.022em] text-[#f4efe4]">
           Cada término,{" "}
           <em className="font-light italic text-[#e0a593]">a&nbsp;tiempo.</em>
         </h2>

@@ -4,6 +4,7 @@ import { ActivityService } from './activity.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 
 @ApiTags('activity')
 @ApiBearerAuth()
@@ -14,7 +15,7 @@ export class ActivityController {
 
   @Get()
   @ApiOperation({ summary: 'Timeline / auditoría del caso' })
-  timeline(@Param('caseId') caseId: string, @CurrentUser() user: JwtPayloadUser) {
+  timeline(@Param('caseId', ParseIdPipe) caseId: string, @CurrentUser() user: JwtPayloadUser) {
     return this.activity.timeline(caseId, user);
   }
 }

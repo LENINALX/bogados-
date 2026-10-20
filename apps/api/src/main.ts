@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { validationExceptionFactory } from './validation-messages';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -32,26 +33,31 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
       transform: true,
       transformOptions: { enableImplicitConversion: true },
+      // Los mensajes por defecto de class-validator, en español (los propios ya lo están)
+      exceptionFactory: validationExceptionFactory,
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  const swagger = new DocumentBuilder()
-    .setTitle('Bogados API')
-    .setDescription(
-      'API REST dedicada para gestión legal multi-tenant (casos, documentos, mensajes, tareas, notificaciones, portal cliente).',
-    )
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swagger);
-  SwaggerModule.setup('api/docs', app, document);
+  if (config.get<boolean>('swagger', true)) {
+    const swagger = new DocumentBuilder()
+      .setTitle('Bogados API')
+      .setDescription(
+        'API REST dedicada para gestión legal multi-tenant (casos, documentos, mensajes, tareas, notificaciones, portal cliente).',
+      )
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swagger);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   const port = config.get<number>('PORT', 3001);
   await app.listen(port);
   console.log(`Bogados API escuchando en http://localhost:${port}`);
-  console.log(`Swagger: http://localhost:${port}/api/docs`);
+  if (config.get<boolean>('swagger', true))
+    console.log(`Swagger: http://localhost:${port}/api/docs`);
 }
 
 bootstrap();

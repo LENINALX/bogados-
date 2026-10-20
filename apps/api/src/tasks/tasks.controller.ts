@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 
 @ApiTags('tasks')
 @ApiBearerAuth()
@@ -47,9 +48,11 @@ export class TasksController {
   }
 
   @Get('cases/:caseId/tasks')
+  // Las tareas son trabajo interno del despacho (responsable, plazos): el cliente no las ve
+  @Roles(Role.ADMIN, Role.ABOGADO)
   @ApiOperation({ summary: 'Listar tareas de un caso' })
   listByCase(
-    @Param('caseId') caseId: string,
+    @Param('caseId', ParseIdPipe) caseId: string,
     @CurrentUser() user: JwtPayloadUser,
     @Query() query: ListTasksQueryDto,
   ) {
@@ -60,7 +63,7 @@ export class TasksController {
   @Roles(Role.ADMIN, Role.ABOGADO)
   @ApiOperation({ summary: 'Crear tarea en un caso' })
   createForCase(
-    @Param('caseId') caseId: string,
+    @Param('caseId', ParseIdPipe) caseId: string,
     @Body() dto: CreateTaskDto,
     @CurrentUser() user: JwtPayloadUser,
   ) {
@@ -71,7 +74,7 @@ export class TasksController {
   @Roles(Role.ADMIN, Role.ABOGADO)
   @ApiOperation({ summary: 'Actualizar tarea' })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIdPipe) id: string,
     @Body() dto: UpdateTaskDto,
     @CurrentUser() user: JwtPayloadUser,
   ) {
@@ -81,7 +84,7 @@ export class TasksController {
   @Delete('tasks/:id')
   @Roles(Role.ADMIN, Role.ABOGADO)
   @ApiOperation({ summary: 'Eliminar tarea' })
-  remove(@Param('id') id: string, @CurrentUser() user: JwtPayloadUser) {
+  remove(@Param('id', ParseIdPipe) id: string, @CurrentUser() user: JwtPayloadUser) {
     return this.tasks.remove(id, user);
   }
 }

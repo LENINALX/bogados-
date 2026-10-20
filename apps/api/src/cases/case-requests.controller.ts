@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 
 @ApiTags('case-requests')
 @ApiBearerAuth()
@@ -27,7 +28,7 @@ export class CaseRequestsController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Aceptar (asigna abogado), aplazar o rechazar (motivo obligatorio) una solicitud' })
   decide(
-    @Param('id') id: string,
+    @Param('id', ParseIdPipe) id: string,
     @Body() dto: DecideCaseRequestDto,
     @CurrentUser() user: JwtPayloadUser,
   ) {

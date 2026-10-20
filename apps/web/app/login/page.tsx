@@ -9,6 +9,7 @@ import { clearNestToken } from "@/lib/nest-api";
 import { decodeLoginOutcome, LoginChallenge, loginOutcomeMessage } from "@/lib/auth-errors";
 import { normalizeFirmSlug, readRememberedFirm, RememberedFirm, rememberFirm } from "@/lib/firm-memory";
 import { safeCallbackPath } from "@/lib/safe-redirect";
+import { clean, Errors, firstError, LIMITS, rules, validate } from "@/lib/validation";
 import { AuthShell } from "@/components/AuthShell";
 import { AuthField } from "@/components/auth/AuthField";
 import { FirmChip, FirmCodeField, useFirmLookup } from "@/components/auth/FirmPicker";
@@ -26,7 +27,10 @@ const OK_MESSAGES: Record<string, string> = {
   "signed-out": "Has cerrado la sesión.",
 };
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+type Field = "tenantSlug" | "email" | "password";
+const FIELD_ORDER: readonly Field[] = ["tenantSlug", "email", "password"];
+/** Como lo acepta la API (auth-fields.ts: TENANT_SLUG) */
+const TENANT_SLUG = /^[a-z0-9-]{2,60}$/;
 
 /** Las cuentas de demostración solo se ofrecen en desarrollo o en una instalación de demo. */
 const SHOW_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "true" || process.env.NODE_ENV !== "production";
@@ -45,7 +49,9 @@ function LoginForm() {
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
-  const [emailTouched, setEmailTouched] = useState(false);
+  // Errores visibles: los de un campo al salir de él, todos al intentar enviar
+  const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({});
+  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [challenge, setChallenge] = useState<LoginChallenge | null>(null);
@@ -72,7 +78,25 @@ function LoginForm() {
   const useChip = Boolean(remembered && !editingFirm && normalizeFirmSlug(tenantSlug) === remembered.slug);
   const lookup = useFirmLookup(tenantSlug, !useChip);
   const firmName = useChip ? remembered!.name : lookup.state === "found" ? lookup.name : null;
-  const emailError = emailTouched && email && !EMAIL.test(email.trim()) ? "Escribe un email válido, como nombre@firma.com." : null;
+  const errors: Errors<Field> = validate(
+    { tenantSlug: normalizeFirmSlug(tenantSlug), email: clean(email), password },
+    {
+      // Con la firma recordada (ficha) el código ya está validado
+      tenantSlug: useChip
+        ? []
+        : [
+            rules.required("Escribe el código de tu firma."),
+            rules.pattern(TENANT_SLUG, "El código solo lleva minúsculas, números y guiones."),
+          ],
+      email: [rules.required("Escribe tu email."), rules.email()],
+      password: [
+        rules.required("Escribe tu contraseña."),
+        rules.maxLength(LIMITS.password.max, `La contraseña no puede tener más de ${LIMITS.password.max} caracteres.`),
+      ],
+    },
+  );
+  const shown = (field: Field) => (submitted || touched[field] ? errors[field] ?? null : null);
+  const touch = (field: Field) => setTouched((t) => ({ ...t, [field]: true }));
 
   function shake() {
     const form = formRef.current;
@@ -101,16 +125,13 @@ function LoginForm() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setEmailTouched(true);
+    if (loading) return;
+    setSubmitted(true);
     // Errores que se ven sin preguntar al servidor: se señala el campo y se pone el foco en él
-    if (lookup.state === "missing") {
+    const invalid = firstError(errors, FIELD_ORDER) ?? (lookup.state === "missing" ? "tenantSlug" : undefined);
+    if (invalid) {
       shake();
-      firmRef.current?.focus();
-      return;
-    }
-    if (!EMAIL.test(email.trim())) {
-      shake();
-      emailRef.current?.focus();
+      ({ tenantSlug: firmRef, email: emailRef, password: passwordRef })[invalid].current?.focus();
       return;
     }
 
@@ -118,7 +139,7 @@ function LoginForm() {
     setError(null);
     // NextAuth valida contra la API Nest y guarda su JWT en la sesión
     const res = await signIn("credentials", {
-      email: email.trim(),
+      email: clean(email).toLowerCase(),
       password,
       tenantSlug: normalizeFirmSlug(tenantSlug),
       remember: String(remember),
@@ -209,7 +230,15 @@ function LoginForm() {
             }}
           />
         ) : (
-          <FirmCodeField ref={firmRef} value={tenantSlug} onChange={setTenantSlug} lookup={lookup} autoFocus={!firmParam && !params.get("email")} />
+          <FirmCodeField
+            ref={firmRef}
+            value={tenantSlug}
+            onChange={setTenantSlug}
+            onBlur={() => touch("tenantSlug")}
+            lookup={lookup}
+            error={shown("tenantSlug")}
+            autoFocus={!firmParam && !params.get("email")}
+          />
         )}
         <AuthField
           ref={emailRef}
@@ -223,9 +252,10 @@ function LoginForm() {
           spellCheck={false}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          onBlur={() => setEmailTouched(true)}
+          onBlur={() => touch("email")}
           placeholder="tu@firma.com"
-          error={emailError}
+          maxLength={LIMITS.email}
+          error={shown("email")}
         />
         <AuthField
           ref={passwordRef}
@@ -239,7 +269,12 @@ function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => setCapsLock(e.getModifierState("CapsLock"))}
           onKeyUp={(e) => setCapsLock(e.getModifierState("CapsLock"))}
-          onBlur={() => setCapsLock(false)}
+          onBlur={() => {
+            setCapsLock(false);
+            touch("password");
+          }}
+          maxLength={LIMITS.password.max}
+          error={shown("password")}
           hint={
             capsLock ? (
               <span className="font-medium text-amber-700" role="status">
@@ -283,9 +318,15 @@ function LoginForm() {
         </button>
       </form>
 
-      <p className="mt-6 text-[13px] leading-relaxed text-slate-500">
-        ¿Primera vez? Activa tu cuenta con el enlace del correo de invitación de tu firma.
-      </p>
+      <div className="mt-6 space-y-1.5 text-[13px] leading-relaxed text-slate-500">
+        <p>
+          ¿Tu despacho aún no usa Bogados?{" "}
+          <Link href="/registro" className="font-medium text-brand-700 hover:underline">
+            Crea una cuenta
+          </Link>
+        </p>
+        <p className="text-slate-400">Si te invitó tu firma, entra con el enlace de tu correo de invitación.</p>
+      </div>
     </AuthShell>
   );
 }

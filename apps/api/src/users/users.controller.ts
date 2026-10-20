@@ -18,6 +18,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -34,7 +35,7 @@ export class UsersController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() user: JwtPayloadUser) {
+  findOne(@Param('id', ParseIdPipe) id: string, @CurrentUser() user: JwtPayloadUser) {
     return this.users.findOne(id, user);
   }
 
@@ -46,13 +47,13 @@ export class UsersController {
   @Post(':id/invite')
   @HttpCode(200)
   @ApiOperation({ summary: 'Reenviar invitación por email (define una contraseña nueva)' })
-  invite(@Param('id') id: string, @CurrentUser() user: JwtPayloadUser) {
+  invite(@Param('id', ParseIdPipe) id: string, @CurrentUser() user: JwtPayloadUser) {
     return this.users.invite(id, user);
   }
 
   @Patch(':id')
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIdPipe) id: string,
     @Body() dto: UpdateUserDto,
     @CurrentUser() user: JwtPayloadUser,
   ) {
@@ -60,7 +61,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @CurrentUser() user: JwtPayloadUser) {
+  remove(@Param('id', ParseIdPipe) id: string, @CurrentUser() user: JwtPayloadUser) {
     return this.users.remove(id, user);
   }
 }

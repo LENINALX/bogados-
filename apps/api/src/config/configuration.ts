@@ -29,5 +29,11 @@ export default () => ({
     /** Recordatorios de citas cada 30 min. Apagados en tests. */
     enabled: process.env.REMINDERS_ENABLED !== 'false' && process.env.NODE_ENV !== 'test',
   },
+  /** Documentación interactiva en /api/docs: en producción, solo si se pide (enseña el mapa de la API). */
+  swagger: process.env.SWAGGER_ENABLED === 'true' || process.env.NODE_ENV !== 'production',
+  signup: {
+    /** Alta pública de nuevas firmas en /registro. SIGNUP_ENABLED=false la cierra (p. ej. durante el piloto). */
+    enabled: process.env.SIGNUP_ENABLED !== 'false',
+  },
   nodeEnv: process.env.NODE_ENV || 'development',
 });

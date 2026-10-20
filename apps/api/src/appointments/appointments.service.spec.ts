@@ -371,3 +371,28 @@ describe('AppointmentsService', () => {
     });
   });
 });
+
+describe('AppointmentsService: rangos de fechas', () => {
+  it('el despacho no puede agendar a más de un año vista', async () => {
+    const t = setup();
+    await expect(
+      t.service.create({ clientId: 'cli1', startsAt: '2027-10-02T14:00:00.000Z' }, admin, NOW),
+    ).rejects.toThrow('La cita no puede ser a más de 365 días');
+    expect(t.prisma.appointment.create).not.toHaveBeenCalled();
+  });
+
+  it('dentro del año sí puede', async () => {
+    const t = setup();
+    await expect(
+      t.service.create({ clientId: 'cli1', startsAt: '2027-09-30T14:00:00.000Z' }, admin, NOW),
+    ).resolves.toBeDefined();
+  });
+
+  it('listar con «to» anterior a «from» es un 400', () => {
+    const t = setup();
+    expect(() =>
+      t.service.list({ from: '2026-10-10T00:00:00Z', to: '2026-10-01T00:00:00Z' }, admin, NOW),
+    ).toThrow(BadRequestException);
+    expect(t.prisma.appointment.findMany).not.toHaveBeenCalled();
+  });
+});

@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, Suspense, useState } from "react";
+import { FormEvent, Suspense, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { NestApiError, nestPublicFetch } from "@/lib/nest-api";
 import { AuthShell } from "@/components/AuthShell";
+import { AuthField } from "@/components/auth/AuthField";
 import { FormMessage, Spinner } from "@/components/ui";
+import { normalizeFirmSlug } from "@/lib/firm-memory";
+import { clean, firstError, LIMITS, rules, validate } from "@/lib/validation";
+
+const TENANT_SLUG = /^[a-z0-9-]{2,60}$/;
 
 function RecoverForm() {
   const params = useSearchParams();
@@ -14,13 +19,39 @@ function RecoverForm() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [touched, setTouched] = useState<{ tenantSlug?: boolean; email?: boolean }>({});
+  const [submitted, setSubmitted] = useState(false);
+  const slugRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+
+  const errors = validate(
+    { tenantSlug: normalizeFirmSlug(tenantSlug), email: clean(email) },
+    {
+      tenantSlug: [
+        rules.required("Escribe el código de tu firma."),
+        rules.pattern(TENANT_SLUG, "El código solo lleva minúsculas, números y guiones."),
+      ],
+      email: [rules.required("Escribe tu email."), rules.email()],
+    },
+  );
+  const shown = (f: "tenantSlug" | "email") => (submitted || touched[f] ? errors[f] ?? null : null);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (loading) return;
+    setSubmitted(true);
+    const invalid = firstError(errors, ["tenantSlug", "email"] as const);
+    if (invalid) {
+      (invalid === "tenantSlug" ? slugRef : emailRef).current?.focus();
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      await nestPublicFetch("/auth/forgot-password", { tenantSlug, email });
+      await nestPublicFetch("/auth/forgot-password", {
+        tenantSlug: normalizeFirmSlug(tenantSlug),
+        email: clean(email).toLowerCase(),
+      });
       setSent(true);
     } catch (err) {
       setError(
@@ -59,37 +90,37 @@ function RecoverForm() {
           <FormMessage type="error">{error}</FormMessage>
         </div>
       )}
-      <form onSubmit={onSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="tenantSlug" className="label">
-            Código de firma
-          </label>
-          <input
-            id="tenantSlug"
-            required
-            autoComplete="organization"
-            value={tenantSlug}
-            onChange={(e) => setTenantSlug(e.target.value)}
-            className="input mt-1"
-            placeholder="firma-demo"
-          />
-        </div>
-        <div>
-          <label htmlFor="email" className="label">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            required
-            autoFocus
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="input mt-1"
-            placeholder="tu@firma.com"
-          />
-        </div>
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        <AuthField
+          ref={slugRef}
+          id="tenantSlug"
+          label="Código de firma"
+          autoComplete="organization"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={tenantSlug}
+          onChange={(e) => setTenantSlug(e.target.value)}
+          onBlur={() => setTouched((t) => ({ ...t, tenantSlug: true }))}
+          maxLength={60}
+          placeholder="p. ej. estudio-mejia"
+          error={shown("tenantSlug")}
+        />
+        <AuthField
+          ref={emailRef}
+          id="email"
+          label="Email"
+          type="email"
+          autoFocus
+          autoComplete="email"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+          maxLength={LIMITS.email}
+          placeholder="tu@firma.com"
+          error={shown("email")}
+        />
         <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
           {loading && <Spinner />}
           {loading ? "Enviando…" : "Enviar enlace"}

@@ -136,65 +136,58 @@ function Rail({
   return (
     // z-20: los paneles translúcidos crean su propio contexto de apilado; sin esto la barra lateral
     // (posterior en el DOM) taparía las etiquetas, las notificaciones y el menú que se abren desde el riel
-    <div className="relative z-20 flex min-h-0 w-[4.25rem] flex-col gap-3">
-      <div className="shell-capsule flex min-h-0 flex-1 flex-col items-center gap-4 rounded-[26px] p-1.5">
-        <nav
-          aria-label="Secciones"
-          className="flex w-full shrink-0 flex-col items-center gap-1.5 rounded-[22px] bg-rail px-1.5 py-2.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_12px_28px_-12px_rgb(10_9_7/0.55)]"
+    <div className="relative z-20 flex min-h-0 w-[4.25rem] flex-col">
+      {/* Una sola columna oscura: secciones arriba, ajustes de la cuenta abajo */}
+      <nav
+        aria-label="Secciones"
+        className="flex min-h-0 flex-1 flex-col items-center gap-1.5 rounded-[18px] bg-rail px-1.5 py-2.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.07),0_14px_32px_-14px_rgb(10_9_7/0.6)]"
+      >
+        <Link
+          href={home}
+          aria-label="Bogados, inicio"
+          className="mb-1 flex h-11 w-11 items-center justify-center rounded-xl text-white transition-transform duration-150 ease-out active:scale-95"
         >
-          <Link
-            href={home}
-            aria-label="Bogados, inicio"
-            className="mb-1 flex h-11 w-11 items-center justify-center rounded-2xl text-white transition-transform duration-150 ease-out active:scale-95"
-          >
-            <Scale className="h-[21px] w-[21px]" strokeWidth={1.8} aria-hidden />
-          </Link>
-          <span aria-hidden className="mb-1 h-px w-7 bg-white/10" />
-          {links.map((l) => {
-            const active = isActiveLink(l.href, pathname);
-            const count = data.counts[l.href];
-            const alert = data.alerts.includes(l.href) && !!count;
-            return (
-              <Link
-                key={l.href}
-                href={l.href}
-                aria-current={active ? "page" : undefined}
-                aria-label={l.label}
-                className={`rail-key group relative flex h-11 w-11 items-center justify-center rounded-2xl ${
-                  active ? "rail-key-active text-white" : "text-white/55 hover:text-white"
-                }`}
-              >
-                <NavIcon name={l.icon} className="h-5 w-5" strokeWidth={active ? 2.1 : 1.8} />
-                {alert && <span aria-hidden className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-rail" />}
-                <RailTip>{l.label}</RailTip>
-              </Link>
-            );
-          })}
-          <span aria-hidden className="my-1 h-px w-7 bg-white/10" />
-          {bell ? <NotificationBell role={user.role} placement="rail" /> : <span className="h-10 w-10" />}
-          {collapsed && (
-            <button
-              type="button"
-              onClick={onExpand}
-              aria-label="Mostrar la barra lateral"
-              className="rail-key group relative hidden h-10 w-10 items-center justify-center rounded-xl text-white/55 hover:text-white xl:flex"
+          <Scale className="h-[21px] w-[21px]" strokeWidth={1.8} aria-hidden />
+        </Link>
+        <span aria-hidden className="mb-1 h-px w-7 bg-white/10" />
+        {links.map((l) => {
+          const active = isActiveLink(l.href, pathname);
+          const count = data.counts[l.href];
+          const alert = data.alerts.includes(l.href) && !!count;
+          return (
+            <Link
+              key={l.href}
+              href={l.href}
+              aria-current={active ? "page" : undefined}
+              aria-label={l.label}
+              className={`rail-key group relative flex h-11 w-11 items-center justify-center rounded-xl ${
+                active ? "rail-key-active text-white" : "text-white/55 hover:text-white"
+              }`}
             >
-              <PanelLeftOpen className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden />
-              <RailTip>Mostrar barra lateral</RailTip>
-            </button>
-          )}
-        </nav>
-        <div className="flex min-h-0 flex-1 justify-center overflow-hidden [@media(max-height:700px)]:invisible">
-          <VerticalLabel>{`Bogados · ${new Date().getFullYear()} · ${variant === "portal" ? "Portal" : "Despacho"}`}</VerticalLabel>
+              <NavIcon name={l.icon} className="h-5 w-5" strokeWidth={active ? 2.1 : 1.8} />
+              {alert && <span aria-hidden className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-rail" />}
+              <RailTip>{l.label}</RailTip>
+            </Link>
+          );
+        })}
+        <span aria-hidden className="my-1 h-px w-7 bg-white/10" />
+        {bell ? <NotificationBell role={user.role} placement="rail" /> : <span className="h-10 w-10" />}
+        {collapsed && (
+          <button
+            type="button"
+            onClick={onExpand}
+            aria-label="Mostrar la barra lateral"
+            className="rail-key group relative hidden h-10 w-10 items-center justify-center rounded-xl text-white/55 hover:text-white xl:flex"
+          >
+            <PanelLeftOpen className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden />
+            <RailTip>Mostrar barra lateral</RailTip>
+          </button>
+        )}
+        <div className="mt-auto flex flex-col items-center gap-1.5 pt-2">
+          <span aria-hidden className="mb-1 h-px w-7 bg-white/10" />
+          <UserMenu user={user} variant="gear" />
         </div>
-      </div>
-
-      <div className="shell-capsule flex shrink-0 flex-col items-center gap-4 rounded-[26px] p-1.5 pt-5 [@media(max-height:760px)]:pt-1.5">
-        <span className="[@media(max-height:760px)]:hidden">
-          <VerticalLabel>Ajustes</VerticalLabel>
-        </span>
-        <UserMenu user={user} variant="gear" />
-      </div>
+      </nav>
     </div>
   );
 }
@@ -205,17 +198,6 @@ function RailTip({ children }: { children: React.ReactNode }) {
     <span
       aria-hidden
       className="rail-tip pointer-events-none absolute left-full top-1/2 z-50 ml-3 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-xs font-medium text-white shadow-lg"
-    >
-      {children}
-    </span>
-  );
-}
-
-function VerticalLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span
-      aria-hidden
-      className="select-none whitespace-nowrap font-mono text-[9.5px] uppercase tracking-[0.28em] text-slate-400 [writing-mode:vertical-rl] rotate-180"
     >
       {children}
     </span>
@@ -245,7 +227,7 @@ function Sidebar({
       aria-label="Barra lateral"
       aria-hidden={collapsed}
       inert={collapsed ? ("" as unknown as boolean) : undefined}
-      className="app-sidebar shell-panel relative z-10 hidden w-72 flex-col overflow-hidden rounded-[28px] xl:flex"
+      className="app-sidebar shell-panel relative z-10 hidden w-72 flex-col overflow-hidden rounded-[18px] xl:flex"
     >
       <div className="flex items-start gap-2 p-3 pb-2">
         <UserMenu user={user} variant="profile" />

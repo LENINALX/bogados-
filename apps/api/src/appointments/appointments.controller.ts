@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 
 @ApiTags('appointments')
 @ApiBearerAuth()
@@ -23,7 +24,7 @@ export class AppointmentsController {
 
   @Get('lawyers/:id/availability')
   @ApiOperation({ summary: 'Disponibilidad semanal de un abogado (hora local de la firma)' })
-  getAvailability(@Param('id') id: string, @CurrentUser() user: JwtPayloadUser) {
+  getAvailability(@Param('id', ParseIdPipe) id: string, @CurrentUser() user: JwtPayloadUser) {
     return this.appointments.getAvailability(id, user);
   }
 
@@ -31,7 +32,7 @@ export class AppointmentsController {
   @Roles(Role.ADMIN, Role.ABOGADO)
   @ApiOperation({ summary: 'Reemplazar la disponibilidad (abogado: solo la suya)' })
   setAvailability(
-    @Param('id') id: string,
+    @Param('id', ParseIdPipe) id: string,
     @Body() dto: SetAvailabilityDto,
     @CurrentUser() user: JwtPayloadUser,
   ) {
@@ -67,7 +68,7 @@ export class AppointmentsController {
   @Patch('appointments/:id/status')
   @ApiOperation({ summary: 'Confirmar, cancelar o completar (cliente: solo cancelar las suyas)' })
   updateStatus(
-    @Param('id') id: string,
+    @Param('id', ParseIdPipe) id: string,
     @Body() dto: UpdateAppointmentStatusDto,
     @CurrentUser() user: JwtPayloadUser,
   ) {

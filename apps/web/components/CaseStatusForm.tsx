@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { CASE_STATUSES, CASE_STATUS_LABELS, CaseStatus } from "@bogados/shared";
 import { nestFetch } from "@/lib/nest-api";
+import { LIMITS, clean, rules } from "@/lib/validation";
 import { Spinner, errorMessage } from "./ui";
+import { CharCount, FieldError, INVALID_INPUT, countId, fieldA11y } from "./form/FieldError";
+import { useFieldErrors } from "./form/useFieldErrors";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
-const MESSAGE_MAX = 1000;
+const MESSAGE_MAX = LIMITS.clientMessage;
 
 export function CaseStatusForm({
   caseId,
@@ -29,8 +33,17 @@ export function CaseStatusForm({
   const [state, setState] = useState<SaveState>("idle");
   const [savedWithEmail, setSavedWithEmail] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const msgId = `status-msg-${caseId}`;
+  const v = useFieldErrors<"clientMessage">(
+    { clientMessage: [rules.maxLength(MESSAGE_MAX)] },
+    ["clientMessage"],
+    () => msgId,
+  );
 
   async function save(nextStatus: string) {
+    if (state === "saving") return;
+    const message = clean(clientMessage);
+    if (clientName && !v.submit({ clientMessage: message })) return;
     const previousStatus = status;
     const withEmail = Boolean(clientName) && notifyClient;
     setSelectedStatus(nextStatus);
@@ -41,7 +54,7 @@ export function CaseStatusForm({
         method: "PATCH",
         body: JSON.stringify({
           status: nextStatus,
-          ...(clientName ? { notifyClient, clientMessage: clientMessage.trim() || undefined } : {}),
+          ...(clientName ? { notifyClient, clientMessage: message || undefined } : {}),
         }),
       });
       setPending(null);
@@ -99,9 +112,9 @@ export function CaseStatusForm({
   const pendingLabel = pending ? CASE_STATUS_LABELS[pending as CaseStatus] : "";
 
   return (
-    <div className="relative flex flex-col items-end gap-1">
+    <div className="relative flex flex-col items-start gap-1 sm:items-end">
       <div className="flex items-center gap-2">
-        <label htmlFor={`status-${caseId}`} className="text-xs font-medium text-slate-500">
+        <label htmlFor={`status-${caseId}`} className="text-xs text-slate-500">
           Cambiar estado
         </label>
         <select
@@ -125,9 +138,10 @@ export function CaseStatusForm({
             e.preventDefault();
             void save(pending);
           }}
+          noValidate
           aria-label={`Confirmar cambio a ${pendingLabel}`}
           // Desplegable anclado al selector: no empuja la cabecera del caso
-          className="absolute left-0 top-full z-30 sm:left-auto sm:right-0 mt-1 w-[min(20rem,calc(100vw-2rem))] space-y-3 rounded-xl border border-slate-200 bg-surface p-3 text-left shadow-lg"
+          className="absolute left-0 top-full z-30 mt-1.5 w-[min(20rem,calc(100vw-2rem))] origin-top space-y-3 rounded-xl border border-slate-900/[0.1] bg-surface p-3.5 text-left shadow-[0_1px_2px_rgb(23_21_17/0.06),0_16px_40px_-12px_rgb(23_21_17/0.28)] motion-safe:animate-pop sm:left-auto sm:right-0"
         >
           <p className="text-sm font-medium text-slate-800">
             Pasar a «{pendingLabel}»
@@ -144,21 +158,29 @@ export function CaseStatusForm({
             </span>
           </label>
           <div>
-            <label htmlFor={`status-msg-${caseId}`} className="block text-xs font-medium text-slate-600">
+            <label htmlFor={msgId} className="block text-xs font-medium text-slate-600">
               Explicación para el cliente <span className="font-normal text-slate-400">(opcional)</span>
             </label>
             <textarea
-              id={`status-msg-${caseId}`}
+              id={msgId}
               value={clientMessage}
-              onChange={(e) => setClientMessage(e.target.value)}
+              onChange={(e) => {
+                setClientMessage(e.target.value);
+                v.change("clientMessage", e.target.value);
+              }}
               rows={3}
               maxLength={MESSAGE_MAX}
-              className="input mt-1 resize-y text-sm"
+              {...fieldA11y(msgId, v.errors.clientMessage, countId(msgId, clientMessage.length, MESSAGE_MAX), `${msgId}-hint`)}
+              className={`input mt-1 resize-y text-sm ${v.errors.clientMessage ? INVALID_INPUT : ""}`}
               placeholder="Con tus palabras: qué significa este cambio y qué viene después…"
             />
-            <p className="mt-1 text-xs text-slate-400">
-              {notifyClient ? "La verá en su portal y en el email." : "La verá en su portal."}
-            </p>
+            <FieldError id={msgId} error={v.errors.clientMessage} />
+            <div className="mt-1 flex items-start justify-between gap-3">
+              <p id={`${msgId}-hint`} className="text-xs text-slate-400">
+                {notifyClient ? "La verá en su portal y en el email." : "La verá en su portal."}
+              </p>
+              <CharCount id={msgId} length={clientMessage.length} max={MESSAGE_MAX} />
+            </div>
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={cancel} disabled={state === "saving"} className="btn-secondary btn-sm">
@@ -172,15 +194,16 @@ export function CaseStatusForm({
         </form>
       )}
 
-      <p className="min-h-4 max-w-xs text-right text-xs" role={state === "error" ? "alert" : "status"}>
+      <p className="min-h-4 max-w-xs text-xs sm:text-right" role={state === "error" ? "alert" : "status"}>
         {state === "saving" && !pending && (
           <span className="inline-flex items-center gap-1 text-slate-500">
             <Spinner className="h-3 w-3" /> Guardando…
           </span>
         )}
         {state === "saved" && (
-          <span className="text-emerald-700">
-            ✓ Estado actualizado{savedWithEmail ? " y cliente avisado por email" : ""}
+          <span className="inline-flex items-center gap-1 text-emerald-700">
+            <Check className="h-3.5 w-3.5" aria-hidden />
+            Estado actualizado{savedWithEmail ? " y cliente avisado por email" : ""}
           </span>
         )}
         {state === "error" && <span className="text-red-600">{error}</span>}

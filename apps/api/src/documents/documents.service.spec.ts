@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { DocumentsService } from './documents.service';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
@@ -18,7 +19,7 @@ const file = {
   originalname: 'contrato.pdf',
   mimetype: 'application/pdf',
   size: 1024,
-  buffer: Buffer.from('x'),
+  buffer: Buffer.from('%PDF-1.4 contenido'),
 } as Express.Multer.File;
 
 describe('DocumentsService.upload', () => {
@@ -102,5 +103,77 @@ describe('DocumentsService.upload', () => {
   it('si todo va bien, no borra el archivo', async () => {
     await service.upload('c1', file, 'true', admin);
     expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  describe('validación del archivo', () => {
+    const data = () => tx.document.create.mock.calls[0][0].data;
+
+    it('guarda el tipo según la extensión, no el que declara el navegador', async () => {
+      await service.upload('c1', { ...file, mimetype: 'application/octet-stream' }, 'true', admin);
+      expect(data().mimeType).toBe('application/pdf');
+    });
+
+    it('un HTML renombrado a .pdf no se guarda', async () => {
+      const html = { ...file, buffer: Buffer.from('<html><script>alert(1)</script></html>') };
+      await expect(service.upload('c1', html, 'true', admin)).rejects.toBeInstanceOf(BadRequestException);
+      expect(storage.save).not.toHaveBeenCalled();
+    });
+
+    it('un .pdf declarado como text/html no se guarda', async () => {
+      await expect(service.upload('c1', { ...file, mimetype: 'text/html' }, 'true', admin)).rejects.toThrow(
+        'El tipo del archivo no coincide con su extensión',
+      );
+    });
+
+    it('un archivo vacío no se guarda', async () => {
+      await expect(
+        service.upload('c1', { ...file, size: 0, buffer: Buffer.alloc(0) }, 'true', admin),
+      ).rejects.toThrow('El archivo está vacío');
+    });
+
+    it('sanea el nombre aunque se llame al servicio sin el interceptor', async () => {
+      await service.upload('c1', { ...file, originalname: '../../x/\u0007contrato.pdf' }, 'true', admin);
+      expect(data().fileName).toBe('contrato.pdf');
+      expect(storage.save).toHaveBeenCalledWith('t1', 'c1', 'contrato.pdf', file.buffer);
+    });
+
+    it('rechaza extensiones activas (.html, .svg)', async () => {
+      for (const originalname of ['x.html', 'x.svg']) {
+        await expect(service.upload('c1', { ...file, originalname }, 'true', admin)).rejects.toThrow(
+          'Tipo de archivo no permitido',
+        );
+      }
+    });
+  });
+});
+
+describe('DocumentsService.download', () => {
+  it('sirve un documento antiguo guardado como text/html con el tipo de su extensión y como adjunto', async () => {
+    const prisma = {
+      document: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'd1',
+          tenantId: 't1',
+          caseId: 'c1',
+          fileName: 'informe.pdf',
+          mimeType: 'text/html',
+          sizeBytes: 10,
+          storagePath: 't1/c1/informe.pdf',
+          sharedWithClient: true,
+        }),
+      },
+      case: { findFirst: jest.fn().mockResolvedValue({ id: 'c1', tenantId: 't1' }) },
+    };
+    const storage = {
+      exists: jest.fn().mockResolvedValue(true),
+      // Un archivo que existe seguro: el stream no se llega a leer en la prueba
+      resolvePath: jest.fn().mockReturnValue(__filename),
+    };
+    const service = new DocumentsService(prisma as never, storage as never, {} as never, {} as never);
+    const result = await service.download('d1', admin);
+    const headers = result.getHeaders();
+    result.getStream().destroy();
+    expect(headers.type).toBe('application/pdf');
+    expect(headers.disposition).toMatch(/^attachment;/);
   });
 });

@@ -5,10 +5,12 @@ import { signOut } from "next-auth/react";
 import { KeyRound, LogOut } from "lucide-react";
 import { nestFetch } from "@/lib/nest-api";
 import { FormMessage, Spinner, errorMessage } from "@/components/ui";
+import { LIMITS, rules } from "@/lib/validation";
 import { PasswordInput } from "./PasswordInput";
 
-const MIN = 8;
-const MAX = 72;
+const MIN = LIMITS.password.min;
+const MAX = LIMITS.password.max;
+const checkNewPassword = rules.newPassword();
 
 type Field = "current" | "next" | "confirm";
 type Errors = Partial<Record<Field, string>>;
@@ -16,9 +18,8 @@ type Errors = Partial<Record<Field, string>>;
 function validate(current: string, next: string, confirm: string): Errors {
   const errors: Errors = {};
   if (!current) errors.current = "Escribe tu contraseña actual.";
-  if (!next) errors.next = "Escribe la nueva contraseña.";
-  else if (next.length < MIN) errors.next = `Debe tener al menos ${MIN} caracteres.`;
-  else if (next.length > MAX) errors.next = `Debe tener como máximo ${MAX} caracteres.`;
+  const nextError = next ? checkNewPassword(next) : "Escribe la nueva contraseña.";
+  if (nextError) errors.next = nextError;
   else if (current && next === current) errors.next = "Debe ser distinta de la actual.";
   if (!confirm) errors.confirm = "Repite la nueva contraseña.";
   else if (next && confirm !== next) errors.confirm = "Las contraseñas no coinciden.";
@@ -52,6 +53,7 @@ export function PasswordCard() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy || done) return;
     setFormError(null);
     const found = validate(current, next, confirm);
     if (Object.keys(found).length) return showErrors(found);
@@ -84,7 +86,7 @@ export function PasswordCard() {
       </div>
 
       <form onSubmit={submit} noValidate className="card-body space-y-4">
-        <p className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="flex items-start gap-2 rounded-[10px] border border-amber-600/15 bg-amber-50 px-3 py-2.5 text-sm leading-relaxed text-amber-800">
           <LogOut className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <span>
             Al cambiarla cerraremos todas tus sesiones abiertas, incluida esta. Tendrás que volver a entrar con la nueva

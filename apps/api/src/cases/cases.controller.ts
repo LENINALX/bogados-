@@ -23,6 +23,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 
 @ApiTags('cases')
 @ApiBearerAuth()
@@ -39,7 +40,7 @@ export class CasesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Detalle de caso (+ notas filtradas)' })
-  findOne(@Param('id') id: string, @CurrentUser() user: JwtPayloadUser) {
+  findOne(@Param('id', ParseIdPipe) id: string, @CurrentUser() user: JwtPayloadUser) {
     return this.cases.findOne(id, user);
   }
 
@@ -52,7 +53,7 @@ export class CasesController {
   @Patch(':id')
   @Roles(Role.ADMIN, Role.ABOGADO)
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIdPipe) id: string,
     @Body() dto: UpdateCaseDto,
     @CurrentUser() user: JwtPayloadUser,
   ) {
@@ -63,7 +64,7 @@ export class CasesController {
   @Roles(Role.ADMIN, Role.ABOGADO)
   @ApiOperation({ summary: 'Transición de estado' })
   patchStatus(
-    @Param('id') id: string,
+    @Param('id', ParseIdPipe) id: string,
     @Body() dto: PatchStatusDto,
     @CurrentUser() user: JwtPayloadUser,
   ) {
@@ -74,7 +75,7 @@ export class CasesController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Asignar abogado' })
   assign(
-    @Param('id') id: string,
+    @Param('id', ParseIdPipe) id: string,
     @Body() dto: AssignLawyerDto,
     @CurrentUser() user: JwtPayloadUser,
   ) {
@@ -83,7 +84,7 @@ export class CasesController {
 
   @Delete(':id')
   @Roles(Role.ADMIN)
-  remove(@Param('id') id: string, @CurrentUser() user: JwtPayloadUser) {
+  remove(@Param('id', ParseIdPipe) id: string, @CurrentUser() user: JwtPayloadUser) {
     return this.cases.remove(id, user);
   }
 }

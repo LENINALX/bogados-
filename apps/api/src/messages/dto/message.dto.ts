@@ -1,28 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
+import { TextField } from '../../common/validation/validators';
+
+export const MESSAGE_MAX = 10000;
 
 export class CreateMessageDto {
-  @ApiProperty()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(10000)
+  @ApiProperty({ maxLength: MESSAGE_MAX })
+  @TextField({ label: 'Mensaje', min: 1, max: MESSAGE_MAX, multiline: true })
   body!: string;
 }
 
-export class ListMessagesQueryDto {
-  @ApiPropertyOptional({ default: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ default: 50 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  pageSize?: number = 50;
+export class ListMessagesQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ default: 50, minimum: 1, maximum: 100 })
+  override pageSize?: number = 50;
 }

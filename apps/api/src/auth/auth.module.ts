@@ -10,10 +10,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { loginThrottlerOptions } from './login-throttle';
 import { LoginEventsService } from './login-events.service';
 import { TwoFactorService } from './two-factor.service';
+import { FirmSignupService } from './firm-signup.service';
+import { TermsModule } from '../terms/terms.module';
 
 @Module({
   imports: [
     ThrottlerModule.forRoot(loginThrottlerOptions),
+    TermsModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -27,7 +30,7 @@ import { TwoFactorService } from './two-factor.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AccountTokensService, LoginEventsService, TwoFactorService, JwtStrategy],
+  providers: [AuthService, AccountTokensService, LoginEventsService, TwoFactorService, FirmSignupService, JwtStrategy],
   exports: [AuthService, AccountTokensService, JwtModule],
 })
 export class AuthModule {}

@@ -3,6 +3,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UpdateTenantDto } from './dto/tenant.dto';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 
+/** Forma de cualquier código de firma guardado (los nuevos siguen FIRM_SLUG, más estricto). */
+const PUBLIC_SLUG = /^[a-z0-9-]{1,60}$/;
+
 /**
  * Todas las operaciones quedan acotadas al tenant del usuario autenticado.
  * No existe (aún) un rol de administrador de plataforma, así que el alta de
@@ -17,8 +20,13 @@ export class TenantsService {
    * Solo nombre y código, que ya figuran en las invitaciones; nada más de la firma.
    */
   async findPublic(slug: string) {
+    const clean = typeof slug === 'string' ? slug.toLowerCase().trim() : '';
+    // Un código imposible no llega a la base de datos (misma respuesta que uno inexistente)
+    if (!PUBLIC_SLUG.test(clean)) {
+      throw new NotFoundException('No encontramos ninguna firma con ese código');
+    }
     const t = await this.prisma.tenant.findUnique({
-      where: { slug: slug.toLowerCase().trim() },
+      where: { slug: clean },
       select: { name: true, slug: true },
     });
     if (!t) throw new NotFoundException('No encontramos ninguna firma con ese código');

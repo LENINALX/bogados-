@@ -3,21 +3,26 @@ import {
   IsBoolean,
   IsEnum,
   IsOptional,
-  IsString,
-  MaxLength,
-  MinLength,
   IsIn,
-  IsInt,
   Matches,
-  Max,
-  Min,
   ValidateIf,
 } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import { ToBoolean } from '../../common/decorators/to-boolean.decorator';
+import { Transform } from 'class-transformer';
 import { CaseStatus } from '@prisma/client';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
+import { EmptyToNull, IsId, TextField } from '../../common/validation/validators';
 
 /** Número de proceso del SATJE: judicatura (5 dígitos) - año (4) - secuencial (5), con una letra final opcional */
 export const PROCESS_NUMBER = /^\d{5}-\d{4}-\d{5}[A-Z]?$/;
+
+/** Límites compartidos con la solicitud del portal y con la web (NewCaseForm). */
+export const CASE_TITLE_MIN = 2;
+export const CASE_TITLE_MAX = 200;
+export const CASE_DESCRIPTION_MAX = 5000;
+export const CASE_MATTER_MAX = 100;
+export const CLIENT_MESSAGE_MAX = 1000;
+export const SEARCH_MAX = 200;
 
 /** Quita espacios y pasa a mayúsculas; vacío → null (desvincular). */
 export function normalizeProcessNumber(value: unknown): unknown {
@@ -26,38 +31,38 @@ export function normalizeProcessNumber(value: unknown): unknown {
   return clean === '' ? null : clean;
 }
 
+const statusMessage = `status debe ser uno de: ${Object.values(CaseStatus).join(', ')}`;
+
 export class CreateCaseDto {
-  @ApiProperty()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(200)
+  @ApiProperty({ minLength: CASE_TITLE_MIN, maxLength: CASE_TITLE_MAX })
+  @TextField({ label: 'Título', min: CASE_TITLE_MIN, max: CASE_TITLE_MAX })
   title!: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: CASE_DESCRIPTION_MAX })
   @IsOptional()
-  @IsString()
-  @MaxLength(5000)
+  @TextField({ label: 'Descripción', max: CASE_DESCRIPTION_MAX, multiline: true })
   description?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: CASE_MATTER_MAX })
   @IsOptional()
-  @IsString()
-  @MaxLength(100)
+  @TextField({ label: 'Materia', max: CASE_MATTER_MAX })
   matterType?: string;
 
   @ApiPropertyOptional({ enum: CaseStatus })
   @IsOptional()
-  @IsEnum(CaseStatus)
+  @IsEnum(CaseStatus, { message: statusMessage })
   status?: CaseStatus;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Solo admin: el abogado siempre crea casos a su nombre' })
   @IsOptional()
-  @IsString()
+  @EmptyToNull()
+  @IsId('El abogado')
   lawyerId?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsString()
+  @EmptyToNull()
+  @IsId('El cliente')
   clientId?: string | null;
 
   @ApiPropertyOptional({
@@ -72,38 +77,36 @@ export class CreateCaseDto {
 }
 
 export class UpdateCaseDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ minLength: CASE_TITLE_MIN, maxLength: CASE_TITLE_MAX })
   @IsOptional()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(200)
+  @TextField({ label: 'Título', min: CASE_TITLE_MIN, max: CASE_TITLE_MAX })
   title?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: CASE_DESCRIPTION_MAX })
   @IsOptional()
-  @IsString()
-  @MaxLength(5000)
+  @TextField({ label: 'Descripción', max: CASE_DESCRIPTION_MAX, multiline: true })
   description?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: CASE_MATTER_MAX })
   @IsOptional()
-  @IsString()
-  @MaxLength(100)
+  @TextField({ label: 'Materia', max: CASE_MATTER_MAX })
   matterType?: string | null;
 
   @ApiPropertyOptional({ enum: CaseStatus })
   @IsOptional()
-  @IsEnum(CaseStatus)
+  @IsEnum(CaseStatus, { message: statusMessage })
   status?: CaseStatus;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Solo admin (null desasigna)' })
   @IsOptional()
-  @IsString()
+  @EmptyToNull()
+  @IsId('El abogado')
   lawyerId?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Solo admin (null desvincula)' })
   @IsOptional()
-  @IsString()
+  @EmptyToNull()
+  @IsId('El cliente')
   clientId?: string | null;
 
   @ApiPropertyOptional({
@@ -119,50 +122,38 @@ export class UpdateCaseDto {
 
 export class AssignLawyerDto {
   @ApiProperty()
-  @IsString()
+  @IsId('El abogado')
   lawyerId!: string;
 }
 
 export class PatchStatusDto {
   @ApiProperty({ enum: ['intake', 'abierto', 'en_pausa', 'cerrado'] })
-  @IsIn(['intake', 'abierto', 'en_pausa', 'cerrado'])
+  @IsIn(['intake', 'abierto', 'en_pausa', 'cerrado'], { message: statusMessage })
   status!: CaseStatus;
 
   @ApiPropertyOptional({ default: true, description: 'Avisar por email al cliente del caso' })
   @IsOptional()
-  @IsBoolean()
+  @ToBoolean()
+  @IsBoolean({ message: 'notifyClient debe ser true o false' })
   notifyClient?: boolean;
 
-  @ApiPropertyOptional({ description: 'Explicación para el cliente: se ve en su portal y va en el email' })
+  @ApiPropertyOptional({
+    maxLength: CLIENT_MESSAGE_MAX,
+    description: 'Explicación para el cliente: se ve en su portal y va en el email',
+  })
   @IsOptional()
-  @IsString()
-  @MaxLength(1000)
+  @TextField({ label: 'Mensaje para el cliente', max: CLIENT_MESSAGE_MAX, multiline: true })
   clientMessage?: string;
 }
 
-export class ListCasesQueryDto {
-  @ApiPropertyOptional({ default: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ default: 20 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  pageSize?: number = 20;
-
+export class ListCasesQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: CaseStatus })
   @IsOptional()
-  @IsEnum(CaseStatus)
+  @IsEnum(CaseStatus, { message: statusMessage })
   status?: CaseStatus;
 
-  @ApiPropertyOptional({ description: 'Búsqueda por título/descripción' })
+  @ApiPropertyOptional({ description: 'Búsqueda por título/descripción', maxLength: SEARCH_MAX })
   @IsOptional()
-  @IsString()
+  @TextField({ label: 'Búsqueda', max: SEARCH_MAX })
   q?: string;
 }

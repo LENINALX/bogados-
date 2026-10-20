@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 
 @ApiTags('notes')
 @ApiBearerAuth()
@@ -17,7 +18,7 @@ export class NotesController {
 
   @Get()
   @ApiOperation({ summary: 'Listar notas (clientes: solo no internas)' })
-  list(@Param('caseId') caseId: string, @CurrentUser() user: JwtPayloadUser) {
+  list(@Param('caseId', ParseIdPipe) caseId: string, @CurrentUser() user: JwtPayloadUser) {
     return this.notes.list(caseId, user);
   }
 
@@ -25,7 +26,7 @@ export class NotesController {
   @Roles(Role.ADMIN, Role.ABOGADO)
   @ApiOperation({ summary: 'Crear nota (staff)' })
   create(
-    @Param('caseId') caseId: string,
+    @Param('caseId', ParseIdPipe) caseId: string,
     @Body() dto: CreateNoteDto,
     @CurrentUser() user: JwtPayloadUser,
   ) {

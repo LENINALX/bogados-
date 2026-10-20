@@ -1,8 +1,8 @@
-import { Body, Controller, Get, HttpCode, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { AuthService } from './auth.service';
-import { AccountTokensService } from './account-tokens.service';
+import { AccountTokensService, INVALID_TOKEN_MESSAGE } from './account-tokens.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterClientDto } from './dto/register-client.dto';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/password.dto';
@@ -13,6 +13,8 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import { Client, ClientMeta } from './client-meta';
 import { LoginEventsService } from './login-events.service';
+import { FirmSignupService } from './firm-signup.service';
+import { RegisterFirmDto } from './dto/register-firm.dto';
 import {
   ChangePasswordDto,
   ListLoginEventsQueryDto,
@@ -28,7 +30,21 @@ export class AuthController {
     private auth: AuthService,
     private tokens: AccountTokensService,
     private loginEvents: LoginEventsService,
+    private firmSignup: FirmSignupService,
   ) {}
+
+  @Post('register-firm')
+  @UseGuards(LoginThrottlerGuard)
+  @ApiOperation({ summary: 'Alta de una firma nueva con su administrador (pública; SIGNUP_ENABLED=false la cierra)' })
+  registerFirm(@Body() dto: RegisterFirmDto) {
+    return this.firmSignup.register(dto);
+  }
+
+  @Get('register-firm/slug')
+  @ApiOperation({ summary: 'Comprueba si un código de firma está libre y sugiere otro si no' })
+  checkFirmSlug(@Query('value') value: string) {
+    return this.firmSignup.checkSlug(value);
+  }
 
   @Post('login')
   @UseGuards(LoginThrottlerGuard)
@@ -103,7 +119,11 @@ export class AuthController {
   @Get('token-info')
   @ApiOperation({ summary: 'Datos de un enlace de invitación/recuperación vigente' })
   tokenInfo(@Query('token') token: string) {
-    return this.tokens.info(token ?? '');
+    // Mismo rango que ResetPasswordDto: algo fuera de él no es un enlace nuestro
+    if (typeof token !== 'string' || token.length < 20 || token.length > 200) {
+      throw new BadRequestException(INVALID_TOKEN_MESSAGE);
+    }
+    return this.tokens.info(token);
   }
 
   @Post('reset-password')

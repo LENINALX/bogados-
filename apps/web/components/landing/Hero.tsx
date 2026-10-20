@@ -1,146 +1,90 @@
 import Link from "next/link";
-import { ArrowRight, Play } from "lucide-react";
+import { ArrowDown, ArrowRight } from "lucide-react";
+import { TermVignette } from "@/components/auth/TermVignette";
+
+/** Lo que muestra la viñeta, dicho en texto: el mismo cálculo que hace computeTermDeadline() en la API. */
+const EXAMPLE = [
+  { label: "Notificación", value: "Jueves 29 de octubre" },
+  { label: "Término", value: "3 días hábiles" },
+  { label: "No se cuentan", value: "Sábado 31, domingo 1 y los feriados del 2 y 3 de noviembre" },
+  { label: "Vence", value: "Jueves 5 de noviembre, 23:59", strong: true },
+];
 
 /**
- * Portada a pantalla completa (oscura en ambos temas).
+ * Portada sobre papel, en el lenguaje de la pantalla de acceso: titular serif a todo el ancho,
+ * debajo la entradilla con las acciones y, al lado, la lámina oscura con un término contándose.
  *
- * Coreografía de entrada (personalidad «premium»: sin rebote, curva de salida suave):
- *   0 ms     ambiente: el fondo se asienta (escala 1.06 → 1) y la luz cálida aparece
- *   100 ms   antetítulo: las líneas doradas se dibujan desde el centro
- *   180 ms   titular, línea 1: sube desde detrás de una máscara
- *   300 ms   titular, línea 2
- *   760 ms   secundario: subrayado dorado bajo «informados»
- *   420 ms   entradilla y botones (suben y se enfocan)
- *   1100 ms  indicador de scroll
- * Con el scroll, el fondo se mueve más despacio que el texto (parallax) y el texto se desvanece.
- * Con movimiento reducido solo quedan fundidos.
+ * Entrada (sin rebote, ≤ 400 ms de escalonado): titular → entradilla → acciones y lámina → ejemplo.
+ * La viñeta lleva su propia coreografía. Con movimiento reducido todo aparece quieto.
  */
 export function Hero() {
   return (
-    <section
-      id="inicio"
-      className="hero relative isolate flex min-h-[100svh] flex-col overflow-hidden bg-[#0b1311] text-white"
-    >
-      <HeroBackdrop />
-
-      <div className="hero-content relative mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-4 pb-36 pt-28 text-center sm:px-6 sm:pb-48 lg:px-8">
-        <p className="hero-eyebrow flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/75 sm:text-xs">
-          <span aria-hidden className="hero-rule hero-rule-left hidden h-px w-12 bg-accent-light/80 sm:block" />
-          Gestión legal para firmas de abogados
-          <span aria-hidden className="hero-rule hero-rule-right hidden h-px w-12 bg-accent-light/80 sm:block" />
-        </p>
-
-        <h1 className="mt-6 text-[clamp(2.1rem,4.7vw,4.25rem)] font-bold uppercase leading-[1.06] tracking-[-0.012em]">
-          <span className="hero-line">
-            <span className="hero-line-inner" style={{ animationDelay: "180ms" }}>
-              Tu despacho, ordenado.
-            </span>
-          </span>
-          <span className="hero-line">
-            <span className="hero-line-inner" style={{ animationDelay: "300ms" }}>
-              Tus clientes, <span className="hero-accent text-accent-light">informados</span>.
-            </span>
-          </span>
+    <section id="inicio" aria-labelledby="hero-title" className="relative pt-16">
+      <div className="mx-auto max-w-6xl px-4 pb-20 pt-12 sm:px-6 sm:pt-20 lg:px-8 lg:pb-28">
+        <h1
+          id="hero-title"
+          className="hero-rise text-balance font-display text-[clamp(2.6rem,7vw,5.25rem)] font-normal leading-[1.02] tracking-[-0.025em] text-slate-900"
+        >
+          Cada término, <em className="font-light italic text-red-700">a&nbsp;tiempo.</em>
+          <span className="block text-slate-500">Cada cliente, al&nbsp;tanto.</span>
         </h1>
 
-        <p className="hero-rise mt-7 max-w-2xl text-pretty text-base leading-relaxed text-white/70 sm:text-lg" style={{ animationDelay: "420ms" }}>
-          Expedientes, documentos, citas y mensajes en un solo lugar, con un portal donde cada cliente sigue su caso sin
-          tener que llamarte.
-        </p>
+        <div className="mt-10 grid gap-10 sm:mt-14 lg:grid-cols-[minmax(0,1fr)_33rem] lg:gap-16">
+          <div className="lg:col-start-1 lg:row-start-1">
+            <p
+              className="hero-rise max-w-xl text-pretty text-[1.0625rem] leading-relaxed text-slate-600 sm:text-lg"
+              style={{ animationDelay: "90ms" }}
+            >
+              Bogados lleva los casos de tu firma, cuenta los términos en días hábiles con los feriados de Ecuador y
+              avisa a tu cliente por email cuando su caso avanza. Él lo sigue desde su propio portal.
+            </p>
+            <div className="hero-rise mt-8 flex flex-wrap items-center gap-3" style={{ animationDelay: "170ms" }}>
+              <Link href="/login" className="btn-primary group px-5 py-2.5 text-[0.9375rem]">
+                Iniciar sesión
+                <ArrowRight className="cta-arrow h-4 w-4" aria-hidden />
+              </Link>
+              <a href="#como-funciona" className="btn-secondary group px-5 py-2.5 text-[0.9375rem]">
+                Ver cómo funciona
+                <ArrowDown className="h-4 w-4 text-slate-400 transition-transform duration-150 group-hover:translate-y-0.5" aria-hidden />
+              </a>
+            </div>
+          </div>
 
-        <div className="hero-rise mt-10 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: "500ms" }}>
-          <Link href="/login" className="btn-accent group rounded-full px-7 py-3.5 text-[0.9375rem] uppercase tracking-[0.06em]">
-            Acceder a mi firma
-            <ArrowRight className="cta-arrow h-4 w-4" aria-hidden />
-          </Link>
-          <a
-            href="#demo"
-            className="btn group rounded-full border border-white/20 bg-white/10 px-6 py-3.5 text-[0.9375rem] uppercase tracking-[0.06em] text-white backdrop-blur-md hover:border-white/35 hover:bg-white/15"
+          {/* Lámina: oscura en ambos temas, como el panel de marca del acceso */}
+          <figure
+            className="hero-rise auth-grain relative isolate overflow-hidden rounded-[18px] bg-[#111b19] px-5 pb-5 pt-6 text-white shadow-[0_30px_60px_-36px_rgb(17_27_25/0.6)] ring-1 ring-slate-900/[0.08] sm:px-8 sm:pb-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start"
+            style={{ animationDelay: "140ms" }}
           >
-            <span className="play-dot flex h-6 w-6 items-center justify-center rounded-full bg-white text-[#0b1311]">
-              <Play className="h-3 w-3 translate-x-[1px] fill-current" aria-hidden />
-            </span>
-            Ver demostración
-          </a>
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(110%_65%_at_15%_-5%,rgb(52_96_88/0.6),transparent_62%)]" />
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(80%_60%_at_100%_110%,rgb(156_74_60/0.16),transparent_70%)]" />
+            <p aria-hidden className="absolute left-8 top-6 hidden max-w-[12rem] text-[12px] leading-snug text-white/50 sm:block">
+              <span className="block text-[13px] font-medium text-white/85">Término procesal</span>
+              Notificado el jueves 29 de octubre
+            </p>
+            {/* En móvil el vencimiento ocupa dos líneas: se da algo más de alto para que el aviso no lo tape */}
+            <div aria-hidden className="[&>div]:mt-0 max-sm:[&>div]:h-[24.5rem]">
+              <TermVignette />
+            </div>
+            <figcaption className="mt-6 flex items-center justify-between gap-6 border-t border-white/10 pt-4 text-[12px] text-white/50">
+              <span>Términos en días hábiles, como los cuenta el COGEP.</span>
+              <span className="hidden shrink-0 tabular-nums sm:inline">Ecuador · 2026</span>
+            </figcaption>
+          </figure>
+
+          {/* El ejemplo de la lámina, en texto (también lo leen los lectores de pantalla) */}
+          <div className="hero-rise lg:col-start-1 lg:row-start-2 lg:self-end" style={{ animationDelay: "260ms" }}>
+            <h2 className="text-[13px] font-medium text-slate-500">Así cuenta Bogados un término</h2>
+            <dl className="mt-3 max-w-xl divide-y divide-slate-900/[0.06] border-y border-slate-900/[0.08] text-[0.875rem]">
+              {EXAMPLE.map(({ label, value, strong }) => (
+                <div key={label} className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-4 py-2.5 sm:grid-cols-[9rem_minmax(0,1fr)]">
+                  <dt className="text-slate-500">{label}</dt>
+                  <dd className={strong ? "font-semibold text-slate-900" : "text-slate-700"}>{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         </div>
       </div>
-
-      <a href="#demo" aria-label="Bajar a la demostración" className="hero-cue absolute bottom-44 left-1/2 hidden -translate-x-1/2 [@media(min-height:940px)]:sm:block">
-        <span className="flex h-9 w-6 justify-center rounded-full border-2 border-white/35 pt-1.5">
-          <span className="hero-cue-dot h-1.5 w-1 rounded-full bg-white/80" />
-        </span>
-      </a>
     </section>
-  );
-}
-
-/**
- * Capas decorativas. El contenedor exterior hace parallax con el scroll; el interior se asienta al cargar.
- * También lo usa el panel de marca del login (`fade={false}`: allí no se funde con la página).
- */
-export function HeroBackdrop({ fade = true }: { fade?: boolean }) {
-  return (
-    <div aria-hidden className="hero-parallax pointer-events-none absolute inset-0 -z-10">
-      <div className="hero-settle absolute inset-0">
-        {/* Base: pino casi negro con una zona más clara arriba */}
-        <div className="absolute inset-0 bg-[radial-gradient(120%_85%_at_50%_0%,#24453f_0%,#132723_42%,#0b1311_100%)]" />
-        {/* Luz de arcilla, como la de una lámpara de despacho: deriva muy despacio */}
-        <div className="hero-glow absolute -left-[10%] -top-[20%] h-[80%] w-[70%] rounded-full bg-[radial-gradient(closest-side,rgba(196,110,86,0.26),transparent)] blur-2xl" />
-        <div className="absolute -right-[15%] top-[10%] h-[70%] w-[60%] rounded-full bg-[radial-gradient(closest-side,rgba(98,150,124,0.24),transparent)] blur-2xl" />
-
-        {/* Balanza grande, apenas visible */}
-        <svg
-          viewBox="0 0 24 24"
-          className="absolute right-[-8rem] top-1/2 h-[46rem] w-[46rem] -translate-y-1/2 text-white opacity-[0.05] sm:right-[-4rem]"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="0.22"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
-          <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
-          <path d="M7 21h10" />
-          <path d="M12 3v18" />
-          <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" />
-        </svg>
-
-        {/* Columnas clásicas al fondo */}
-        <Columns />
-
-        {/* Grano de película y viñeta */}
-        <div className="hero-grain absolute inset-0 opacity-[0.09] mix-blend-overlay" />
-        <div className="absolute inset-0 bg-[radial-gradient(90%_70%_at_50%_45%,transparent_40%,rgba(0,0,0,0.55)_100%)]" />
-      </div>
-      {/* Funde la portada con el fondo de la página, donde se apoya la demostración */}
-      {fade && <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-canvas" />}
-    </div>
-  );
-}
-
-function Columns() {
-  const xs = [60, 230, 400, 800, 970, 1140];
-  return (
-    <svg viewBox="0 0 1200 520" preserveAspectRatio="xMidYMax slice" className="absolute inset-x-0 bottom-0 h-[70%] w-full text-white opacity-[0.07]">
-      <g fill="currentColor">
-        {/* Entablamento */}
-        <rect x="0" y="40" width="1200" height="14" />
-        <rect x="0" y="62" width="1200" height="6" />
-        {xs.map((x) => (
-          <g key={x}>
-            <rect x={x - 34} y="76" width="68" height="12" />
-            <rect x={x - 26} y="88" width="52" height="8" />
-            <rect x={x - 22} y="96" width="44" height="380" />
-            {/* Estrías */}
-            {[-12, -4, 4, 12].map((dx) => (
-              <rect key={dx} x={x + dx - 1} y="104" width="2" height="364" fill="#0b1311" opacity="0.5" />
-            ))}
-            <rect x={x - 28} y="476" width="56" height="10" />
-            <rect x={x - 34} y="486" width="68" height="12" />
-          </g>
-        ))}
-        <rect x="0" y="498" width="1200" height="22" />
-      </g>
-    </svg>
   );
 }

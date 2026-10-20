@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Header,
   Param,
   Post,
   Query,
@@ -22,6 +23,7 @@ import { DocumentsService } from './documents.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 import { PaginationQueryDto } from '../common/dto/pagination.dto';
 import { documentUploadOptions } from './upload.config';
 
@@ -35,7 +37,7 @@ export class DocumentsController {
   @Get('cases/:caseId/documents')
   @ApiOperation({ summary: 'Listar documentos del caso (ACL, paginado)' })
   list(
-    @Param('caseId') caseId: string,
+    @Param('caseId', ParseIdPipe) caseId: string,
     @CurrentUser() user: JwtPayloadUser,
     @Query() query: PaginationQueryDto,
   ) {
@@ -56,7 +58,7 @@ export class DocumentsController {
   })
   @ApiOperation({ summary: 'Subir documento (multipart)' })
   upload(
-    @Param('caseId') caseId: string,
+    @Param('caseId', ParseIdPipe) caseId: string,
     @UploadedFile() file: Express.Multer.File,
     @Req() req: Request,
     @CurrentUser() user: JwtPayloadUser,
@@ -67,7 +69,12 @@ export class DocumentsController {
 
   @Get('documents/:id/download')
   @ApiOperation({ summary: 'Descargar documento con ACL' })
-  download(@Param('id') id: string, @CurrentUser() user: JwtPayloadUser) {
+  // Siempre como descarga (Content-Disposition: attachment, lo pone el servicio) y sin
+  // que el navegador adivine el tipo ni ejecute nada si alguien abre la URL directamente
+  @Header('X-Content-Type-Options', 'nosniff')
+  @Header('Content-Security-Policy', "default-src 'none'; sandbox")
+  @Header('Cache-Control', 'private, no-store')
+  download(@Param('id', ParseIdPipe) id: string, @CurrentUser() user: JwtPayloadUser) {
     // StreamableFile ya fija Content-Type, Content-Disposition y Content-Length
     return this.documents.download(id, user);
   }

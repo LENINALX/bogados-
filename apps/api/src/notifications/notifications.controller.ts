@@ -5,6 +5,7 @@ import { ListNotificationsQueryDto } from './dto/notification.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 
 @ApiTags('notifications')
 @ApiBearerAuth()
@@ -27,7 +28,7 @@ export class NotificationsController {
 
   @Patch(':id/read')
   @ApiOperation({ summary: 'Marcar una notificación como leída' })
-  markRead(@Param('id') id: string, @CurrentUser() user: JwtPayloadUser) {
+  markRead(@Param('id', ParseIdPipe) id: string, @CurrentUser() user: JwtPayloadUser) {
     return this.notifications.markRead(id, user);
   }
 }

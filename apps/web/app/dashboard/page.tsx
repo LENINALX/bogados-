@@ -8,6 +8,8 @@ import { staffLinks } from "@/lib/nav";
 import { StaffLayout } from "@/components/StaffLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/ui";
+import { Badge, ChipCount, SectionTitle, chipClass, chipRail, th, tr } from "@/components/staff/primitives";
+import { ChevronLeft, ChevronRight, FolderOpen, Inbox, Plus, Search, SearchX } from "lucide-react";
 import { TodayPanel } from "@/components/TodayPanel";
 import { dayBounds } from "@/lib/today";
 import { CaseRequestBadge } from "@/components/CaseRequestBadge";
@@ -286,26 +288,19 @@ export default async function DashboardPage({
   if (page > totalPages) redirect(href({ status: validStatus, q, page: totalPages }));
   const pageHref = (p: number) => href({ status: validStatus, q, page: p });
 
-  const chip = (active: boolean) =>
-    `inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-      active
-        ? "border-brand-600 bg-brand-600 text-white"
-        : "border-slate-200 bg-surface text-slate-700 hover:border-brand-500 hover:text-brand-700"
-    }`;
-
   return (
     <StaffLayout user={session.user} links={staffLinks(role)}>
       <main className="page">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="page-title sm:text-3xl">{isAdmin ? "Panel de la firma" : "Mis expedientes"}</h1>
+            <h1 className="page-title">{isAdmin ? "Panel de la firma" : "Mis expedientes"}</h1>
             <p className="page-subtitle">
-              Resumen al {now.toLocaleDateString("es-EC")}
-              {!isAdmin && " · casos asignados a ti"}
+              {isAdmin ? "Toda la firma" : "Casos asignados a ti"} · datos al {now.toLocaleDateString("es-EC")}
             </p>
           </div>
           <Link href="/casos/nuevo" className="btn-primary">
-            + Nuevo caso
+            <Plus className="h-4 w-4" aria-hidden />
+            Nuevo caso
           </Link>
         </div>
 
@@ -322,27 +317,31 @@ export default async function DashboardPage({
         />
 
         {openRequests.length > 0 && (
-          <section id="solicitudes" className="card mb-8 scroll-mt-6 rounded-2xl border-amber-200">
-            <div className="card-header py-4 sm:px-6">
-              <h2 className="text-base font-semibold text-slate-900">Solicitudes de clientes</h2>
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                {openRequests.length} por decidir
-              </span>
+          <section id="solicitudes" aria-labelledby="requests-title" className="card mb-10 scroll-mt-6 overflow-hidden">
+            <div className="card-header bg-amber-50/60">
+              <h2 id="requests-title" className="card-title flex items-center gap-2">
+                <Inbox className="h-4 w-4 text-amber-700" aria-hidden />
+                Solicitudes de clientes
+              </h2>
+              <Badge tone="amber">{openRequests.length} por decidir</Badge>
             </div>
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-slate-900/[0.06]">
               {openRequests.map((r) => (
                 <li key={r.id}>
                   <Link
                     href={`/casos/${r.id}`}
-                    className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-slate-50 sm:px-6"
+                    className="group flex min-h-[52px] items-center justify-between gap-3 px-4 py-2.5 text-sm transition-colors duration-150 hover:bg-slate-900/[0.02] sm:px-5"
                   >
                     <div className="min-w-0">
-                      <div className="truncate font-medium text-brand-700">{r.title}</div>
-                      <div className="text-xs text-slate-500">
-                        {r.client?.name ?? "—"} · {r.createdAt.toLocaleDateString("es-EC")}
+                      <div className="truncate font-medium text-slate-900 group-hover:text-brand-700">{r.title}</div>
+                      <div className="text-xs tabular-nums text-slate-500">
+                        {r.client?.name ?? "—"} · enviada el {r.createdAt.toLocaleDateString("es-EC")}
                       </div>
                     </div>
-                    {r.requestState && <CaseRequestBadge state={r.requestState} />}
+                    <span className="flex shrink-0 items-center gap-2">
+                      {r.requestState && <CaseRequestBadge state={r.requestState} />}
+                      <ChevronRight className="h-4 w-4 text-slate-400 transition-colors group-hover:text-slate-600" aria-hidden />
+                    </span>
                   </Link>
                 </li>
               ))}
@@ -350,24 +349,22 @@ export default async function DashboardPage({
           </section>
         )}
 
-        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="mb-10 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
           <StatTile label="Casos activos" value={activeCases} hint={`${byStatus.cerrado} cerrados`} />
           <StatTile label="Tareas abiertas" value={openTasks} href="/tareas" />
           <StatTile label="Tareas vencidas" value={overdueTasks} tone="critical" href="/tareas?f=vencidas" />
-          <StatTile label="Documentos" value={documents} />
+          <StatTile label="Documentos" value={documents} hint="En todos los casos" />
         </div>
 
         {isAdmin && (
           <section aria-labelledby="office-statistics-title" className="mb-10">
             <div className="mb-4">
-              <h2 id="office-statistics-title" className="text-lg font-semibold text-slate-900">
-                Estadísticas del despacho
-              </h2>
+              <SectionTitle id="office-statistics-title">Estadísticas del despacho</SectionTitle>
               <p className="mt-1 text-sm text-slate-500">
                 Casos por mes y materia, decisiones de solicitudes y citas por abogado.
               </p>
             </div>
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-5 lg:grid-cols-2">
               <CasesByMonthChart rows={caseMonthRows} />
               <CasesByMatterChart rows={caseMatterRows} />
               <RequestDecisionTimeChart averageDays={decisionDays} requestCount={decidedRequestCount} />
@@ -376,7 +373,7 @@ export default async function DashboardPage({
           </section>
         )}
 
-        <div className="mb-10 grid gap-6 lg:grid-cols-2">
+        <div className="mb-10 grid gap-5 lg:grid-cols-2">
           <div className={isAdmin ? undefined : "lg:col-span-2"}>
             <CasesByStatusChart counts={byStatus} statuses={CASE_STATUSES} />
           </div>
@@ -387,160 +384,176 @@ export default async function DashboardPage({
           <ScrollToHash id={CASES_LIST_ID} />
         </Suspense>
         {/* scroll-mt: deja libre la barra superior fija del móvil */}
-        <div id={CASES_LIST_ID} className="card mb-8 scroll-mt-20 space-y-4 rounded-2xl p-4 sm:p-6 lg:scroll-mt-6">
-          <nav aria-label="Filtrar por estado" className="flex flex-wrap gap-2">
-            <Link href={href({ q })} className={chip(!validStatus)} aria-current={!validStatus ? "true" : undefined}>
-              Todos <span className="opacity-70">{total}</span>
-            </Link>
-            {CASE_STATUSES.map((s) => (
-              <Link
-                key={s}
-                href={href({ status: s, q })}
-                className={chip(validStatus === s)}
-                aria-current={validStatus === s ? "true" : undefined}
-              >
-                {CASE_STATUS_LABELS[s]} <span className="opacity-70">{byStatus[s]}</span>
+        <section id={CASES_LIST_ID} aria-labelledby="cases-title" className="scroll-mt-20 lg:scroll-mt-6">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <SectionTitle id="cases-title">
+              {isAdmin ? "Casos" : "Tus casos"}{" "}
+              <span className="font-sans text-base font-normal tabular-nums tracking-normal text-slate-500">
+                {casesTotal}
+                {validStatus && <> · {CASE_STATUS_LABELS[validStatus]}</>}
+                {q && <> · “{q}”</>}
+              </span>
+            </SectionTitle>
+            {filtered && (
+              <Link href={href({})} className="text-[13px] font-medium text-brand-700 underline-offset-4 hover:underline">
+                Quitar filtros
               </Link>
-            ))}
-          </nav>
+            )}
+          </div>
 
-          <form role="search" action={`/dashboard#${CASES_LIST_ID}`} className="flex flex-col gap-2 sm:flex-row">
-            {validStatus && <input type="hidden" name="status" value={validStatus} />}
-            <label htmlFor="q" className="sr-only">
-              Buscar casos
-            </label>
-            <input
-              id="q"
-              name="q"
-              type="search"
-              defaultValue={q}
-              placeholder="Buscar por título o descripción…"
-              className="input sm:max-w-md"
-            />
-            <div className="flex gap-2">
-              <button type="submit" className="btn-primary">
+          <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <nav aria-label="Filtrar por estado" className={`${chipRail} self-start`}>
+              <Link href={href({ q })} className={chipClass(!validStatus)} aria-current={!validStatus ? "true" : undefined}>
+                Todos <ChipCount active={!validStatus}>{total}</ChipCount>
+              </Link>
+              {CASE_STATUSES.map((s) => (
+                <Link
+                  key={s}
+                  href={href({ status: s, q })}
+                  className={chipClass(validStatus === s)}
+                  aria-current={validStatus === s ? "true" : undefined}
+                >
+                  {CASE_STATUS_LABELS[s]} <ChipCount active={validStatus === s}>{byStatus[s]}</ChipCount>
+                </Link>
+              ))}
+            </nav>
+
+            <form role="search" action={`/dashboard#${CASES_LIST_ID}`} className="flex gap-2 lg:w-[22rem]">
+              {validStatus && <input type="hidden" name="status" value={validStatus} />}
+              <label htmlFor="q" className="sr-only">
+                Buscar casos
+              </label>
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  aria-hidden
+                />
+                <input
+                  id="q"
+                  name="q"
+                  type="search"
+                  defaultValue={q}
+                  placeholder="Buscar por título o descripción…"
+                  className="input pl-9"
+                />
+              </div>
+              <button type="submit" className="btn-secondary">
                 Buscar
               </button>
               {q && (
-                <Link href={href({ status: validStatus })} className="btn-secondary">
+                <Link href={href({ status: validStatus })} className="btn-ghost px-3">
                   Limpiar
                 </Link>
               )}
-            </div>
-          </form>
-        </div>
+            </form>
+          </div>
 
-        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-base font-semibold text-slate-900">
-            {casesTotal} caso{casesTotal === 1 ? "" : "s"}
-            {validStatus && <> · {CASE_STATUS_LABELS[validStatus]}</>}
-            {q && <> · “{q}”</>}
-          </h2>
-          {filtered && (
-            <Link href={href({})} className="text-xs font-medium text-brand-700 hover:underline">
-              Quitar filtros
-            </Link>
-          )}
-        </div>
-
-        <div className="card overflow-hidden rounded-2xl">
-          {cases.length === 0 ? (
-            filtered ? (
-              <EmptyState
-                title="No hay casos que coincidan con estos filtros"
-                hint="Prueba con otra búsqueda o quita el filtro de estado."
-                action={{ href: href({}), label: "Ver todos los casos" }}
-              />
+          <div className="card overflow-hidden">
+            {cases.length === 0 ? (
+              filtered ? (
+                <EmptyState
+                  icon={SearchX}
+                  title="Ningún caso coincide"
+                  hint="Prueba con otra búsqueda o quita el filtro de estado."
+                  action={{ href: href({}), label: "Ver todos los casos" }}
+                />
+              ) : (
+                <EmptyState
+                  icon={FolderOpen}
+                  title="Todavía no hay casos"
+                  hint="Crea el primero: podrás vincular su proceso del SATJE y registrar sus términos."
+                  action={{ href: "/casos/nuevo", label: "Nuevo caso" }}
+                />
+              )
             ) : (
-              <EmptyState
-                title="Todavía no hay casos"
-                hint="Crea el primero con el botón «Nuevo caso»."
-                action={{ href: "/casos/nuevo", label: "+ Nuevo caso" }}
-              />
-            )
-          ) : (
-            <>
-              {/* Móvil: tarjetas */}
-              <ul className="divide-y divide-slate-100 sm:hidden">
-                {cases.map((c) => (
-                  <li key={c.id}>
-                    <Link href={`/casos/${c.id}`} className="block px-4 py-3 active:bg-slate-50">
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="font-medium text-brand-700">{c.title}</span>
-                        <StatusBadge status={c.status} />
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        {c.matterType && <>{c.matterType} · </>}
-                        Cliente: {c.client?.name ?? "—"}
-                        {isAdmin && <> · Abogado: {c.lawyer?.name ?? "—"}</>}
-                      </div>
-                      <div className="mt-0.5 text-xs text-slate-400">
-                        Actualizado {c.updatedAt.toLocaleDateString("es-EC")}
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-
-              {/* Escritorio: tabla */}
-              <div className="hidden overflow-x-auto sm:block">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                    <tr>
-                      <th scope="col" className="px-5 py-3 font-semibold">Caso</th>
-                      <th scope="col" className="px-5 py-3 font-semibold">Cliente</th>
-                      <th scope="col" className="px-5 py-3 font-semibold">Abogado</th>
-                      <th scope="col" className="px-5 py-3 font-semibold">Estado</th>
-                      <th scope="col" className="px-5 py-3 font-semibold">Actualizado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {cases.map((c) => (
-                      <tr key={c.id} className="transition hover:bg-slate-50">
-                        <td className="px-5 py-3.5">
-                          <Link href={`/casos/${c.id}`} className="font-medium text-brand-700 hover:underline">
-                            {c.title}
-                          </Link>
-                          {c.matterType && <div className="text-xs text-slate-400">{c.matterType}</div>}
-                        </td>
-                        <td className="px-5 py-3.5 text-slate-600">{c.client?.name ?? "—"}</td>
-                        <td className="px-5 py-3.5 text-slate-600">{c.lawyer?.name ?? "—"}</td>
-                        <td className="px-5 py-3.5">
+              <>
+                {/* Móvil: tarjetas */}
+                <ul className="divide-y divide-slate-900/[0.06] sm:hidden">
+                  {cases.map((c) => (
+                    <li key={c.id}>
+                      <Link href={`/casos/${c.id}`} className="block px-4 py-3.5 active:bg-slate-900/[0.03]">
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="font-medium text-slate-900">{c.title}</span>
                           <StatusBadge status={c.status} />
-                        </td>
-                        <td className="whitespace-nowrap px-5 py-3.5 text-slate-500">
-                          {c.updatedAt.toLocaleDateString("es-EC")}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {c.matterType && <>{c.matterType} · </>}
+                          {c.client?.name ?? "Sin cliente"}
+                          {isAdmin && <> · {c.lawyer?.name ?? "Sin abogado"}</>}
+                        </div>
+                        <div className="mt-0.5 text-xs tabular-nums text-slate-400">
+                          Actualizado el {c.updatedAt.toLocaleDateString("es-EC")}
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
 
-        {totalPages > 1 && (
-          <nav aria-label="Paginación de casos" className="mt-4 flex items-center justify-between gap-3 text-sm">
-            {page > 1 ? (
-              <Link href={pageHref(page - 1)} className="btn-secondary btn-sm" rel="prev">
-                ← Anterior
-              </Link>
-            ) : (
-              <span />
+                {/* Escritorio: tabla */}
+                <div className="hidden overflow-x-auto sm:block">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="border-b border-slate-900/[0.08] bg-slate-900/[0.015]">
+                      <tr>
+                        <th scope="col" className={th}>Caso</th>
+                        <th scope="col" className={th}>Cliente</th>
+                        <th scope="col" className={th}>Abogado</th>
+                        <th scope="col" className={th}>Estado</th>
+                        <th scope="col" className={`${th} text-right`}>Actualizado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-900/[0.06]">
+                      {cases.map((c) => (
+                        <tr key={c.id} className={`group ${tr}`}>
+                          <td className="px-4 py-2.5 sm:px-5">
+                            <Link
+                              href={`/casos/${c.id}`}
+                              className="font-medium text-slate-900 underline-offset-2 hover:text-brand-700 hover:underline"
+                            >
+                              {c.title}
+                            </Link>
+                            {c.matterType && <div className="text-xs text-slate-500">{c.matterType}</div>}
+                          </td>
+                          <td className="px-4 py-2.5 text-slate-600 sm:px-5">{c.client?.name ?? "—"}</td>
+                          <td className="px-4 py-2.5 text-slate-600 sm:px-5">{c.lawyer?.name ?? "—"}</td>
+                          <td className="px-4 py-2.5 sm:px-5">
+                            <StatusBadge status={c.status} />
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-slate-500 sm:px-5">
+                            {c.updatedAt.toLocaleDateString("es-EC")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
-            <span className="text-slate-500">
-              Página {page} de {totalPages}
-            </span>
-            {page < totalPages ? (
-              <Link href={pageHref(page + 1)} className="btn-secondary btn-sm" rel="next">
-                Siguiente →
-              </Link>
-            ) : (
-              <span />
-            )}
-          </nav>
-        )}
+          </div>
+
+          {totalPages > 1 && (
+            <nav aria-label="Paginación de casos" className="mt-4 flex items-center justify-between gap-3 text-sm">
+              {page > 1 ? (
+                <Link href={pageHref(page - 1)} className="btn-secondary btn-sm" rel="prev">
+                  <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+                  Anterior
+                </Link>
+              ) : (
+                <span />
+              )}
+              <span className="text-xs tabular-nums text-slate-500">
+                Página {page} de {totalPages}
+              </span>
+              {page < totalPages ? (
+                <Link href={pageHref(page + 1)} className="btn-secondary btn-sm" rel="next">
+                  Siguiente
+                  <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                </Link>
+              ) : (
+                <span />
+              )}
+            </nav>
+          )}
+        </section>
       </main>
     </StaffLayout>
   );

@@ -1,9 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { Check, ExternalLink } from "lucide-react";
 import { SATJE_URL } from "@/lib/process-number";
 
+/**
+ * Número del proceso judicial con acceso a la consulta pública del SATJE.
+ * La consulta no admite enlaces directos a un proceso: copiamos el número y abrimos la página.
+ */
 export function ProcessNumberLink({ processNumber }: { processNumber: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -19,16 +23,26 @@ export function ProcessNumberLink({ processNumber }: { processNumber: string }) 
   }
 
   return (
-    <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-      <span>Proceso judicial:</span>
-      <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[13px] font-medium tracking-wide text-slate-800">
-        {processNumber}
-      </span>
-      <button type="button" onClick={copyAndOpen} className="btn-ghost btn-sm text-brand-700">
-        {copied ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
-        {copied ? "Copiado: pégalo en el SATJE" : "Consultar en SATJE"}
-        <ExternalLink className="h-3 w-3 opacity-60" aria-hidden />
-      </button>
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className="break-all text-[0.9375rem] font-semibold tracking-[0.02em] text-slate-900 tabular-nums">
+          {processNumber}
+        </span>
+        <button type="button" onClick={copyAndOpen} className="btn-secondary btn-sm">
+          {copied ? (
+            <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
+          ) : (
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          )}
+          Consultar en SATJE
+          <span className="sr-only"> (se abre en una pestaña nueva)</span>
+        </button>
+      </div>
+      <p className="mt-1.5 text-xs leading-relaxed text-slate-500" aria-live="polite">
+        {copied
+          ? "Número copiado. Pégalo en la consulta de procesos del SATJE."
+          : "Copiamos el número y abrimos la consulta pública de la Función Judicial."}
+      </p>
     </div>
   );
 }

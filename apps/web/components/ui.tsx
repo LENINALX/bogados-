@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Inbox, LucideIcon } from "lucide-react";
 
 export function Spinner({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -40,15 +40,21 @@ export function EmptyState({
   title,
   hint,
   action,
+  icon: Icon = Inbox,
 }: {
   title: string;
   hint?: string;
   action?: { href: string; label: string };
+  /** Icono del estado vacío (lucide); por defecto, una bandeja */
+  icon?: LucideIcon;
 }) {
   return (
-    <div className="px-4 py-8 text-center">
-      <p className="text-sm font-medium text-slate-600">{title}</p>
-      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
+    <div className="flex flex-col items-center px-4 py-9 text-center">
+      <span className="mb-3 flex h-9 w-9 items-center justify-center rounded-[10px] bg-brand-600/[0.08] text-brand-700">
+        <Icon className="h-[18px] w-[18px]" aria-hidden />
+      </span>
+      <p className="text-sm font-medium text-slate-700">{title}</p>
+      {hint && <p className="mt-1 max-w-xs text-xs leading-relaxed text-slate-500">{hint}</p>}
       {action && (
         <Link href={action.href} className="btn-secondary btn-sm mt-3">
           {action.label}

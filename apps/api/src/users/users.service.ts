@@ -122,7 +122,15 @@ export class UsersService {
       }
     }
     const data: Record<string, unknown> = {};
-    if (dto.email) data.email = dto.email.toLowerCase().trim();
+    if (dto.email) {
+      const email = dto.email.toLowerCase().trim();
+      const taken = await this.prisma.user.findFirst({
+        where: { tenantId: actor.tenantId, email, NOT: { id } },
+        select: { id: true },
+      });
+      if (taken) throw new ConflictException('Email ya registrado en el tenant');
+      data.email = email;
+    }
     if (dto.name) data.name = dto.name;
     if (dto.role) data.role = dto.role;
     if (dto.active !== undefined) data.active = dto.active;

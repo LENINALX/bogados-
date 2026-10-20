@@ -1,16 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsOptional } from 'class-validator';
+import { ToBoolean } from '../../common/decorators/to-boolean.decorator';
+import { TextField } from '../../common/validation/validators';
+
+export const NOTE_MAX = 5000;
 
 export class CreateNoteDto {
-  @ApiProperty()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(5000)
+  @ApiProperty({ maxLength: NOTE_MAX })
+  @TextField({ label: 'Nota', min: 1, max: NOTE_MAX, multiline: true })
   body!: string;
 
   @ApiPropertyOptional({ default: true })
   @IsOptional()
-  @IsBoolean()
+  @ToBoolean()
+  @IsBoolean({ message: 'isInternal debe ser true o false' })
   isInternal?: boolean;
 
   @ApiPropertyOptional({
@@ -18,6 +21,7 @@ export class CreateNoteDto {
     description: 'Solo para notas visibles: avisar por email al cliente del caso',
   })
   @IsOptional()
-  @IsBoolean()
+  @ToBoolean()
+  @IsBoolean({ message: 'notifyClient debe ser true o false' })
   notifyClient?: boolean;
 }

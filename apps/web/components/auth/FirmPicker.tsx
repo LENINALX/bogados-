@@ -86,8 +86,15 @@ export function FirmChip({ name, slug, onChange }: { name: string; slug: string;
 /** Código de firma con comprobación en vivo. */
 export const FirmCodeField = forwardRef<
   HTMLInputElement,
-  { value: string; onChange: (v: string) => void; lookup: FirmLookup; error?: string | null; autoFocus?: boolean }
->(function FirmCodeField({ value, onChange, lookup, error, autoFocus }, ref) {
+  {
+    value: string;
+    onChange: (v: string) => void;
+    onBlur?: () => void;
+    lookup: FirmLookup;
+    error?: string | null;
+    autoFocus?: boolean;
+  }
+>(function FirmCodeField({ value, onChange, onBlur, lookup, error, autoFocus }, ref) {
   const status =
     lookup.state === "checking" ? (
       <span className="inline-flex items-center gap-1.5 text-slate-500">
@@ -114,6 +121,8 @@ export const FirmCodeField = forwardRef<
       spellCheck={false}
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      onBlur={onBlur}
+      maxLength={60}
       placeholder="p. ej. estudio-mejia"
       error={error ?? (lookup.state === "missing" ? "No encontramos ninguna firma con ese código." : null)}
       hint={<span aria-live="polite">{status}</span>}

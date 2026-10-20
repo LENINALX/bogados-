@@ -19,7 +19,14 @@ import {
   PaginationQueryDto,
   toPaginated,
 } from '../common/dto/pagination.dto';
-import { isAllowedUpload, MAX_UPLOAD_BYTES } from './upload.config';
+import {
+  canonicalMimeType,
+  contentMatchesExtension,
+  isAllowedUpload,
+  isDeclaredMimeCoherent,
+  MAX_UPLOAD_BYTES,
+  sanitizeUploadFileName,
+} from './upload.config';
 import { attachmentDisposition } from '../common/utils/content-disposition';
 
 /** Campos de Document que se devuelven al cliente (sin storagePath ni tenantId). */
@@ -75,11 +82,20 @@ export class DocumentsService {
     // Multer ya aplica estos límites (upload.config.ts); se repiten por si el
     // servicio se invoca sin pasar por el interceptor.
     if (!file) throw new BadRequestException('Archivo requerido');
+    if (!file.size || !file.buffer?.length) throw new BadRequestException('El archivo está vacío');
     if (file.size > MAX_UPLOAD_BYTES) {
       throw new BadRequestException('Archivo demasiado grande (máx. 10 MB)');
     }
-    if (!isAllowedUpload(file.originalname)) {
+    const fileName = sanitizeUploadFileName(file.originalname);
+    if (!fileName || !isAllowedUpload(fileName)) {
       throw new BadRequestException('Tipo de archivo no permitido');
+    }
+    if (!isDeclaredMimeCoherent(fileName, file.mimetype)) {
+      throw new BadRequestException('El tipo del archivo no coincide con su extensión');
+    }
+    // El nombre no basta: un HTML o un ejecutable renombrado a .pdf no pasa
+    if (!contentMatchesExtension(fileName, file.buffer)) {
+      throw new BadRequestException('El contenido del archivo no corresponde a su extensión');
     }
 
     const c = await getAccessibleCase(this.prisma, caseId, user);
@@ -90,7 +106,7 @@ export class DocumentsService {
     const { storagePath } = await this.storage.save(
       user.tenantId,
       c.id,
-      file.originalname,
+      fileName,
       file.buffer,
     );
 
@@ -105,8 +121,9 @@ export class DocumentsService {
           data: {
             tenantId: user.tenantId,
             caseId: c.id,
-            fileName: file.originalname,
-            mimeType: file.mimetype || 'application/octet-stream',
+            fileName,
+            // Nunca el tipo que declaró el navegador: se deduce de la extensión validada
+            mimeType: canonicalMimeType(fileName),
             sizeBytes: file.size,
             storagePath,
             sharedWithClient,
@@ -173,7 +190,9 @@ export class DocumentsService {
 
     const stream = createReadStream(this.storage.resolvePath(doc.storagePath));
     return new StreamableFile(stream, {
-      type: doc.mimeType,
+      // Por la extensión, no por lo guardado: los documentos antiguos guardaban el tipo
+      // que declaraba el navegador (podía ser text/html)
+      type: canonicalMimeType(doc.fileName),
       disposition: attachmentDisposition(doc.fileName),
       length: doc.sizeBytes,
     });

@@ -40,16 +40,34 @@ export class ActivityService {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Clientes no ven eventos de notas internas
-    if (!isStaff(user.role)) {
-      return events.filter((e) => {
-        if (e.type === 'NOTE_ADDED') {
-          const meta = e.meta as { isInternal?: boolean } | null;
-          return meta?.isInternal !== true;
-        }
-        return true;
-      });
-    }
-    return events;
+    if (isStaff(user.role)) return events;
+    return events.filter(isVisibleToClient);
   }
+}
+
+/**
+ * Eventos que puede ver el cliente (lista blanca, igual que el portal de la web):
+ * un tipo nuevo queda oculto hasta que se decida mostrarlo. Las notas internas y
+ * los documentos no compartidos tampoco, ni siquiera su nombre.
+ */
+export const CLIENT_VISIBLE_EVENTS = new Set([
+  'CASE_CREATED',
+  'STATUS_CHANGED',
+  'ASSIGNED',
+  'DOC_UPLOADED',
+  'PROCESS_LINKED',
+  'CASE_REQUESTED',
+  'CASE_ACCEPTED',
+  'CASE_POSTPONED',
+  'CASE_REJECTED',
+  'NOTE_ADDED',
+  'MESSAGE_SENT',
+]);
+
+export function isVisibleToClient(event: { type: string; meta: Prisma.JsonValue | null }): boolean {
+  if (!CLIENT_VISIBLE_EVENTS.has(event.type)) return false;
+  const meta = (event.meta ?? {}) as { isInternal?: unknown; sharedWithClient?: unknown };
+  if (event.type === 'NOTE_ADDED') return meta.isInternal === false;
+  if (event.type === 'DOC_UPLOADED') return meta.sharedWithClient === true;
+  return true;
 }

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { themeInitScript } from "@/lib/theme";
+import { fontDisplay, fontSans } from "./fonts";
 
 export const metadata: Metadata = {
   title: "Bogados — Gestión legal",
@@ -21,7 +22,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // data-theme lo pone el script antes de hidratar: el atributo puede diferir del HTML del servidor
-    <html lang="es" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning className={`${fontSans.variable} ${fontDisplay.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

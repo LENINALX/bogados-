@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
@@ -79,12 +80,14 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
   return (
     <StaffLayout user={session.user} links={staffLinks(role)}>
       <main className="page">
-        <nav aria-label="Ruta" className="mb-4 flex items-center gap-2 text-sm text-slate-500">
-          <Link href="/dashboard" className="hover:text-brand-700 hover:underline">
+        <nav aria-label="Ruta" className="mb-5 flex min-w-0 items-center gap-1.5 text-[13px] text-slate-500">
+          <Link href="/dashboard" className="shrink-0 underline-offset-4 hover:text-brand-700 hover:underline">
             {sectionLabel}
           </Link>
-          <span aria-hidden>/</span>
-          <span className="truncate text-slate-700">{c.title}</span>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+          <span className="truncate text-slate-700" aria-current="page">
+            {c.title}
+          </span>
         </nav>
 
         {searchParams.aviso === "invitacion" && (
@@ -107,55 +110,58 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
           />
         )}
 
-        <div className="card mb-6 p-4 sm:p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="page-title">{c.title}</h1>
+        <header className="card mb-6">
+          <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4 p-5 sm:p-6">
+            <div className="w-full min-w-0 sm:w-auto sm:flex-1">
+              <h1 className="page-title text-balance">{c.title}</h1>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 <StatusBadge status={c.status} />
-              </div>
-              <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
-                <div className="flex gap-1.5">
-                  <dt className="text-slate-500">Cliente:</dt>
-                  <dd className="font-medium text-slate-800">{c.client?.name ?? "Sin asignar"}</dd>
-                </div>
-                <div className="flex gap-1.5">
-                  <dt className="text-slate-500">Abogado:</dt>
-                  <dd className="font-medium text-slate-800">{c.lawyer?.name ?? "Sin asignar"}</dd>
-                </div>
-                {c.matterType && (
-                  <div className="flex gap-1.5">
-                    <dt className="text-slate-500">Materia:</dt>
-                    <dd className="font-medium text-slate-800">{c.matterType}</dd>
-                  </div>
+                {openRequest && (
+                  <>
+                    <CaseRequestBadge state={openRequest} />
+                    <span className="text-xs text-slate-500">Solicitud del portal</span>
+                  </>
                 )}
-              </dl>
-              <div className="mt-3 text-sm">
-                <ProcessNumberField caseId={c.id} processNumber={c.processNumber} />
               </div>
             </div>
-            {openRequest ? (
-              <div className="text-right">
-                <CaseRequestBadge state={openRequest} />
-                <p className="mt-1 text-xs text-slate-500">Solicitud del portal</p>
-              </div>
-            ) : (
-              <CaseStatusForm caseId={c.id} status={c.status} clientName={c.client?.name ?? null} />
-            )}
+            {!openRequest && <CaseStatusForm caseId={c.id} status={c.status} clientName={c.client?.name ?? null} />}
           </div>
+
+          <dl className="grid grid-cols-2 border-t border-slate-900/[0.06] sm:grid-cols-3">
+            <div className="px-5 py-3 sm:px-6">
+              <dt className="text-xs text-slate-500">Cliente</dt>
+              <dd className="mt-0.5 truncate text-sm font-medium text-slate-900">{c.client?.name ?? "Sin asignar"}</dd>
+            </div>
+            <div className="border-l border-slate-900/[0.06] px-5 py-3 sm:px-6">
+              <dt className="text-xs text-slate-500">Abogado responsable</dt>
+              <dd className="mt-0.5 truncate text-sm font-medium text-slate-900">{c.lawyer?.name ?? "Sin asignar"}</dd>
+            </div>
+            <div className="col-span-2 border-t border-slate-900/[0.06] px-5 py-3 sm:col-span-1 sm:border-l sm:border-t-0 sm:px-6">
+              <dt className="text-xs text-slate-500">Materia</dt>
+              <dd className="mt-0.5 truncate text-sm font-medium text-slate-900">{c.matterType ?? "Sin especificar"}</dd>
+            </div>
+          </dl>
+
+          <div className="flex flex-col gap-x-4 gap-y-1.5 border-t border-slate-900/[0.06] px-5 py-3 text-sm sm:flex-row sm:items-center sm:px-6">
+            <span className="shrink-0 text-xs text-slate-500">Proceso judicial (SATJE)</span>
+            <div className="min-w-0 flex-1">
+              <ProcessNumberField caseId={c.id} processNumber={c.processNumber} />
+            </div>
+          </div>
+
           {c.requestState && c.decisionReason && (
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="border-t border-slate-900/[0.06] px-5 py-3 text-xs text-slate-500 sm:px-6">
               Decisión sobre la solicitud ({c.requestState}): {c.decisionReason}
             </p>
           )}
           {c.description && (
-            <p className="mt-4 whitespace-pre-wrap border-t border-slate-100 pt-4 text-sm leading-relaxed text-slate-700">
+            <p className="whitespace-pre-wrap border-t border-slate-900/[0.06] px-5 py-4 text-sm leading-relaxed text-slate-700 sm:px-6">
               {c.description}
             </p>
           )}
-        </div>
+        </header>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid items-start gap-6 lg:grid-cols-2">
           <div className="space-y-6">
             <CaseNoteForm caseId={c.id} clientName={c.client?.name ?? null} />
             <CaseTimeline title="Notas y actividad" items={timeline} />

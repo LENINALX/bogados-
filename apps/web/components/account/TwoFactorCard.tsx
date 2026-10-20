@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { Mail, ShieldCheck, ShieldOff } from "lucide-react";
 import { nestFetch } from "@/lib/nest-api";
 import { FormMessage, Spinner, errorMessage } from "@/components/ui";
+import { StateBadge } from "@/components/portal/StateBadge";
 import { PasswordInput } from "./PasswordInput";
 
 type Props = {
@@ -82,13 +83,7 @@ export function TwoFactorCard({ enabled, requiredByFirm, onChange }: Props) {
           <ShieldCheck className="h-4 w-4 text-slate-500" aria-hidden />
           Verificación en dos pasos
         </h2>
-        <span
-          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-            active ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"
-          }`}
-        >
-          {active ? "Activada" : "Desactivada"}
-        </span>
+        <StateBadge tone={active ? "emerald" : "slate"}>{active ? "Activada" : "Desactivada"}</StateBadge>
       </div>
 
       <div className="card-body space-y-4">
@@ -98,7 +93,7 @@ export function TwoFactorCard({ enabled, requiredByFirm, onChange }: Props) {
         </p>
 
         {requiredByFirm && (
-          <p className="flex items-start gap-2 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">
+          <p className="flex items-start gap-2 rounded-[10px] border border-brand-600/15 bg-brand-50 px-3 py-2.5 text-sm leading-relaxed text-brand-800">
             <Mail className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             <span>
               Tu firma exige la verificación en dos pasos a todo el equipo, así que siempre te pediremos el código y no
@@ -124,7 +119,7 @@ export function TwoFactorCard({ enabled, requiredByFirm, onChange }: Props) {
         )}
 
         {canToggle && open && (
-          <form onSubmit={submit} noValidate className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+          <form onSubmit={submit} noValidate className="space-y-3 rounded-[10px] border border-slate-900/[0.08] bg-slate-50 p-3 sm:p-4">
             <p className="text-sm text-slate-700">
               {target
                 ? "Para activarla, confirma que eres tú con tu contraseña actual."

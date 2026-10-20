@@ -43,6 +43,10 @@ export const SLOT_TAKEN_MESSAGE = 'Ese horario acaba de ocuparse. Elige otro.';
 
 const REMINDER_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+/** Hasta cuándo se puede agendar: más allá es casi seguro un error de fecha. */
+export const MAX_BOOKING_AHEAD_DAYS = 365;
+const MAX_BOOKING_AHEAD_MS = MAX_BOOKING_AHEAD_DAYS * 24 * 60 * 60 * 1000;
+
 const appointmentInclude = {
   lawyer: { select: { id: true, name: true, email: true } },
   client: { select: { id: true, name: true, email: true } },
@@ -171,7 +175,11 @@ export class AppointmentsService {
     if (dto.caseId) await this.assertCase(dto.caseId, client.id, actor);
 
     const startsAt = new Date(dto.startsAt);
+    if (Number.isNaN(startsAt.getTime())) throw new BadRequestException('Fecha de la cita no válida');
     if (startsAt <= now) throw new BadRequestException('La cita debe ser en el futuro');
+    if (startsAt.getTime() - now.getTime() > MAX_BOOKING_AHEAD_MS) {
+      throw new BadRequestException(`La cita no puede ser a más de ${MAX_BOOKING_AHEAD_DAYS} días`);
+    }
     const minutes = byClient ? tenant.appointmentMinutes : (dto.durationMinutes ?? tenant.appointmentMinutes);
     const endsAt = new Date(startsAt.getTime() + minutes * 60_000);
 
@@ -251,6 +259,9 @@ export class AppointmentsService {
   // ─── Listar ────────────────────────────────────────────────────────────────
 
   list(query: ListAppointmentsQueryDto, actor: JwtPayloadUser, now = new Date()) {
+    if (query.from && query.to && new Date(query.to) <= new Date(query.from)) {
+      throw new BadRequestException('«to» debe ser posterior a «from»');
+    }
     const where: Prisma.AppointmentWhereInput = { tenantId: actor.tenantId };
     if (actor.role === Role.CLIENTE) where.clientId = actor.id;
     else if (actor.role === Role.ABOGADO) where.lawyerId = actor.id;

@@ -1,10 +1,15 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Copy, ExternalLink, Gavel, Pencil } from "lucide-react";
 import { nestFetch } from "@/lib/nest-api";
-import { PROCESS_NUMBER_EXAMPLE, SATJE_URL, isValidProcessNumber, normalizeProcessNumber } from "@/lib/process-number";
+import { PROCESS_NUMBER_EXAMPLE, SATJE_URL, normalizeProcessNumber } from "@/lib/process-number";
+import { LIMITS, clean, rules } from "@/lib/validation";
+import { errorMessage } from "./ui";
+import { INVALID_INPUT } from "./form/FieldError";
+
+const checkProcessNumber = rules.processNumber();
 
 /**
  * Número de proceso del SATJE en la ficha del caso. El despacho lo vincula o corrige;
@@ -18,14 +23,18 @@ export function ProcessNumberField({ caseId, processNumber }: { caseId: string; 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   async function save(e: FormEvent) {
     e.preventDefault();
-    const next = normalizeProcessNumber(value);
-    if (next && !isValidProcessNumber(next)) {
-      setError(`Usa el formato del SATJE, por ejemplo ${PROCESS_NUMBER_EXAMPLE}.`);
+    if (saving) return;
+    const invalid = checkProcessNumber(clean(value));
+    if (invalid) {
+      setError(invalid);
+      inputRef.current?.focus();
       return;
     }
+    const next = normalizeProcessNumber(clean(value));
     setSaving(true);
     setError(null);
     try {
@@ -33,7 +42,8 @@ export function ProcessNumberField({ caseId, processNumber }: { caseId: string; 
       setEditing(false);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo guardar el número de proceso.");
+      setError(errorMessage(err, "No se pudo guardar el número de proceso."));
+      inputRef.current?.focus();
     } finally {
       setSaving(false);
     }
@@ -53,22 +63,32 @@ export function ProcessNumberField({ caseId, processNumber }: { caseId: string; 
 
   if (editing) {
     return (
-      <form onSubmit={save} className="flex flex-wrap items-start gap-2">
+      <form onSubmit={save} noValidate className="flex flex-wrap items-start gap-2">
         <div className="min-w-0 flex-1">
           <label htmlFor="processNumber" className="sr-only">
             Número de proceso
           </label>
           <input
+            ref={inputRef}
             id="processNumber"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              setValue(e.target.value);
+              // Al corregirlo, el error se va en cuanto el formato es válido
+              if (error && !checkProcessNumber(clean(e.target.value))) setError(null);
+            }}
+            onBlur={(e) => {
+              const invalid = checkProcessNumber(clean(e.target.value));
+              if (invalid) setError(invalid);
+            }}
             placeholder={PROCESS_NUMBER_EXAMPLE}
             autoFocus
             autoComplete="off"
             spellCheck={false}
-            aria-invalid={!!error}
+            maxLength={LIMITS.processNumberInput}
+            aria-invalid={error ? true : undefined}
             aria-describedby="processNumber-help"
-            className="input font-mono tracking-wide sm:max-w-xs"
+            className={`input font-mono tracking-wide sm:max-w-xs ${error ? INVALID_INPUT : ""}`}
           />
           <p id="processNumber-help" className={`mt-1 text-xs ${error ? "text-red-700" : "text-slate-500"}`}>
             {error ?? "Judicatura - año - secuencial, tal como aparece en el SATJE. Déjalo vacío para desvincularlo."}
@@ -94,17 +114,19 @@ export function ProcessNumberField({ caseId, processNumber }: { caseId: string; 
 
   if (!processNumber) {
     return (
-      <button type="button" onClick={() => setEditing(true)} className="btn-secondary btn-sm">
-        <Gavel className="h-3.5 w-3.5" aria-hidden />
-        Vincular número de proceso
-      </button>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <button type="button" onClick={() => setEditing(true)} className="btn-secondary btn-sm">
+          <Gavel className="h-3.5 w-3.5" aria-hidden />
+          Vincular número de proceso
+        </button>
+        <span className="text-xs text-slate-500">Cuando el caso llegue a la Función Judicial. Tu cliente también podrá consultarlo.</span>
+      </div>
     );
   }
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-slate-500">Proceso:</span>
-      <span className="rounded-lg bg-slate-100 px-2 py-0.5 font-mono text-[13px] font-medium tracking-wide text-slate-900">
+      <span className="rounded-md border border-slate-900/[0.08] bg-slate-50 px-2 py-0.5 font-mono text-[13px] font-medium tracking-wide text-slate-900">
         {processNumber}
       </span>
       <button type="button" onClick={copyAndOpen} className="btn-ghost btn-sm text-brand-700">

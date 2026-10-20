@@ -5,6 +5,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AccountTokensService } from './account-tokens.service';
 import { LoginEventsService } from './login-events.service';
+import { FirmSignupService } from './firm-signup.service';
 import { LOGIN_THROTTLE, LOGIN_THROTTLE_MESSAGE, loginThrottlerOptions } from './login-throttle';
 import { HttpExceptionFilter } from '../common/filters/http-exception.filter';
 
@@ -22,6 +23,7 @@ describe('Límite de intentos en POST /auth/login', () => {
         { provide: AuthService, useValue: { login, verifyLogin } },
         { provide: AccountTokensService, useValue: {} },
         { provide: LoginEventsService, useValue: {} },
+        { provide: FirmSignupService, useValue: {} },
       ],
     }).compile();
 

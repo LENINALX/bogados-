@@ -5,6 +5,7 @@ import { CreateMessageDto, ListMessagesQueryDto } from './dto/message.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 
 @ApiTags('messages')
 @ApiBearerAuth()
@@ -16,7 +17,7 @@ export class MessagesController {
   @Get()
   @ApiOperation({ summary: 'Listar mensajes del caso (paginado)' })
   list(
-    @Param('caseId') caseId: string,
+    @Param('caseId', ParseIdPipe) caseId: string,
     @CurrentUser() user: JwtPayloadUser,
     @Query() query: ListMessagesQueryDto,
   ) {
@@ -26,7 +27,7 @@ export class MessagesController {
   @Post()
   @ApiOperation({ summary: 'Enviar mensaje' })
   create(
-    @Param('caseId') caseId: string,
+    @Param('caseId', ParseIdPipe) caseId: string,
     @Body() dto: CreateMessageDto,
     @CurrentUser() user: JwtPayloadUser,
   ) {

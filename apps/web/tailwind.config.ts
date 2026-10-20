@@ -36,6 +36,12 @@ const config: Config = {
         /** Fondo de la aplicación */
         canvas: token("canvas"),
       },
+      fontFamily: {
+        /** IBM Plex Sans: texto e interfaz */
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        /** Source Serif 4: títulos de página y momentos editoriales */
+        display: ["var(--font-display)", "Georgia", "serif"],
+      },
       // `border`/`divide` sin color usan gray-200 por defecto, que no cambia con el tema
       borderColor: { DEFAULT: token("slate-200") },
       transitionTimingFunction: {

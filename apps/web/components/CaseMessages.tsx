@@ -3,7 +3,11 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { nestFetch } from "@/lib/nest-api";
-import { FormMessage, Spinner, errorMessage } from "./ui";
+import { MessagesSquare, SendHorizontal } from "lucide-react";
+import { LIMITS, clean, rules } from "@/lib/validation";
+import { EmptyState, FormMessage, Spinner, errorMessage } from "./ui";
+import { CharCount, FieldError, INVALID_INPUT, countId, fieldA11y } from "./form/FieldError";
+import { useFieldErrors } from "./form/useFieldErrors";
 
 type Msg = {
   id: string;
@@ -27,6 +31,12 @@ export function CaseMessages({
   const [messages, setMessages] = useState(initial);
   const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const inputId = `msg-${caseId}`;
+  const v = useFieldErrors<"body">(
+    { body: [rules.required("Escribe el mensaje antes de enviarlo."), rules.maxLength(LIMITS.message)] },
+    ["body"],
+    () => inputId,
+  );
 
   // Mantener visible el último mensaje
   useEffect(() => {
@@ -34,13 +44,15 @@ export function CaseMessages({
   }, [messages.length]);
 
   async function send() {
-    if (!body.trim() || loading) return;
+    if (loading) return;
+    const text = clean(body);
+    if (!v.submit({ body: text })) return;
     setLoading(true);
     setError(null);
     try {
       const message = await nestFetch<Msg>(`/cases/${caseId}/messages`, {
         method: "POST",
-        body: JSON.stringify({ body }),
+        body: JSON.stringify({ body: text }),
       });
       setMessages((m) => [...m, message]);
       setBody("");
@@ -59,67 +71,89 @@ export function CaseMessages({
 
   // Enter envía, Shift+Enter hace salto de línea
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      send();
+      // Enter con el cuadro vacío no hace nada (ni muestra error); el botón sí avisa
+      if (clean(body)) send();
     }
   }
 
   return (
-    <section className="card flex flex-col">
+    <section className="card flex flex-col overflow-hidden">
       <div className="card-header">
-        <h2 className="card-title">Mensajes</h2>
-        <span className="text-xs text-slate-400">{messages.length}</span>
+        <h2 className="card-title flex items-center gap-2">
+          <MessagesSquare className="h-4 w-4 text-slate-500" aria-hidden />
+          Mensajes
+        </h2>
+        <span className="text-xs tabular-nums text-slate-500">{messages.length}</span>
       </div>
-      <div ref={listRef} className="max-h-96 min-h-[10rem] space-y-3 overflow-y-auto bg-slate-50/60 p-4">
+      <div
+        ref={listRef}
+        className="max-h-96 min-h-[10rem] space-y-3 overflow-y-auto bg-slate-900/[0.02] px-4 py-4 sm:px-5"
+      >
         {messages.length === 0 && (
-          <div className="flex h-full min-h-[8rem] flex-col items-center justify-center text-center">
-            <p className="text-sm font-medium text-slate-600">Aún no hay mensajes</p>
-            <p className="mt-1 text-xs text-slate-400">Escribe abajo para iniciar la conversación.</p>
-          </div>
+          <EmptyState
+            icon={MessagesSquare}
+            title="Aún no hay mensajes"
+            hint="Escribe abajo para iniciar la conversación. Cada mensaje queda en el caso."
+          />
         )}
         {messages.map((m) => {
           const mine = m.sender.id === currentUserId;
           return (
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm shadow-sm ${
-                  mine ? "rounded-br-sm bg-brand-600 text-white" : "rounded-bl-sm border border-slate-200 bg-surface text-slate-800"
-                }`}
-              >
-                <div className={`mb-0.5 flex gap-2 text-[11px] ${mine ? "text-brand-100" : "text-slate-500"}`}>
-                  <span className="font-semibold">{mine ? "Tú" : m.sender.name}</span>
-                  <span>{new Date(m.createdAt).toLocaleString("es-EC", { dateStyle: "short", timeStyle: "short" })}</span>
+              <div className={`max-w-[85%] ${mine ? "items-end text-right" : "items-start"} flex flex-col`}>
+                <div className="mb-1 flex gap-2 px-1 text-[11px] text-slate-500">
+                  <span className="font-medium text-slate-700">{mine ? "Tú" : m.sender.name}</span>
+                  <time dateTime={m.createdAt} className="tabular-nums">
+                    {new Date(m.createdAt).toLocaleString("es-EC", { dateStyle: "short", timeStyle: "short" })}
+                  </time>
                 </div>
-                <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                <p
+                  className={`whitespace-pre-wrap break-words rounded-[14px] px-3.5 py-2 text-left text-sm leading-relaxed ${
+                    mine
+                      ? "rounded-br-[4px] bg-brand-600 text-white"
+                      : "rounded-bl-[4px] border border-slate-900/[0.08] bg-surface text-slate-800 shadow-[0_1px_1px_rgb(23_21_17/0.04)]"
+                  }`}
+                >
+                  {m.body}
+                </p>
               </div>
             </div>
           );
         })}
       </div>
-      <form onSubmit={onSubmit} className="space-y-2 border-t border-slate-100 p-3">
+      <form onSubmit={onSubmit} noValidate className="space-y-2 border-t border-slate-900/[0.06] px-4 py-3 sm:px-5">
         <div className="flex items-end gap-2">
-          <label htmlFor={`msg-${caseId}`} className="sr-only">
+          <label htmlFor={inputId} className="sr-only">
             Escribe un mensaje
           </label>
           <textarea
-            id={`msg-${caseId}`}
+            id={inputId}
             value={body}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={(e) => {
+              setBody(e.target.value);
+              v.change("body", e.target.value);
+            }}
             onKeyDown={onKeyDown}
             rows={1}
-            maxLength={5000}
+            maxLength={LIMITS.message}
             placeholder="Escribe un mensaje…"
-            className="input max-h-32 min-h-[2.5rem] flex-1 resize-y"
+            {...fieldA11y(inputId, v.errors.body, countId(inputId, body.length, LIMITS.message), `${inputId}-keys`)}
+            className={`input max-h-32 min-h-[2.5rem] flex-1 resize-y ${v.errors.body ? INVALID_INPUT : ""}`}
           />
-          <button type="submit" disabled={loading || !body.trim()} className="btn-primary">
-            {loading && <Spinner />}
+          <button type="submit" disabled={loading} className="btn-primary h-10">
+            {loading ? <Spinner /> : <SendHorizontal className="h-4 w-4" aria-hidden />}
             {loading ? "Enviando…" : "Enviar"}
           </button>
         </div>
-        <p className="text-[11px] text-slate-400" aria-live="polite">
-          {body.length}/5000 · Enter para enviar · Shift + Enter para salto de línea
-        </p>
+        <FieldError id={inputId} error={v.errors.body} className="mt-0" />
+        <div className="flex items-start justify-between gap-3">
+          <p id={`${inputId}-keys`} className="text-[11px] text-slate-400">
+            Enter para enviar · Shift + Enter para salto de línea
+          </p>
+          <CharCount id={inputId} length={body.length} max={LIMITS.message} className="text-[11px]" />
+        </div>
         {error && <FormMessage type="error">{error}</FormMessage>}
       </form>
     </section>

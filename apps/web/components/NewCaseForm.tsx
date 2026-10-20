@@ -4,10 +4,17 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CASE_STATUSES, CASE_STATUS_LABELS } from "@bogados/shared";
 import { nestFetch } from "@/lib/nest-api";
-import { PROCESS_NUMBER_EXAMPLE, isValidProcessNumber, normalizeProcessNumber } from "@/lib/process-number";
+import { PROCESS_NUMBER_EXAMPLE, normalizeProcessNumber } from "@/lib/process-number";
+import { LIMITS, Schema, clean, rules } from "@/lib/validation";
+import { errorMessage } from "./ui";
+import { CharCount, FieldError, INVALID_INPUT, countId, fieldA11y } from "./form/FieldError";
+import { useFieldErrors } from "./form/useFieldErrors";
 
 type Option = { id: string; name: string; email?: string };
 type ClientMode = "none" | "existing" | "new";
+type Field = "title" | "matterType" | "processNumber" | "description" | "clientName" | "clientEmail" | "clientPassword";
+
+const ORDER: readonly Field[] = ["title", "matterType", "processNumber", "description", "clientName", "clientEmail", "clientPassword"];
 
 const input = "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm";
 const label = "block text-sm font-medium text-slate-700";
@@ -26,39 +33,75 @@ export function NewCaseForm({
   const router = useRouter();
   const [clientMode, setClientMode] = useState<ClientMode>(clients.length ? "existing" : "none");
   const [manualPassword, setManualPassword] = useState(false);
+  const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const schema: Schema<Field> = {
+    title: [
+      rules.required("Escribe el título del caso."),
+      rules.minLength(LIMITS.caseTitle.min, `El título debe tener al menos ${LIMITS.caseTitle.min} caracteres.`),
+      rules.maxLength(LIMITS.caseTitle.max),
+    ],
+    matterType: [rules.maxLength(LIMITS.matterType)],
+    processNumber: [rules.processNumber()],
+    description: [rules.maxLength(LIMITS.caseDescription)],
+    ...(clientMode === "new"
+      ? {
+          clientName: [
+            rules.required("Escribe el nombre del cliente."),
+            rules.minLength(LIMITS.personName.min, `El nombre debe tener al menos ${LIMITS.personName.min} caracteres.`),
+            rules.maxLength(LIMITS.personName.max),
+          ],
+          clientEmail: [rules.required("Escribe el email del cliente."), rules.email()],
+          ...(manualPassword ? { clientPassword: [rules.newPassword()] } : {}),
+        }
+      : {}),
+  };
+  const v = useFieldErrors<Field>(schema, ORDER);
+  const { errors } = v;
+
+  /** Props de validación de un campo no controlado */
+  const field = (name: Field, ...extra: (string | false | undefined)[]) => ({
+    id: name,
+    name,
+    onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => v.blur(name, e.target.value),
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => v.change(name, e.target.value),
+    ...fieldA11y(name, errors[name], ...extra),
+  });
+  const cls = (name: Field, base = input) => `${base} ${errors[name] ? INVALID_INPUT : ""}`;
+
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (loading) return;
     const fd = new FormData(e.currentTarget);
-    const str = (k: string) => String(fd.get(k) ?? "").trim();
-    setLoading(true);
+    const raw = (k: string) => String(fd.get(k) ?? "");
+    const str = (k: string) => clean(raw(k));
     setError(null);
 
+    const values = Object.fromEntries(ORDER.map((k) => [k, k === "clientPassword" ? raw(k) : str(k)])) as Record<Field, string>;
+    if (!v.submit(values)) return;
+
+    setLoading(true);
+    let clientCreated = false;
     try {
-      // Antes de crear nada: un número de proceso mal escrito no debe dejar un cliente huérfano
-      const processNumber = normalizeProcessNumber(str("processNumber"));
-      if (processNumber && !isValidProcessNumber(processNumber)) {
-        throw new Error(`El número de proceso debe tener el formato del SATJE, por ejemplo ${PROCESS_NUMBER_EXAMPLE}.`);
-      }
+      // Validado arriba: un número de proceso mal escrito no llega a crear un cliente huérfano
+      const processNumber = normalizeProcessNumber(values.processNumber);
 
       let clientId: string | undefined;
       let invitationFailed = false;
       if (clientMode === "existing") clientId = str("clientId") || undefined;
       if (clientMode === "new") {
-        if (manualPassword && str("clientPassword").length < 6) {
-          throw new Error("La contraseña temporal debe tener al menos 6 caracteres.");
-        }
         const created = await nestFetch<{ id: string; invitationSent: boolean }>("/auth/register-client", {
           method: "POST",
           body: JSON.stringify({
-            name: str("clientName"),
-            email: str("clientEmail"),
+            name: values.clientName,
+            email: values.clientEmail,
             // Sin contraseña, la API envía una invitación por email
-            password: manualPassword ? str("clientPassword") : undefined,
+            password: manualPassword ? values.clientPassword : undefined,
           }),
         });
+        clientCreated = true;
         clientId = created.id;
         invitationFailed = !manualPassword && !created.invitationSent;
       }
@@ -66,10 +109,10 @@ export function NewCaseForm({
       const created = await nestFetch<{ id: string }>("/cases", {
         method: "POST",
         body: JSON.stringify({
-          title: str("title"),
-          matterType: str("matterType") || undefined,
+          title: values.title,
+          matterType: values.matterType || undefined,
           processNumber: processNumber ?? undefined,
-          description: str("description") || undefined,
+          description: values.description || undefined,
           status: str("status") || undefined,
           lawyerId: canPickLawyer ? str("lawyerId") || undefined : undefined,
           clientId,
@@ -79,23 +122,47 @@ export function NewCaseForm({
       router.push(`/casos/${created.id}${invitationFailed ? "?aviso=invitacion" : ""}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo crear el caso.");
+      const text = errorMessage(err, "No se pudo crear el caso.");
       setLoading(false);
+      if (!clientCreated && /email ya registrado/i.test(text)) {
+        v.set("clientEmail", "Ya hay un usuario con ese email en tu firma. Elige «Cliente existente» o usa otro email.");
+      } else if (/número de proceso/i.test(text)) {
+        v.set("processNumber", text);
+      } else {
+        setError(
+          clientCreated
+            ? `${text} El cliente ya quedó creado: elígelo en «Cliente existente» al reintentar.`
+            : text,
+        );
+      }
     }
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={onSubmit} noValidate className="space-y-6">
       <section className="space-y-4 card p-5">
         <h2 className="text-sm font-semibold text-slate-800">Datos del caso</h2>
         <div>
           <label className={label} htmlFor="title">Título *</label>
-          <input id="title" name="title" required minLength={2} maxLength={200} className={input} placeholder="Ej. Demanda laboral — Pérez vs. ACME" />
+          <input
+            {...field("title")}
+            required
+            maxLength={LIMITS.caseTitle.max}
+            className={cls("title")}
+            placeholder="Ej. Demanda laboral — Pérez vs. ACME"
+          />
+          <FieldError id="title" error={errors.title} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className={label} htmlFor="matterType">Materia</label>
-            <input id="matterType" name="matterType" maxLength={100} className={input} placeholder="Laboral, Civil, Penal…" />
+            <input
+              {...field("matterType")}
+              maxLength={LIMITS.matterType}
+              className={cls("matterType")}
+              placeholder="Laboral, Civil, Penal…"
+            />
+            <FieldError id="matterType" error={errors.matterType} />
           </div>
           <div>
             <label className={label} htmlFor="status">Estado inicial</label>
@@ -109,22 +176,32 @@ export function NewCaseForm({
         <div>
           <label className={label} htmlFor="processNumber">Número de proceso (SATJE)</label>
           <input
-            id="processNumber"
-            name="processNumber"
-            maxLength={30}
+            {...field("processNumber", "processNumber-help")}
+            maxLength={LIMITS.processNumberInput}
             autoComplete="off"
             spellCheck={false}
-            className={`${input} font-mono tracking-wide sm:max-w-xs`}
+            className={`${cls("processNumber")} font-mono tracking-wide sm:max-w-xs`}
             placeholder={PROCESS_NUMBER_EXAMPLE}
-            aria-describedby="processNumber-help"
           />
+          <FieldError id="processNumber" error={errors.processNumber} />
           <p id="processNumber-help" className="mt-1 text-xs text-slate-500">
             Opcional. Si el caso aún no está en la Función Judicial, lo puedes vincular más tarde desde la ficha.
           </p>
         </div>
         <div>
           <label className={label} htmlFor="description">Descripción</label>
-          <textarea id="description" name="description" rows={4} maxLength={5000} className={input} />
+          <textarea
+            {...field("description", countId("description", description.length, LIMITS.caseDescription))}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              v.change("description", e.target.value);
+            }}
+            rows={4}
+            maxLength={LIMITS.caseDescription}
+            className={cls("description")}
+          />
+          <FieldError id="description" error={errors.description} />
+          <CharCount id="description" length={description.length} max={LIMITS.caseDescription} className="mt-1 text-right" />
         </div>
         {canPickLawyer && (
           <div>
@@ -175,11 +252,28 @@ export function NewCaseForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className={label} htmlFor="clientName">Nombre *</label>
-              <input id="clientName" name="clientName" required minLength={2} maxLength={120} className={input} />
+              <input
+                {...field("clientName")}
+                required
+                maxLength={LIMITS.personName.max}
+                autoComplete="off"
+                className={cls("clientName")}
+              />
+              <FieldError id="clientName" error={errors.clientName} />
             </div>
             <div>
               <label className={label} htmlFor="clientEmail">Email *</label>
-              <input id="clientEmail" name="clientEmail" type="email" required className={input} />
+              <input
+                {...field("clientEmail")}
+                type="email"
+                required
+                maxLength={LIMITS.email}
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                className={cls("clientEmail")}
+              />
+              <FieldError id="clientEmail" error={errors.clientEmail} />
             </div>
             <label className="flex items-center gap-2 text-xs text-slate-600 sm:col-span-2">
               <input
@@ -192,8 +286,20 @@ export function NewCaseForm({
             {manualPassword ? (
               <div>
                 <label className={label} htmlFor="clientPassword">Contraseña temporal *</label>
-                <input id="clientPassword" name="clientPassword" type="password" required minLength={6} className={input} autoComplete="new-password" />
-                <p className="mt-1 text-xs text-slate-500">Compártela con el cliente para que acceda al portal.</p>
+                <input
+                  {...field("clientPassword", !errors.clientPassword && "clientPassword-hint")}
+                  type="password"
+                  required
+                  maxLength={LIMITS.password.max}
+                  className={cls("clientPassword")}
+                  autoComplete="new-password"
+                />
+                <FieldError id="clientPassword" error={errors.clientPassword} />
+                {!errors.clientPassword && (
+                  <p id="clientPassword-hint" className="mt-1 text-xs text-slate-500">
+                    Entre {LIMITS.password.min} y {LIMITS.password.max} caracteres. Compártela con el cliente para que acceda al portal.
+                  </p>
+                )}
               </div>
             ) : (
               <p className="text-xs text-slate-500 sm:col-span-2">
@@ -204,7 +310,11 @@ export function NewCaseForm({
         )}
       </section>
 
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && (
+        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
 
       <div className="flex justify-end gap-3">
         <button
@@ -217,6 +327,7 @@ export function NewCaseForm({
         <button
           type="submit"
           disabled={loading}
+          aria-busy={loading || undefined}
           className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
         >
           {loading ? "Creando…" : "Crear caso"}

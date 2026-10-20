@@ -18,7 +18,7 @@ type Props = {
 
 /** Campo de las pantallas de acceso, con error y ayuda conectados para el lector de pantalla. */
 export const AuthField = forwardRef<HTMLInputElement, Props>(function AuthField(
-  { id, label, icon: Icon, aside, trailing, error, hint, ...input },
+  { id, label, icon: Icon, aside, trailing, error, hint, className, ...input },
   ref,
 ) {
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
@@ -36,8 +36,9 @@ export const AuthField = forwardRef<HTMLInputElement, Props>(function AuthField(
           id={id}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
-          className={`input peer ${Icon ? "has-icon" : ""} ${trailing ? "pr-12" : ""}`}
           {...input}
+          // Las clases que lleguen se suman a las del campo (no lo dejan sin estilo)
+          className={`input peer ${Icon ? "has-icon" : ""} ${trailing ? "pr-12" : ""} ${className ?? ""}`}
         />
         {Icon && (
           <Icon

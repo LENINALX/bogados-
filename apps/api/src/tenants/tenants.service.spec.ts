@@ -62,3 +62,25 @@ describe('TenantsService (aislamiento por tenant)', () => {
     });
   });
 });
+
+describe('TenantsService.findPublic', () => {
+  const setupPublic = () => {
+    const prisma = { tenant: { findUnique: jest.fn().mockResolvedValue({ name: 'Firma Demo', slug: 'firma-demo' }) } };
+    return { prisma, service: new TenantsService(prisma as never) };
+  };
+
+  it('normaliza el código y lo busca', async () => {
+    const { prisma, service } = setupPublic();
+    await expect(service.findPublic('  Firma-Demo ')).resolves.toEqual({ name: 'Firma Demo', slug: 'firma-demo' });
+    expect(prisma.tenant.findUnique.mock.calls[0][0].where).toEqual({ slug: 'firma-demo' });
+  });
+
+  it.each(['x'.repeat(61), 'con espacio', "a'; DROP TABLE", '../admin', ''])(
+    'un código imposible («%s») es 404 sin consultar la BD',
+    async (slug) => {
+      const { prisma, service } = setupPublic();
+      await expect(service.findPublic(slug)).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.tenant.findUnique).not.toHaveBeenCalled();
+    },
+  );
+});

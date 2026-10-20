@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 
 @ApiTags('portal')
 @ApiBearerAuth()
@@ -23,7 +24,7 @@ export class ClientsController {
 
   @Get('cases/:id')
   @ApiOperation({ summary: 'Detalle portal (docs compartidos + notas públicas)' })
-  myCase(@Param('id') id: string, @CurrentUser() user: JwtPayloadUser) {
+  myCase(@Param('id', ParseIdPipe) id: string, @CurrentUser() user: JwtPayloadUser) {
     return this.clients.myCase(id, user);
   }
 }

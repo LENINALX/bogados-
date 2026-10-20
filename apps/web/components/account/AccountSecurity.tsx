@@ -82,7 +82,7 @@ function SecuritySkeleton() {
           <div key={i} className="card">
             <div className="card-header">
               <div className="skeleton h-4 w-44" />
-              <div className="skeleton h-5 w-20 rounded-full" />
+              <div className="skeleton h-5 w-20 rounded-md" />
             </div>
             <div className="card-body space-y-3">
               {Array.from({ length: lines }, (_, j) => (
@@ -96,7 +96,7 @@ function SecuritySkeleton() {
         <div className="card-header">
           <div className="skeleton h-4 w-36" />
         </div>
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-slate-900/[0.06]">
           {Array.from({ length: 5 }, (_, i) => (
             <div key={i} className="flex items-start gap-3 px-4 py-3 sm:px-5">
               <div className="skeleton h-4 w-4 rounded-full" />

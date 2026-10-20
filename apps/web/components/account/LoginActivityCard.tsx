@@ -1,4 +1,4 @@
-import { CheckCircle2, History, XCircle } from "lucide-react";
+import { CheckCircle2, History, ShieldCheck, XCircle } from "lucide-react";
 import { LoginEvent, formatLoginDate, loginReasonLabel } from "@/lib/login-events";
 import { EmptyState } from "@/components/ui";
 
@@ -19,7 +19,7 @@ export function LoginActivityCard({ events, lastLoginAt, timeZone }: Props) {
         </h2>
       </div>
 
-      <p className="border-b border-slate-100 px-4 py-2.5 text-sm text-slate-600 sm:px-5">
+      <p className="border-b border-slate-900/[0.06] px-4 py-3 text-sm text-slate-600 sm:px-5">
         Último acceso:{" "}
         <span className="font-medium text-slate-900">
           {lastLoginAt ? <time dateTime={lastLoginAt}>{formatLoginDate(lastLoginAt, timeZone)}</time> : "sin registros"}
@@ -28,15 +28,16 @@ export function LoginActivityCard({ events, lastLoginAt, timeZone }: Props) {
 
       {events.length === 0 ? (
         <EmptyState
+          icon={ShieldCheck}
           title="Aún no hay accesos registrados"
           hint="Aquí verás los últimos intentos de entrar a tu cuenta, correctos o fallidos."
         />
       ) : (
-        <ul className="divide-y divide-slate-100" aria-label="Últimos accesos">
+        <ul className="divide-y divide-slate-900/[0.06]" aria-label="Últimos accesos">
           {events.map((ev) => (
             <li
               key={ev.id}
-              className={`flex items-start gap-3 px-4 py-3 sm:px-5 ${ev.success ? "" : "bg-red-50/60"}`}
+              className={`flex items-start gap-3 px-4 py-3 transition-colors duration-150 sm:px-5 ${ev.success ? "hover:bg-slate-900/[0.02]" : "bg-red-50/60"}`}
             >
               {ev.success ? (
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
@@ -66,7 +67,7 @@ export function LoginActivityCard({ events, lastLoginAt, timeZone }: Props) {
         </ul>
       )}
 
-      <p className="border-t border-slate-100 bg-slate-50 px-4 py-3 text-xs leading-relaxed text-slate-600 sm:px-5">
+      <p className="border-t border-slate-900/[0.06] bg-slate-50 px-4 py-3 text-xs leading-relaxed text-slate-600 sm:px-5">
         ¿No reconoces algún acceso? Cambia tu contraseña y activa la verificación en dos pasos.
       </p>
     </section>
