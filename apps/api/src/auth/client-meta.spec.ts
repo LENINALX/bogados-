@@ -14,6 +14,26 @@ describe('readClientMeta', () => {
     expect(readClientMeta({ ip: '::ffff:192.168.1.5', headers: {} }).ip).toBe('192.168.1.5');
   });
 
+  describe('en producción solo se cree al servidor de Next', () => {
+    const forged = {
+      ip: '::ffff:203.0.113.7',
+      headers: { 'x-client-ip': '1.2.3.4', 'x-forwarded-for': '5.6.7.8', 'x-client-user-agent': 'Falso/1', 'user-agent': 'curl/8' },
+    };
+
+    it('sin secreto configurado: ignora las cabeceras reenviadas y usa la conexión', () => {
+      expect(readClientMeta(forged, { NODE_ENV: 'production' })).toEqual({ ip: '203.0.113.7', userAgent: 'curl/8' });
+    });
+
+    it('con secreto: solo si la petición trae el mismo', () => {
+      const env = { NODE_ENV: 'production', CLIENT_FORWARD_SECRET: 's3cr3t-compartido' };
+      expect(readClientMeta({ ...forged, headers: { ...forged.headers, 'x-client-forward-secret': 'otro' } }, env).ip).toBe('203.0.113.7');
+      expect(readClientMeta({ ...forged, headers: { ...forged.headers, 'x-client-forward-secret': 's3cr3t-compartido' } }, env)).toEqual({
+        ip: '1.2.3.4',
+        userAgent: 'Falso/1',
+      });
+    });
+  });
+
   it('recorta un user-agent desmesurado', () => {
     expect(readClientMeta({ headers: { 'user-agent': 'x'.repeat(1000) } }).userAgent).toHaveLength(300);
   });

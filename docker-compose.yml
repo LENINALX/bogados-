@@ -39,7 +39,10 @@ services:
       - "3001:3001"
     environment:
       DATABASE_URL: postgresql://bogados:bogados@postgres:5432/bogados?schema=public
-      JWT_SECRET: cambia-este-jwt-secreto-en-docker
+      # Sin valor por defecto: sale del .env (no se sube al repo). Si falta, la API no arranca en producción
+      JWT_SECRET: ${JWT_SECRET}
+      # El servidor de Next demuestra con este secreto que la IP y el navegador que reenvía son reales
+      CLIENT_FORWARD_SECRET: ${CLIENT_FORWARD_SECRET:-}
       JWT_EXPIRES_IN: 7d
       PORT: 3001
       UPLOAD_DIR: /app/uploads
@@ -71,7 +74,9 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgresql://bogados:bogados@postgres:5432/bogados?schema=public
-      NEXTAUTH_SECRET: cambia-este-secreto-en-docker
+      # Sin valor por defecto: sale del .env. Si falta, NextAuth no arranca en producción
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      CLIENT_FORWARD_SECRET: ${CLIENT_FORWARD_SECRET:-}
       NEXTAUTH_URL: http://localhost:3000
       # URL de la API vista desde el servidor de Next (red interna de Docker)
       NEST_API_URL: http://api:3001/api/v1

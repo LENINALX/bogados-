@@ -155,9 +155,6 @@ export class TwoFactorService {
         userAgent: challenge.userAgent,
       });
 
-    if (challenge.attempts >= LOGIN_CODE.maxAttempts) {
-      invalidChallenge('Has agotado los intentos. Vuelve a iniciar sesión para recibir un código nuevo.');
-    }
     if (challenge.expiresAt.getTime() <= Date.now()) {
       await fail('expired_code');
       throw new UnauthorizedException({
@@ -166,16 +163,26 @@ export class TwoFactorService {
       });
     }
 
+    // Cada comprobación reserva su intento antes de comparar, de forma atómica: aunque lleguen
+    // muchas peticiones a la vez con códigos distintos, solo maxAttempts llegan a compararse.
+    const { count: reserved } = await this.prisma.loginChallenge.updateMany({
+      where: { id: challenge.id, consumedAt: null, attempts: { lt: LOGIN_CODE.maxAttempts } },
+      data: { attempts: { increment: 1 } },
+    });
+    if (reserved === 0) {
+      invalidChallenge('Has agotado los intentos. Vuelve a iniciar sesión para recibir un código nuevo.');
+    }
+
     if (!sameHash(challenge.codeHash, hashCode(challenge.id, code))) {
-      const attempts = challenge.attempts + 1;
-      const remaining = Math.max(0, LOGIN_CODE.maxAttempts - attempts);
-      await this.prisma.loginChallenge.update({
-        where: { id: challenge.id },
-        // Sin intentos, el desafío se cierra: hay que volver a poner la contraseña
-        data: { attempts, ...(remaining === 0 ? { consumedAt: new Date() } : {}) },
-      });
+      const used = await this.prisma.loginChallenge.findUnique({ where: { id: challenge.id }, select: { attempts: true } });
+      const remaining = Math.max(0, LOGIN_CODE.maxAttempts - (used?.attempts ?? LOGIN_CODE.maxAttempts));
       await fail('bad_code');
       if (remaining === 0) {
+        // Sin intentos, el desafío se cierra: hay que volver a poner la contraseña
+        await this.prisma.loginChallenge.updateMany({
+          where: { id: challenge.id, consumedAt: null },
+          data: { consumedAt: new Date() },
+        });
         invalidChallenge('Has agotado los intentos. Vuelve a iniciar sesión para recibir un código nuevo.');
       }
       throw new UnauthorizedException({

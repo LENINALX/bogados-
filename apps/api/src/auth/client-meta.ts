@@ -1,4 +1,5 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { timingSafeEqual } from 'crypto';
 
 /** Desde dónde se intenta entrar: se guarda en el registro de accesos y va en el email del código. */
 export type ClientMeta = { ip?: string | null; userAgent?: string | null };
@@ -11,14 +12,37 @@ function header(req: { headers?: Record<string, unknown> }, name: string): strin
   return typeof first === 'string' && first.trim() ? first.trim() : undefined;
 }
 
+type Env = { CLIENT_FORWARD_SECRET?: string; NODE_ENV?: string };
+
+/**
+ * ¿Viene la petición del servidor de Next? Lo demuestra con CLIENT_FORWARD_SECRET. Sin el
+ * secreto configurado solo se confía fuera de producción (desarrollo en local).
+ */
+export function trustsForwardedHeaders(req: { headers?: Record<string, unknown> }, env: Env = process.env): boolean {
+  const secret = env.CLIENT_FORWARD_SECRET;
+  if (!secret) return env.NODE_ENV !== 'production';
+  const got = header(req, 'x-client-forward-secret');
+  if (!got) return false;
+  const a = Buffer.from(got);
+  const b = Buffer.from(secret);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 /**
  * El login de la web llega desde el servidor de Next (NextAuth), que reenvía la IP y el
- * navegador reales en x-client-ip y x-client-user-agent. Son datos informativos para el
- * registro de accesos: nunca se usan para autorizar nada.
+ * navegador reales en x-client-ip y x-client-user-agent. Solo se creen si quien los envía
+ * demuestra ser ese servidor; si no, cualquiera podría anotar en el registro la IP que quisiera.
+ * Son datos informativos para el registro de accesos: nunca se usan para autorizar nada.
  */
-export function readClientMeta(req: { headers?: Record<string, unknown>; ip?: string }): ClientMeta {
-  const forwarded = header(req, 'x-client-ip') ?? header(req, 'x-forwarded-for')?.split(',')[0]?.trim();
-  const userAgent = header(req, 'x-client-user-agent') ?? header(req, 'user-agent');
+export function readClientMeta(
+  req: { headers?: Record<string, unknown>; ip?: string },
+  env: Env = process.env,
+): ClientMeta {
+  const trusted = trustsForwardedHeaders(req, env);
+  const forwarded = trusted
+    ? (header(req, 'x-client-ip') ?? header(req, 'x-forwarded-for')?.split(',')[0]?.trim())
+    : undefined;
+  const userAgent = (trusted ? header(req, 'x-client-user-agent') : undefined) ?? header(req, 'user-agent');
   return {
     ip: (forwarded ?? req.ip ?? null)?.replace(/^::ffff:/, '').slice(0, 64) ?? null,
     userAgent: userAgent?.slice(0, USER_AGENT_MAX) ?? null,

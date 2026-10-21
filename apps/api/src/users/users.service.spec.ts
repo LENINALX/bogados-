@@ -13,7 +13,11 @@ function setup(taken: { id: string } | null) {
       ),
       update: jest.fn(async ({ data }) => ({ id: 'u2', ...data })),
     },
+    userToken: { deleteMany: jest.fn() },
+    loginChallenge: { deleteMany: jest.fn() },
+    $transaction: jest.fn(),
   };
+  prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn(prisma));
   return { prisma, service: new UsersService(prisma as never, {} as never) };
 }
 
@@ -30,5 +34,27 @@ describe('UsersService.update (email)', () => {
     const where = prisma.user.findFirst.mock.calls.find(([a]) => a.where.NOT)![0].where;
     expect(where).toEqual({ tenantId: 't1', email: 'nuevo@x.ec', NOT: { id: 'u2' } });
     expect(prisma.user.update.mock.calls[0][0].data.email).toBe('nuevo@x.ec');
+  });
+});
+
+describe('UsersService.update (enlaces pendientes)', () => {
+  it('al cambiar el email, los enlaces y códigos enviados al correo anterior dejan de valer', async () => {
+    const { prisma, service } = setup(null);
+    await service.update('u2', { email: 'nuevo@x.ec' }, admin);
+    expect(prisma.userToken.deleteMany).toHaveBeenCalledWith({ where: { userId: 'u2', usedAt: null } });
+    expect(prisma.loginChallenge.deleteMany).toHaveBeenCalledWith({ where: { userId: 'u2', consumedAt: null } });
+  });
+
+  it('al poner el admin una contraseña nueva, también', async () => {
+    const { prisma, service } = setup(null);
+    await service.update('u2', { password: 'temporal-nueva' }, admin);
+    expect(prisma.userToken.deleteMany).toHaveBeenCalled();
+  });
+
+  it('cambiar solo el nombre o volver a poner el mismo email no toca los enlaces', async () => {
+    const { prisma, service } = setup(null);
+    await service.update('u2', { name: 'Otro nombre' }, admin);
+    await service.update('u2', { email: 'OLD@x.ec' }, admin);
+    expect(prisma.userToken.deleteMany).not.toHaveBeenCalled();
   });
 });

@@ -79,6 +79,8 @@ export const authOptions: NextAuthOptions = {
         if (forwarded) clientHeaders["x-client-ip"] = forwarded;
         const userAgent = headerValue(req?.headers, "user-agent");
         if (userAgent) clientHeaders["x-client-user-agent"] = userAgent;
+        // Demuestra a la API que estos datos los reenvía este servidor (si no, no los cree)
+        if (process.env.CLIENT_FORWARD_SECRET) clientHeaders["x-client-forward-secret"] = process.env.CLIENT_FORWARD_SECRET;
 
         // Segundo paso: el código de 6 dígitos enviado por email
         const codeStep = Boolean(credentials?.challengeId && credentials?.code);

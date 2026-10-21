@@ -7,6 +7,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterClientDto } from './dto/register-client.dto';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/password.dto';
 import { LoginThrottlerGuard } from './login-throttle';
+import { IpRateLimit } from '../common/guards/ip-rate-limit.guard';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -41,6 +42,8 @@ export class AuthController {
   }
 
   @Get('register-firm/slug')
+  // Sin sesión: límite por IP (mismo motivo que tenants/public/:slug)
+  @UseGuards(IpRateLimit(60, 60_000))
   @ApiOperation({ summary: 'Comprueba si un código de firma está libre y sugiere otro si no' })
   checkFirmSlug(@Query('value') value: string) {
     return this.firmSignup.checkSlug(value);

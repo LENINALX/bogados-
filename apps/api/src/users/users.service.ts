@@ -112,7 +112,7 @@ export class UsersService {
   }
 
   async update(id: string, dto: UpdateUserDto, actor: JwtPayloadUser) {
-    await this.findOne(id, actor);
+    const current = await this.findOne(id, actor);
     if (id === actor.id) {
       if (dto.role !== undefined && dto.role !== actor.role) {
         throw new BadRequestException('No puedes cambiar tu propio rol');
@@ -139,10 +139,15 @@ export class UsersService {
       data.passwordChangedAt = new Date(); // cierra las sesiones abiertas de ese usuario
     }
 
-    return this.prisma.user.update({
-      where: { id },
-      data,
-      select: userSelect,
+    // Enlaces de invitación/recuperación y códigos de acceso pendientes iban al correo anterior
+    // (o servían para fijar una contraseña que el admin acaba de cambiar): dejan de valer.
+    const revokePending = (data.email !== undefined && data.email !== current.email) || dto.password !== undefined;
+    return this.prisma.$transaction(async (tx) => {
+      if (revokePending) {
+        await tx.userToken.deleteMany({ where: { userId: id, usedAt: null } });
+        await tx.loginChallenge.deleteMany({ where: { userId: id, consumedAt: null } });
+      }
+      return tx.user.update({ where: { id }, data, select: userSelect });
     });
   }
 

@@ -138,24 +138,54 @@ describe('TwoFactorService', () => {
       await expect(service.verify('ch1', '123456')).rejects.toBeInstanceOf(UnauthorizedException);
     });
 
+    /**
+     * Base de datos simulada con estado: findUnique devuelve el desafío actual y updateMany aplica
+     * la condición (no consumido y con intentos libres) como lo haría PostgreSQL, fila a fila.
+     */
+    function statefulChallenge(initial: Record<string, unknown>) {
+      const row = challenge(initial) as ReturnType<typeof challenge> & { attempts: number; consumedAt: Date | null };
+      prisma.loginChallenge.findUnique.mockImplementation(async () => ({ ...row }));
+      prisma.loginChallenge.updateMany.mockImplementation(async ({ where, data }) => {
+        if (row.consumedAt) return { count: 0 };
+        if (where.attempts?.lt !== undefined && !(row.attempts < where.attempts.lt)) return { count: 0 };
+        if (data.attempts?.increment) row.attempts += data.attempts.increment;
+        if (data.consumedAt) row.consumedAt = data.consumedAt;
+        return { count: 1 };
+      });
+      return row;
+    }
+
     it('código incorrecto: descuenta un intento, lo registra y dice cuántos quedan', async () => {
-      prisma.loginChallenge.findUnique.mockResolvedValue(challenge({ attempts: 1 }));
+      const row = statefulChallenge({ attempts: 1 });
       const err = await service.verify('ch1', '000000').catch((e) => e);
       expect(err.getResponse()).toEqual({
         message: 'El código no es correcto. Te quedan 3 intentos.',
         error: { code: 'BAD_CODE', remainingAttempts: 3 },
       });
-      expect(prisma.loginChallenge.update).toHaveBeenCalledWith({ where: { id: 'ch1' }, data: { attempts: 2 } });
+      expect(row.attempts).toBe(2);
       expect(loginEvents.record).toHaveBeenCalledWith(
         expect.objectContaining({ success: false, reason: 'bad_code', userId: 'u1', ip: '190.1.2.3' }),
       );
     });
 
     it('el último intento fallido cierra el desafío', async () => {
-      prisma.loginChallenge.findUnique.mockResolvedValue(challenge({ attempts: LOGIN_CODE.maxAttempts - 1 }));
+      const row = statefulChallenge({ attempts: LOGIN_CODE.maxAttempts - 1 });
       const err = await service.verify('ch1', '000000').catch((e) => e);
       expect(err.getResponse().error.code).toBe('CHALLENGE_INVALID');
-      expect(prisma.loginChallenge.update.mock.calls[0][0].data.consumedAt).toBeInstanceOf(Date);
+      expect(row.consumedAt).toBeInstanceOf(Date);
+    });
+
+    it('muchas verificaciones a la vez: solo maxAttempts llegan a comparar el código', async () => {
+      const row = statefulChallenge({ attempts: 0 });
+      const codes = Array.from({ length: 20 }, (_, i) => String(100000 + i)); // ninguno es 123456
+      const results = await Promise.all(codes.map((c) => service.verify('ch1', c).catch((e) => e)));
+      const compared = results.filter((e) => e.getResponse?.().error?.code === 'BAD_CODE').length;
+      expect(compared).toBeLessThanOrEqual(LOGIN_CODE.maxAttempts);
+      expect(row.attempts).toBe(LOGIN_CODE.maxAttempts);
+      expect(loginEvents.record).toHaveBeenCalledTimes(LOGIN_CODE.maxAttempts);
+      // Aunque después llegue el código correcto, el desafío ya no sirve
+      const late = await service.verify('ch1', '123456').catch((e) => e);
+      expect(late.getResponse().error.code).toBe('CHALLENGE_INVALID');
     });
 
     it('código caducado: lo dice y lo registra, aunque el código sea el correcto', async () => {
