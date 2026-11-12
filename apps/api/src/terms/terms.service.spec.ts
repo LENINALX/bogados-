@@ -13,7 +13,10 @@ function setup(holidays: { date: string; name: string }[] = []) {
       create: jest.fn(),
       createMany: jest.fn(),
       deleteMany: jest.fn(),
+      findFirst: jest.fn(),
     },
+    activityEvent: { create: jest.fn() },
+    $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
   };
   return { prisma, service: new TermsService(prisma as never) };
 }
@@ -62,6 +65,22 @@ describe('TermsService: feriados', () => {
     expect(arg.skipDuplicates).toBe(true);
     expect(arg.data).toHaveLength(11);
     expect(arg.data.every((d: { tenantId: string }) => d.tenantId === 't1')).toBe(true);
+  });
+
+  it('añadir o quitar un feriado queda en la actividad de la firma (mueve plazos)', async () => {
+    const { prisma, service } = setup();
+    prisma.holiday.create.mockResolvedValue({ id: 'h1', date: new Date('2026-12-24T00:00:00Z'), name: 'Nochebuena' });
+    await service.createHoliday('t1', '2026-12-24', 'Nochebuena', 'admin1');
+    expect(prisma.activityEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ tenantId: 't1', caseId: null, actorId: 'admin1', type: 'HOLIDAY_ADDED' }),
+    });
+
+    prisma.holiday.findFirst.mockResolvedValue({ name: 'Nochebuena', date: new Date('2026-12-24T00:00:00Z') });
+    prisma.holiday.deleteMany.mockResolvedValue({ count: 1 });
+    await service.removeHoliday('t1', 'h1', 'admin1');
+    expect(prisma.activityEvent.create).toHaveBeenLastCalledWith({
+      data: expect.objectContaining({ type: 'HOLIDAY_REMOVED', summary: 'Feriado eliminado: Nochebuena (2026-12-24)' }),
+    });
   });
 
   it('no borra feriados de otro bufete', async () => {

@@ -15,6 +15,7 @@ function setup(taken: { id: string } | null) {
     },
     userToken: { deleteMany: jest.fn() },
     loginChallenge: { deleteMany: jest.fn() },
+    activityEvent: { create: jest.fn() },
     $transaction: jest.fn(),
   };
   prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn(prisma));
@@ -56,5 +57,37 @@ describe('UsersService.update (enlaces pendientes)', () => {
     await service.update('u2', { name: 'Otro nombre' }, admin);
     await service.update('u2', { email: 'OLD@x.ec' }, admin);
     expect(prisma.userToken.deleteMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('UsersService: actividad de la firma', () => {
+  it('cambiar el rol queda registrado con antes y después; la contraseña nunca aparece', async () => {
+    const { prisma, service } = setup(null);
+    prisma.user.findFirst.mockImplementation(async ({ where }) =>
+      where.NOT ? null : { id: where.id, name: 'Nombre', email: 'old@x.ec', role: Role.ABOGADO, active: true },
+    );
+    prisma.user.update.mockImplementation(async ({ data }) => ({ id: 'u2', name: 'Nombre', ...data }));
+    await service.update('u2', { role: Role.ADMIN, password: 'nueva-clave-1' }, admin);
+    const data = prisma.activityEvent.create.mock.calls[0][0].data;
+    expect(data).toMatchObject({ tenantId: 't1', caseId: null, actorId: 'admin1', type: 'USER_UPDATED' });
+    expect(data.summary).toBe('Usuario editado: Nombre (rol: Abogado → Admin; contraseña restablecida)');
+    expect(JSON.stringify(data)).not.toContain('nueva-clave-1');
+  });
+
+  it('desactivar es su propio tipo; volver a poner lo mismo no registra nada', async () => {
+    const { prisma, service } = setup(null);
+    prisma.user.findFirst.mockImplementation(async ({ where }) =>
+      where.NOT ? null : { id: where.id, name: 'Nombre', email: 'old@x.ec', role: Role.ABOGADO, active: true },
+    );
+    prisma.user.update.mockImplementation(async ({ data }) => ({ id: 'u2', name: 'Nombre', ...data }));
+    await service.update('u2', { active: false }, admin);
+    expect(prisma.activityEvent.create.mock.calls[0][0].data).toMatchObject({
+      type: 'USER_DEACTIVATED',
+      summary: 'Usuario desactivado: Nombre',
+    });
+
+    prisma.activityEvent.create.mockClear();
+    await service.update('u2', { email: 'old@x.ec', role: Role.ABOGADO }, admin);
+    expect(prisma.activityEvent.create).not.toHaveBeenCalled();
   });
 });

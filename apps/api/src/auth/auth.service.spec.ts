@@ -15,6 +15,7 @@ describe('AuthService.login', () => {
   let jwt: { signAsync: jest.Mock };
   let loginEvents: { record: jest.Mock; recentPasswordFailures: jest.Mock };
   let twoFactor: { start: jest.Mock; verify: jest.Mock };
+  let loginAlerts: { isNewDevice: jest.Mock; send: jest.Mock };
   let service: AuthService;
 
   const tenant = { id: 't1', slug: 'firma-demo', name: 'Firma Demo', requireTwoFactor: false };
@@ -47,12 +48,14 @@ describe('AuthService.login', () => {
       start: jest.fn().mockResolvedValue({ twoFactorRequired: true, challengeId: 'ch1' }),
       verify: jest.fn(),
     };
+    loginAlerts = { isNewDevice: jest.fn().mockResolvedValue(false), send: jest.fn() };
     service = new AuthService(
       prisma as never,
       jwt as unknown as JwtService,
       {} as never,
       loginEvents as never,
       twoFactor as never,
+      loginAlerts as never,
     );
   });
 
@@ -81,6 +84,26 @@ describe('AuthService.login', () => {
       expect.objectContaining({ tenantId: 't1', userId: 'u1', success: true, reason: 'password', ip: '190.1.2.3' }),
       prisma,
     );
+  });
+
+  it('navegador nuevo: avisa por email con el origen; si ya se conocía, no', async () => {
+    prisma.user.findUnique.mockResolvedValue(activeAdmin());
+    loginAlerts.isNewDevice.mockResolvedValueOnce(true);
+    await login();
+    expect(loginAlerts.isNewDevice).toHaveBeenCalledWith('u1', meta.userAgent);
+    // Se comprueba antes de registrar el acceso actual
+    expect(loginAlerts.isNewDevice.mock.invocationCallOrder[0]).toBeLessThan(loginEvents.record.mock.invocationCallOrder[0]);
+    expect(loginAlerts.send).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'u1' }),
+      tenant,
+      expect.objectContaining({ ip: '190.1.2.3', userAgent: meta.userAgent }),
+      expect.any(Date),
+    );
+
+    loginAlerts.send.mockClear();
+    prisma.user.findUnique.mockResolvedValue(activeAdmin());
+    await login();
+    expect(loginAlerts.send).not.toHaveBeenCalled();
   });
 
   it('«mantener la sesión iniciada» emite un token de 30 días', async () => {
@@ -205,7 +228,7 @@ describe('AuthService: seguridad de la cuenta', () => {
 
   beforeEach(() => {
     prisma = { user: { findUniqueOrThrow: jest.fn(async () => account()), update: jest.fn() } };
-    service = new AuthService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+    service = new AuthService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never);
   });
 
   it('activar los dos pasos pide la contraseña (400, no 401: un 401 cerraría la sesión)', async () => {
@@ -246,7 +269,7 @@ describe('AuthService.forgotPassword', () => {
       user: { findUnique: jest.fn() },
     };
     tokens = { send: jest.fn().mockResolvedValue(true) };
-    service = new AuthService(prisma as never, {} as never, tokens as never, {} as never, {} as never);
+    service = new AuthService(prisma as never, {} as never, tokens as never, {} as never, {} as never, {} as never);
   });
 
   const dto = { tenantSlug: 'firma-demo', email: 'Admin@Demo.Bogados' };

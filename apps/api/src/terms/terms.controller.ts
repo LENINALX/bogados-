@@ -34,20 +34,20 @@ export class TermsController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Añadir un feriado (local, traslado, etc.)' })
   create(@CurrentUser() user: JwtPayloadUser, @Body() dto: CreateHolidayDto) {
-    return this.terms.createHoliday(user.tenantId, dto.date, dto.name);
+    return this.terms.createHoliday(user.tenantId, dto.date, dto.name, user.id);
   }
 
   @Post('holidays/national')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Cargar los feriados nacionales de Ecuador del año (fecha original, sin traslados)' })
   loadNational(@CurrentUser() user: JwtPayloadUser, @Query() q: HolidaysQueryDto) {
-    return this.terms.loadNationalHolidays(user.tenantId, q.year);
+    return this.terms.loadNationalHolidays(user.tenantId, q.year, user.id);
   }
 
   @Delete('holidays/:id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Eliminar un feriado' })
   remove(@CurrentUser() user: JwtPayloadUser, @Param('id', ParseIdPipe) id: string) {
-    return this.terms.removeHoliday(user.tenantId, id);
+    return this.terms.removeHoliday(user.tenantId, id, user.id);
   }
 }

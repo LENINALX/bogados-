@@ -251,7 +251,7 @@ export class TwoFactorService {
       device: describeUserAgent(meta.userAgent),
       ip: meta.ip,
     });
-    return this.mail.send({ to: user.email, ...email });
+    return this.mail.send({ to: user.email, ...email, tenantId: user.tenantId });
   }
 
   private describe(id: string, email: string, expiresAt: Date, lastSentAt: Date): TwoFactorChallenge {

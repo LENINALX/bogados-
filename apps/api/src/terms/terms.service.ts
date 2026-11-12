@@ -8,6 +8,7 @@ import {
   ecuadorNationalHolidays,
   termSearchWindow,
 } from './business-days';
+import { recordActivity } from '../activity/activity.service';
 
 /** El término vence al terminar el día, en hora local del bufete. */
 const END_OF_DAY_MINUTES = 23 * 60 + 59;
@@ -53,11 +54,24 @@ export class TermsService {
     return items.map((h) => ({ ...h, date: ymdOf(h.date) }));
   }
 
-  async createHoliday(tenantId: string, date: string, name: string) {
+  /** `actorId`: quién lo hace, para el registro de actividad (los cambios de feriados mueven plazos). */
+  async createHoliday(tenantId: string, date: string, name: string, actorId?: string | null) {
     try {
-      const h = await this.prisma.holiday.create({
-        data: { tenantId, date: dateOf(date), name: name.trim() },
-        select: { id: true, date: true, name: true },
+      const h = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.holiday.create({
+          data: { tenantId, date: dateOf(date), name: name.trim() },
+          select: { id: true, date: true, name: true },
+        });
+        if (actorId) {
+          await recordActivity(tx, {
+            tenantId,
+            actorId,
+            type: 'HOLIDAY_ADDED',
+            summary: `Feriado añadido: ${created.name} (${date})`,
+            meta: { holidayId: created.id, date },
+          });
+        }
+        return created;
       });
       return { ...h, date: ymdOf(h.date) };
     } catch (e) {
@@ -68,9 +82,21 @@ export class TermsService {
     }
   }
 
-  async removeHoliday(tenantId: string, id: string) {
-    const { count } = await this.prisma.holiday.deleteMany({ where: { id, tenantId } });
-    if (!count) throw new NotFoundException('Feriado no encontrado');
+  async removeHoliday(tenantId: string, id: string, actorId?: string | null) {
+    await this.prisma.$transaction(async (tx) => {
+      const holiday = await tx.holiday.findFirst({ where: { id, tenantId }, select: { name: true, date: true } });
+      const { count } = await tx.holiday.deleteMany({ where: { id, tenantId } });
+      if (!count || !holiday) throw new NotFoundException('Feriado no encontrado');
+      if (actorId) {
+        await recordActivity(tx, {
+          tenantId,
+          actorId,
+          type: 'HOLIDAY_REMOVED',
+          summary: `Feriado eliminado: ${holiday.name} (${ymdOf(holiday.date)})`,
+          meta: { date: ymdOf(holiday.date) },
+        });
+      }
+    });
     return { ok: true };
   }
 
@@ -78,12 +104,21 @@ export class TermsService {
    * Carga los feriados nacionales del año en su fecha original. No toca los que ya existan
    * en esas fechas (p. ej. un traslado ya corregido por el administrador).
    */
-  async loadNationalHolidays(tenantId: string, year: number) {
+  async loadNationalHolidays(tenantId: string, year: number, actorId?: string | null) {
     const list = ecuadorNationalHolidays(year);
     const { count } = await this.prisma.holiday.createMany({
       data: list.map((h) => ({ tenantId, date: dateOf(h.date), name: h.name })),
       skipDuplicates: true,
     });
+    if (actorId && count > 0) {
+      await recordActivity(this.prisma, {
+        tenantId,
+        actorId,
+        type: 'HOLIDAYS_LOADED',
+        summary: `Feriados nacionales de ${year} cargados (${count} nuevos)`,
+        meta: { year, created: count },
+      });
+    }
     return { created: count, skipped: list.length - count };
   }
 }

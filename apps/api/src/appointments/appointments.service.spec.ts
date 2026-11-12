@@ -68,6 +68,7 @@ function setup() {
       findMany: jest.fn().mockResolvedValue([]),
     },
     case: { findFirst: jest.fn() },
+    activityEvent: { create: jest.fn() },
     $transaction: jest.fn(async (arg: unknown) =>
       typeof arg === 'function' ? (arg as (tx: unknown) => unknown)(prisma) : Promise.all(arg as unknown[]),
     ),

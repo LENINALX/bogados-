@@ -46,6 +46,17 @@ model Tenant {
   appointmentMinutes Int      @default(60)
   /// Exige verificación en dos pasos al equipo (admin y abogados; los clientes, si la activan ellos)
   requireTwoFactor   Boolean  @default(false)
+  /// Identidad de la firma (Admin › Ajustes): sale en los emails, el acceso y el portal del cliente
+  /// Logo en la carpeta de subidas (PNG, JPEG o WebP); logoUpdatedAt invalida la caché del navegador
+  logoPath           String?
+  logoMime           String?
+  logoUpdatedAt      DateTime?
+  /// Color de marca #RRGGBB, con contraste suficiente para texto blanco
+  brandColor         String?
+  contactEmail       String?
+  contactPhone       String?
+  address            String?
+  website            String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -190,10 +201,13 @@ model CaseNote {
 }
 
 /// Eventos de auditoría / timeline por caso
+/// Registro de actividad: lo de un caso sale en su historial; lo de la firma (usuarios, citas,
+/// ajustes) no tiene caso. El admin lo ve todo junto en Admin › Actividad.
 model ActivityEvent {
   id        String   @id @default(cuid())
   tenantId  String
-  caseId    String
+  /// Nulo en la actividad de la firma que no es de un caso
+  caseId    String?
   actorId   String?
   type      String
   summary   String
@@ -201,10 +215,12 @@ model ActivityEvent {
   createdAt DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  case   Case?  @relation(fields: [caseId], references: [id], onDelete: Cascade)
   actor  User?  @relation("ActivityActor", fields: [actorId], references: [id])
 
   @@index([tenantId, caseId, createdAt])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, actorId, createdAt])
 }
 
 /// Tareas / plazos asociados a un caso

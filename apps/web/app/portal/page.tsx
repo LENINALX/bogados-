@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FirmContactCard } from "@/components/portal/FirmContactCard";
 import { CalendarClock, CalendarPlus, ChevronRight, FolderOpen, Plus } from "lucide-react";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
@@ -30,7 +31,21 @@ export default async function PortalPage() {
   const session = await requireRole("CLIENTE");
   const { tenantId, id: userId } = session.user;
   const [tenant, cases, sharedDocuments, nextAppointment] = await Promise.all([
-    prisma.tenant.findUnique({ where: { id: tenantId }, select: { timezone: true } }),
+    prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        timezone: true,
+        name: true,
+        slug: true,
+        brandColor: true,
+        contactEmail: true,
+        contactPhone: true,
+        address: true,
+        website: true,
+        logoPath: true,
+        logoUpdatedAt: true,
+      },
+    }),
     prisma.case.findMany({
       where: { tenantId, clientId: userId },
       include: { lawyer: { select: { name: true } } },
@@ -203,6 +218,23 @@ export default async function PortalPage() {
                 </ul>
               </section>
             )}
+          </div>
+        )}
+
+        {tenant && (
+          <div className="mt-10">
+            <FirmContactCard
+              firm={{
+                name: tenant.name,
+                slug: tenant.slug,
+                brandColor: tenant.brandColor,
+                contactEmail: tenant.contactEmail,
+                contactPhone: tenant.contactPhone,
+                address: tenant.address,
+                website: tenant.website,
+                logoVersion: tenant.logoPath && tenant.logoUpdatedAt ? tenant.logoUpdatedAt.getTime() : null,
+              }}
+            />
           </div>
         )}
       </main>

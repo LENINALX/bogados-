@@ -1,7 +1,7 @@
 import { Role } from "@prisma/client";
 
 /** Nombre del icono (se resuelve en el cliente: los componentes no viajan del servidor) */
-export type NavIcon = "cases" | "agenda" | "tasks" | "users" | "request" | "holidays" | "security";
+export type NavIcon = "cases" | "agenda" | "tasks" | "users" | "request" | "holidays" | "security" | "activity" | "settings";
 
 export type NavItem = { href: string; label: string; icon: NavIcon };
 
@@ -18,6 +18,10 @@ export function staffLinks(role: Role): NavItem[] {
     links.push({ href: "/admin/feriados", label: "Feriados", icon: "holidays" });
     // Quién entró y desde dónde; política de verificación en dos pasos
     links.push({ href: "/admin/accesos", label: "Accesos", icon: "security" });
+    // Quién hizo qué y cuándo en toda la firma
+    links.push({ href: "/admin/actividad", label: "Actividad", icon: "activity" });
+    // Nombre, logo, color y contacto de la firma
+    links.push({ href: "/admin/ajustes", label: "Ajustes", icon: "settings" });
   }
   return links;
 }

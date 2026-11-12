@@ -105,13 +105,13 @@ export class CaseRequestsService {
       return { created, admins };
     });
 
-    const tenantName = await this.tenantName(actor.tenantId);
-    await this.sendEmail('received', { id: actor.id, name: actor.name, email: actor.email }, tenantName, {
+    const tenant = { id: actor.tenantId, name: await this.tenantName(actor.tenantId) };
+    await this.sendEmail('received', { id: actor.id, name: actor.name, email: actor.email }, tenant, {
       caseTitle: created.title,
       link: `${this.appUrl}/portal/casos/${created.id}`,
     });
     for (const admin of admins) {
-      await this.sendEmail('new_request', admin, tenantName, {
+      await this.sendEmail('new_request', admin, tenant, {
         caseTitle: created.title,
         clientName: actor.name,
         link: `${this.appUrl}/casos/${created.id}`,
@@ -198,7 +198,7 @@ export class CaseRequestsService {
       const kind: CaseRequestEmailKind = { aceptar: 'accepted', aplazar: 'postponed', rechazar: 'rejected' }[
         dto.decision
       ] as CaseRequestEmailKind;
-      await this.sendEmail(kind, current.client, await this.tenantName(actor.tenantId), {
+      await this.sendEmail(kind, current.client, { id: actor.tenantId, name: await this.tenantName(actor.tenantId) }, {
         caseTitle: current.title,
         lawyerName: lawyer?.name,
         reason,
@@ -226,12 +226,12 @@ export class CaseRequestsService {
   private async sendEmail(
     kind: CaseRequestEmailKind,
     recipient: Person,
-    tenantName: string,
+    tenant: { id: string; name: string },
     d: { caseTitle: string; clientName?: string; lawyerName?: string; reason?: string | null; link: string },
   ) {
     try {
-      const email = buildCaseRequestEmail({ kind, recipientName: recipient.name, tenantName, ...d });
-      await this.mail.send({ to: recipient.email, ...email });
+      const email = buildCaseRequestEmail({ kind, recipientName: recipient.name, tenantName: tenant.name, ...d });
+      await this.mail.send({ to: recipient.email, ...email, tenantId: tenant.id });
     } catch (err) {
       this.logger.error(
         `No se pudo enviar el email "${kind}" a ${recipient.email}`,

@@ -11,6 +11,7 @@ import { loginThrottlerOptions } from './login-throttle';
 import { LoginEventsService } from './login-events.service';
 import { TwoFactorService } from './two-factor.service';
 import { FirmSignupService } from './firm-signup.service';
+import { LoginAlertService } from './login-alert.service';
 import { TermsModule } from '../terms/terms.module';
 
 @Module({
@@ -30,7 +31,7 @@ import { TermsModule } from '../terms/terms.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AccountTokensService, LoginEventsService, TwoFactorService, FirmSignupService, JwtStrategy],
+  providers: [AuthService, AccountTokensService, LoginEventsService, TwoFactorService, FirmSignupService, LoginAlertService, JwtStrategy],
   exports: [AuthService, AccountTokensService, JwtModule],
 })
 export class AuthModule {}

@@ -24,6 +24,7 @@ import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import { ClientMeta } from './client-meta';
 import { LoginEventsService, LoginReason } from './login-events.service';
 import { requiresTwoFactor, TwoFactorService } from './two-factor.service';
+import { LoginAlertService } from './login-alert.service';
 
 /**
  * Bloqueo de la cuenta por contraseñas fallidas: se cuentan solo los fallos (no los accesos
@@ -53,6 +54,7 @@ export class AuthService {
     private tokens: AccountTokensService,
     private loginEvents: LoginEventsService,
     private twoFactor: TwoFactorService,
+    private loginAlerts: LoginAlertService,
   ) {}
 
   /**
@@ -153,6 +155,8 @@ export class AuthService {
     opts: ClientMeta & { remember: boolean; method: 'password' | 'two_factor' },
   ) {
     const now = new Date();
+    // Antes de registrar este acceso, para no compararlo consigo mismo
+    const newDevice = await this.loginAlerts.isNewDevice(user.id, opts.userAgent);
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({ where: { id: user.id }, data: { lastLoginAt: now } });
       await this.loginEvents.record(
@@ -168,6 +172,8 @@ export class AuthService {
         tx,
       );
     });
+    // Sin esperar: el aviso no retrasa la entrada y nunca la impide
+    if (newDevice) void this.loginAlerts.send(user, tenant, opts, now);
 
     const payload = {
       sub: user.id,

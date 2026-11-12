@@ -42,7 +42,7 @@ function buildEmail(type: UserTokenType, d: EmailData, invitedBy?: string) {
   const html = `
     <p>Hola ${escapeHtml(d.name)},</p>
     <p>${escapeHtml(intro)}</p>
-    <p><a href="${escapeHtml(d.link)}" style="display:inline-block;padding:10px 18px;background:#1e3a5f;color:#fff;border-radius:8px;text-decoration:none">
+    <p><a href="${escapeHtml(d.link)}" style="display:inline-block;padding:10px 18px;background:#1f3d38;color:#fff;border-radius:8px;text-decoration:none">
       ${invite ? 'Activar mi cuenta' : 'Restablecer contraseña'}</a></p>
     <p style="color:#555;font-size:13px">${escapeHtml(validity)}<br>${escapeHtml(firmLine)}</p>
     <p style="color:#888;font-size:12px">Si el botón no funciona, copia este enlace: ${escapeHtml(d.link)}</p>`;
@@ -99,7 +99,7 @@ export class AccountTokensService {
         { name: user.name, tenantName: user.tenant.name, tenantSlug: user.tenant.slug, link },
         invitedBy,
       );
-      await this.mail.send({ to: user.email, ...email });
+      await this.mail.send({ to: user.email, ...email, tenantId: user.tenantId });
       return true;
     } catch (err) {
       this.logger.error(

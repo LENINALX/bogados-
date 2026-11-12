@@ -68,7 +68,8 @@ export function LoginActivityCard({ events, lastLoginAt, timeZone }: Props) {
       )}
 
       <p className="border-t border-slate-900/[0.06] bg-slate-50 px-4 py-3 text-xs leading-relaxed text-slate-600 sm:px-5">
-        ¿No reconoces algún acceso? Cambia tu contraseña y activa la verificación en dos pasos.
+        Te avisamos por email cada vez que se entra desde un navegador o dispositivo que no habías usado. ¿No
+        reconoces algún acceso? Cambia tu contraseña y activa la verificación en dos pasos.
       </p>
     </section>
   );

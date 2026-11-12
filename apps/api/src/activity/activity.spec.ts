@@ -52,3 +52,42 @@ describe('isVisibleToClient', () => {
     expect(isVisibleToClient({ type: 'DOC_UPLOADED', meta: null })).toBe(false);
   });
 });
+
+describe('ActivityService.listForTenant (Admin › Actividad)', () => {
+  const setup = () => {
+    const prisma = {
+      tenant: { findUniqueOrThrow: jest.fn().mockResolvedValue({ timezone: 'America/Guayaquil' }) },
+      activityEvent: { count: jest.fn().mockResolvedValue(0), findMany: jest.fn().mockResolvedValue([]) },
+      $transaction: jest.fn(async (ops: unknown[]) => Promise.all(ops)),
+    };
+    return { prisma, service: new ActivityService(prisma as never) };
+  };
+
+  it('solo la firma propia, con filtros por grupo y persona', async () => {
+    const { prisma, service } = setup();
+    await service.listForTenant('t1', { category: 'citas', actorId: 'u9' });
+    const where = prisma.activityEvent.findMany.mock.calls[0][0].where;
+    expect(where).toEqual({
+      tenantId: 't1',
+      actorId: 'u9',
+      type: { in: ['APPOINTMENT_CREATED', 'APPOINTMENT_CONFIRMED', 'APPOINTMENT_CANCELLED', 'APPOINTMENT_COMPLETED'] },
+    });
+  });
+
+  it('las fechas son días enteros en la hora de la firma, «hasta» incluido', async () => {
+    const { prisma, service } = setup();
+    await service.listForTenant('t1', { from: '2026-11-01', to: '2026-11-11' });
+    const { createdAt } = prisma.activityEvent.findMany.mock.calls[0][0].where;
+    // Guayaquil es UTC−5
+    expect(createdAt.gte.toISOString()).toBe('2026-11-01T05:00:00.000Z');
+    expect(createdAt.lt.toISOString()).toBe('2026-11-12T05:00:00.000Z');
+  });
+
+  it('pagina y devuelve el total', async () => {
+    const { prisma, service } = setup();
+    prisma.activityEvent.count.mockResolvedValue(45);
+    const res = await service.listForTenant('t1', { page: 3, pageSize: 20 });
+    expect(prisma.activityEvent.findMany.mock.calls[0][0]).toMatchObject({ skip: 40, take: 20 });
+    expect(res.meta).toMatchObject({ total: 45, page: 3, pageSize: 20 });
+  });
+});

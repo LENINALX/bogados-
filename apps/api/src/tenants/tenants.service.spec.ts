@@ -6,6 +6,8 @@ import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 describe('TenantsService (aislamiento por tenant)', () => {
   let prisma: {
     tenant: { findMany: jest.Mock; findUnique: jest.Mock; findFirst: jest.Mock; update: jest.Mock };
+    activityEvent: { create: jest.Mock };
+    $transaction: jest.Mock;
   };
   let service: TenantsService;
 
@@ -25,12 +27,15 @@ describe('TenantsService (aislamiento por tenant)', () => {
           id: where.id,
           name: 'Firma',
           slug: 'firma',
+          requireTwoFactor: false,
         })),
         findFirst: jest.fn().mockResolvedValue(null),
-        update: jest.fn(async ({ where, data }) => ({ id: where.id, ...data })),
+        update: jest.fn(async ({ where, data }) => ({ id: where.id, name: 'Firma', slug: 'firma', requireTwoFactor: false, ...data })),
       },
+      activityEvent: { create: jest.fn() },
+      $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
     };
-    service = new TenantsService(prisma as never);
+    service = new TenantsService(prisma as never, {} as never);
   });
 
   it('findAll solo devuelve el tenant propio', async () => {
@@ -60,18 +65,41 @@ describe('TenantsService (aislamiento por tenant)', () => {
       where: { id: 't1' },
       data: { name: 'Nuevo nombre' },
     });
+    expect(prisma.activityEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tenantId: 't1',
+        actorId: admin.id,
+        type: 'SETTINGS_UPDATED',
+        summary: 'Ajustes de la firma: nombre: Firma → Nuevo nombre',
+      }),
+    });
   });
 });
 
 describe('TenantsService.findPublic', () => {
   const setupPublic = () => {
-    const prisma = { tenant: { findUnique: jest.fn().mockResolvedValue({ name: 'Firma Demo', slug: 'firma-demo' }) } };
-    return { prisma, service: new TenantsService(prisma as never) };
+    const prisma = {
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue({
+          name: 'Firma Demo',
+          slug: 'firma-demo',
+          brandColor: null,
+          logoPath: null,
+          logoUpdatedAt: null,
+        }),
+      },
+    };
+    return { prisma, service: new TenantsService(prisma as never, {} as never) };
   };
 
   it('normaliza el código y lo busca', async () => {
     const { prisma, service } = setupPublic();
-    await expect(service.findPublic('  Firma-Demo ')).resolves.toEqual({ name: 'Firma Demo', slug: 'firma-demo' });
+    await expect(service.findPublic('  Firma-Demo ')).resolves.toEqual({
+      name: 'Firma Demo',
+      slug: 'firma-demo',
+      brandColor: null,
+      logoVersion: null,
+    });
     expect(prisma.tenant.findUnique.mock.calls[0][0].where).toEqual({ slug: 'firma-demo' });
   });
 

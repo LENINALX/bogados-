@@ -11,6 +11,7 @@ import { AppointmentStatus, Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { recordActivity } from '../activity/activity.service';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import {
   CreateAppointmentDto,
@@ -52,6 +53,13 @@ const appointmentInclude = {
   client: { select: { id: true, name: true, email: true } },
   case: { select: { id: true, title: true } },
 } satisfies Prisma.AppointmentInclude;
+
+/** Cambios de estado que quedan en Admin › Actividad */
+const STATUS_ACTIVITY: Partial<Record<AppointmentStatus, { type: string; verb: string }>> = {
+  confirmada: { type: 'APPOINTMENT_CONFIRMED', verb: 'confirmada' },
+  cancelada: { type: 'APPOINTMENT_CANCELLED', verb: 'cancelada' },
+  completada: { type: 'APPOINTMENT_COMPLETED', verb: 'completada' },
+};
 
 type AppointmentWithPeople = Prisma.AppointmentGetPayload<{ include: typeof appointmentInclude }>;
 type Person = { id: string; name: string; email: string };
@@ -238,6 +246,13 @@ export class AppointmentsService {
               tx,
             );
           }
+          await recordActivity(tx, {
+            tenantId: actor.tenantId,
+            actorId: actor.id,
+            type: 'APPOINTMENT_CREATED',
+            summary: `${byClient ? 'Cita solicitada' : 'Cita programada'}: ${created.client.name} con ${created.lawyer.name}, ${this.when(startsAt, tenant.timezone)}`,
+            meta: { appointmentId: created.id, caseId: created.caseId },
+          });
           return created;
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -314,6 +329,16 @@ export class AppointmentsService {
           },
           tx,
         );
+      }
+      const logged = STATUS_ACTIVITY[dto.status];
+      if (logged) {
+        await recordActivity(tx, {
+          tenantId: actor.tenantId,
+          actorId: actor.id,
+          type: logged.type,
+          summary: `Cita ${logged.verb}: ${current.client.name} con ${current.lawyer.name}, ${this.when(current.startsAt, tenant.timezone)}`,
+          meta: { appointmentId: id, caseId: current.caseId },
+        });
       }
       return tx.appointment.findUniqueOrThrow({ where: { id }, include: appointmentInclude });
     });
@@ -480,7 +505,7 @@ export class AppointmentsService {
     kind: AppointmentEmailKind,
     recipient: Person,
     counterpartName: string,
-    appt: { startsAt: Date; reason: string | null; note: string | null },
+    appt: { tenantId: string; startsAt: Date; reason: string | null; note: string | null },
     tenant: { name: string; timezone: string },
     recipientIsStaff: boolean,
   ) {
@@ -496,7 +521,7 @@ export class AppointmentsService {
         note: appt.note,
         link: `${this.appUrl}${recipientIsStaff ? '/agenda' : '/portal/citas'}`,
       });
-      await this.mail.send({ to: recipient.email, ...email });
+      await this.mail.send({ to: recipient.email, ...email, tenantId: appt.tenantId });
     } catch (err) {
       this.logger.error(
         `No se pudo enviar el email "${kind}" a ${recipient.email}`,

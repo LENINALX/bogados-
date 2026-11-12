@@ -6,9 +6,10 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { Prisma, UserTokenType } from '@prisma/client';
+import { Prisma, Role, UserTokenType } from '@prisma/client';
 import { AccountTokensService, unusablePasswordHash } from '../auth/account-tokens.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { recordActivity } from '../activity/activity.service';
 import { CreateUserDto, ListUsersQueryDto, UpdateUserDto } from './dto/user.dto';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import {
@@ -26,6 +27,23 @@ const userSelect = {
   createdAt: true,
   updatedAt: true,
 } as const;
+
+const ROLE_LABEL: Record<Role, string> = { ADMIN: 'Admin', ABOGADO: 'Abogado', CLIENTE: 'Cliente' };
+
+/** Qué cambió, en palabras, para el registro de actividad. Nunca incluye la contraseña. */
+function describeChanges(
+  before: { name: string; email: string; role: Role; active: boolean },
+  data: { name?: string; email?: string; role?: Role; active?: boolean; passwordHash?: string },
+) {
+  const changes: string[] = [];
+  if (data.name !== undefined && data.name !== before.name) changes.push(`nombre: ${before.name} → ${data.name}`);
+  if (data.email !== undefined && data.email !== before.email) changes.push('email cambiado');
+  if (data.role !== undefined && data.role !== before.role) {
+    changes.push(`rol: ${ROLE_LABEL[before.role]} → ${ROLE_LABEL[data.role]}`);
+  }
+  if (data.passwordHash !== undefined) changes.push('contraseña restablecida');
+  return changes;
+}
 
 @Injectable()
 export class UsersService {
@@ -81,16 +99,26 @@ export class UsersService {
     const passwordHash = dto.password
       ? await bcrypt.hash(dto.password, 10)
       : await unusablePasswordHash();
-    const user = await this.prisma.user.create({
-      data: {
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          tenantId: actor.tenantId,
+          email,
+          name: dto.name,
+          role: dto.role,
+          passwordHash,
+          active: dto.active ?? true,
+        },
+        select: userSelect,
+      });
+      await recordActivity(tx, {
         tenantId: actor.tenantId,
-        email,
-        name: dto.name,
-        role: dto.role,
-        passwordHash,
-        active: dto.active ?? true,
-      },
-      select: userSelect,
+        actorId: actor.id,
+        type: 'USER_CREATED',
+        summary: `Usuario creado: ${created.name} (${ROLE_LABEL[created.role]})`,
+        meta: { userId: created.id },
+      });
+      return created;
     });
 
     const invitationSent =
@@ -108,6 +136,13 @@ export class UsersService {
     if (!invitationSent) {
       throw new ServiceUnavailableException('No se pudo enviar el email de invitación');
     }
+    await recordActivity(this.prisma, {
+      tenantId: actor.tenantId,
+      actorId: actor.id,
+      type: 'USER_INVITED',
+      summary: `Invitación enviada de nuevo a ${user.name}`,
+      meta: { userId: user.id },
+    });
     return { invitationSent };
   }
 
@@ -121,7 +156,7 @@ export class UsersService {
         throw new BadRequestException('No puedes desactivar tu propia cuenta');
       }
     }
-    const data: Record<string, unknown> = {};
+    const data: { email?: string; name?: string; role?: Role; active?: boolean; passwordHash?: string; passwordChangedAt?: Date } = {};
     if (dto.email) {
       const email = dto.email.toLowerCase().trim();
       const taken = await this.prisma.user.findFirst({
@@ -147,18 +182,42 @@ export class UsersService {
         await tx.userToken.deleteMany({ where: { userId: id, usedAt: null } });
         await tx.loginChallenge.deleteMany({ where: { userId: id, consumedAt: null } });
       }
-      return tx.user.update({ where: { id }, data, select: userSelect });
+      const updated = await tx.user.update({ where: { id }, data, select: userSelect });
+      const changes = describeChanges(current, data);
+      const activeChanged = dto.active !== undefined && dto.active !== current.active;
+      if (activeChanged || changes.length) {
+        const type = activeChanged ? (dto.active ? 'USER_REACTIVATED' : 'USER_DEACTIVATED') : 'USER_UPDATED';
+        const head = activeChanged
+          ? `${dto.active ? 'Usuario reactivado' : 'Usuario desactivado'}: ${updated.name}`
+          : `Usuario editado: ${updated.name}`;
+        await recordActivity(tx, {
+          tenantId: actor.tenantId,
+          actorId: actor.id,
+          type,
+          summary: changes.length ? `${head} (${changes.join('; ')})` : head,
+          meta: { userId: id },
+        });
+      }
+      return updated;
     });
   }
 
   async remove(id: string, actor: JwtPayloadUser) {
-    await this.findOne(id, actor);
+    const current = await this.findOne(id, actor);
     if (id === actor.id) {
       throw new BadRequestException('No puedes desactivar tu propia cuenta');
     }
-    await this.prisma.user.update({
-      where: { id },
-      data: { active: false },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id }, data: { active: false } });
+      if (current.active) {
+        await recordActivity(tx, {
+          tenantId: actor.tenantId,
+          actorId: actor.id,
+          type: 'USER_DEACTIVATED',
+          summary: `Usuario desactivado: ${current.name}`,
+          meta: { userId: id },
+        });
+      }
     });
     return { ok: true };
   }

@@ -30,6 +30,7 @@ export class ClientUpdatesService {
       where: { id: caseId },
       select: {
         title: true,
+        tenantId: true,
         tenant: { select: { name: true } },
         lawyer: { select: { name: true } },
         client: { select: { name: true, email: true, active: true } },
@@ -46,7 +47,7 @@ export class ClientUpdatesService {
         lawyerName: c.lawyer?.name,
         link: `${this.appUrl}/portal/casos/${caseId}`,
       });
-      await this.mail.send({ to: c.client.email, ...email });
+      await this.mail.send({ to: c.client.email, ...email, tenantId: c.tenantId });
       return true;
     } catch (err) {
       this.logger.error(

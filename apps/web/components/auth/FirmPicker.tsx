@@ -7,11 +7,12 @@ import { normalizeFirmSlug } from "@/lib/firm-memory";
 import { Spinner } from "../ui";
 import { AuthField } from "./AuthField";
 import { applyFilter, filters } from "@/lib/input-filters";
+import { FirmMark } from "../FirmMark";
 
 export type FirmLookup =
   | { state: "idle" }
   | { state: "checking" }
-  | { state: "found"; name: string }
+  | { state: "found"; name: string; logoVersion: number | null; brandColor: string | null }
   | { state: "missing" }
   /** Sin conexión con la API: no se bloquea el envío, ya responderá el login */
   | { state: "error" };
@@ -36,8 +37,12 @@ export function useFirmLookup(rawSlug: string, enabled = true): FirmLookup {
     }
     setLookup({ state: "checking" });
     const t = setTimeout(() => {
-      nestPublicFetch<{ name: string }>(`/tenants/public/${encodeURIComponent(slug)}`)
-        .then((firm) => id === seq.current && setLookup({ state: "found", name: firm.name }))
+      nestPublicFetch<PublicFirm>(`/tenants/public/${encodeURIComponent(slug)}`)
+        .then(
+          (firm) =>
+            id === seq.current &&
+            setLookup({ state: "found", name: firm.name, logoVersion: firm.logoVersion ?? null, brandColor: firm.brandColor ?? null }),
+        )
         .catch((err) => {
           if (id !== seq.current) return;
           setLookup(err instanceof NestApiError && err.status === 404 ? { state: "missing" } : { state: "error" });
@@ -49,24 +54,34 @@ export function useFirmLookup(rawSlug: string, enabled = true): FirmLookup {
   return lookup;
 }
 
-/** «Firma Demo Abogados» → «FD»: identifica la firma como un espacio de trabajo. */
-function monogram(name: string) {
-  const words = name.split(/\s+/).filter((w) => /^[A-Za-zÁÉÍÓÚÑáéíóúñ]/.test(w) && w.length > 2);
-  return ((words[0]?.[0] ?? name[0] ?? "") + (words[1]?.[0] ?? "")).toUpperCase();
+type PublicFirm = { name: string; logoVersion?: number | null; brandColor?: string | null };
+
+/** Logo y color de la firma recordada: se piden aparte y, si fallan, queda el monograma. */
+function useFirmBranding(slug: string) {
+  const [branding, setBranding] = useState<{ logoVersion: number | null; brandColor: string | null }>({
+    logoVersion: null,
+    brandColor: null,
+  });
+  useEffect(() => {
+    let alive = true;
+    nestPublicFetch<PublicFirm>(`/tenants/public/${encodeURIComponent(slug)}`)
+      .then((f) => alive && setBranding({ logoVersion: f.logoVersion ?? null, brandColor: f.brandColor ?? null }))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [slug]);
+  return branding;
 }
 
-/** Firma recordada en este navegador: se muestra su nombre y se puede cambiar. */
+/** Firma recordada en este navegador: se muestra su nombre (con su logo) y se puede cambiar. */
 export function FirmChip({ name, slug, onChange }: { name: string; slug: string; onChange: () => void }) {
+  const branding = useFirmBranding(slug);
   return (
     <div>
       <p className="label mb-1.5">Firma</p>
       <div className="flex items-center gap-3 rounded-[0.625rem] border border-slate-900/[0.16] bg-surface px-3 py-2.5 shadow-[0_1px_1px_rgb(23_21_17/0.04)]">
-        <span
-          aria-hidden
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-700 text-[13px] font-semibold tracking-wide text-white"
-        >
-          {monogram(name)}
-        </span>
+        <FirmMark name={name} slug={slug} logoVersion={branding.logoVersion} brandColor={branding.brandColor} size={32} />
         <span className="min-w-0 flex-1 leading-tight">
           <span className="block truncate text-[0.9375rem] font-medium text-slate-900">{name}</span>
           <span className="block truncate font-mono text-xs text-slate-500">{slug}</span>
