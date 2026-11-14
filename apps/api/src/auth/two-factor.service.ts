@@ -20,6 +20,11 @@ export const LOGIN_CODE = {
   maxAttempts: 5,
   resendCooldownMs: 30_000,
   maxSends: 4,
+  /**
+   * Desafíos por usuario y hora. Cada uno da 5 intentos: sin tope, quien tenga la contraseña
+   * podría pedir desafíos sin parar hasta acertar el código.
+   */
+  maxChallengesPerHour: 8,
 } as const;
 
 /** Lo que la web necesita para pedir el código. */
@@ -113,8 +118,27 @@ export class TwoFactorService {
     const id = randomUUID();
     const code = generateCode();
     const now = Date.now();
-    // Solo vale el último desafío de cada usuario
-    await this.prisma.loginChallenge.deleteMany({ where: { userId: user.id, consumedAt: null } });
+    const recent = await this.prisma.loginChallenge.count({
+      where: { userId: user.id, createdAt: { gt: new Date(now - 60 * 60_000) } },
+    });
+    if (recent >= LOGIN_CODE.maxChallengesPerHour) {
+      throw new HttpException(
+        {
+          message: 'Has pedido demasiados códigos de acceso. Espera una hora e inténtalo de nuevo.',
+          error: { code: 'ACCOUNT_LOCKED', retryAfterSeconds: 60 * 60 },
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    // Solo vale el último desafío de cada usuario. Los anteriores se cierran (no se borran:
+    // cuentan para el tope por hora) y los de más de un día se limpian.
+    await this.prisma.loginChallenge.updateMany({
+      where: { userId: user.id, consumedAt: null },
+      data: { consumedAt: new Date(now) },
+    });
+    await this.prisma.loginChallenge.deleteMany({
+      where: { userId: user.id, createdAt: { lt: new Date(now - 24 * 60 * 60_000) } },
+    });
     const challenge = await this.prisma.loginChallenge.create({
       data: {
         id,

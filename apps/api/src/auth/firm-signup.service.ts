@@ -1,6 +1,7 @@
 import { ConflictException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma, Role } from '@prisma/client';
+import { Prisma, Role, UserTokenType } from '@prisma/client';
+import { AccountTokensService } from './account-tokens.service';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
@@ -59,6 +60,7 @@ export class FirmSignupService {
     private prisma: PrismaService,
     private mail: MailService,
     private terms: TermsService,
+    private tokens: AccountTokensService,
     config: ConfigService,
   ) {
     this.enabled = config.get<boolean>('signup.enabled', true);
@@ -83,17 +85,28 @@ export class FirmSignupService {
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     let tenant: { id: string; name: string; slug: string };
+    let adminId: string;
     try {
-      tenant = await this.prisma.$transaction(async (tx) => {
+      ({ tenant, adminId } = await this.prisma.$transaction(async (tx) => {
         const t = await tx.tenant.create({
           data: { name: dto.firmName, slug: dto.slug },
           select: { id: true, name: true, slug: true },
         });
-        await tx.user.create({
-          data: { tenantId: t.id, email: dto.email, name: dto.name, role: Role.ADMIN, passwordHash, active: true },
+        // Sin verificar: no puede entrar (ni invitar a nadie en nombre de la firma) hasta confirmar su email
+        const admin = await tx.user.create({
+          data: {
+            tenantId: t.id,
+            email: dto.email,
+            name: dto.name,
+            role: Role.ADMIN,
+            passwordHash,
+            active: true,
+            emailVerified: false,
+          },
+          select: { id: true },
         });
-        return t;
-      });
+        return { tenant: t, adminId: admin.id };
+      }));
     } catch (e) {
       // Otra alta se llevó el mismo código entre la comprobación y la creación
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') await this.slugTaken(dto.slug);
@@ -111,17 +124,23 @@ export class FirmSignupService {
       }
     }
 
-    const loginUrl = `${this.appUrl}/login?${new URLSearchParams({ firma: tenant.slug, email: dto.email })}`;
+    // Enlace de confirmación (si el correo falla, se reenvía al intentar entrar)
+    const verificationSent = await this.tokens.send(adminId, UserTokenType.VERIFY);
+
+    return { firm: { name: tenant.name, slug: tenant.slug }, email: dto.email, verificationRequired: true, verificationSent };
+  }
+
+  /** Bienvenida con los primeros pasos, una vez confirmado el email. Nunca lanza. */
+  async sendWelcome(d: { name: string; email: string; tenantName: string; tenantSlug: string }) {
+    const loginUrl = `${this.appUrl}/login?${new URLSearchParams({ firma: d.tenantSlug, email: d.email })}`;
     try {
       await this.mail.send({
-        to: dto.email,
-        ...buildWelcomeEmail({ name: dto.name, firmName: tenant.name, slug: tenant.slug, loginUrl }),
+        to: d.email,
+        ...buildWelcomeEmail({ name: d.name, firmName: d.tenantName, slug: d.tenantSlug, loginUrl }),
       });
     } catch (err) {
-      this.logger.error(`No se envió la bienvenida a ${dto.email}`, err instanceof Error ? err.stack : String(err));
+      this.logger.error(`No se envió la bienvenida a ${d.email}`, err instanceof Error ? err.stack : String(err));
     }
-
-    return { firm: { name: tenant.name, slug: tenant.slug }, email: dto.email };
   }
 
   private async isTaken(slug: string) {

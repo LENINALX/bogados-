@@ -65,8 +65,12 @@ export class LoginEventsService {
    * Fallos de contraseña de una cuenta (firma + email) desde su último acceso correcto,
    * dentro de la ventana. Cuenta también los emails inexistentes: así el bloqueo no
    * revela qué cuentas existen. `oldest` dice cuándo se libera el bloqueo.
+   *
+   * Con `ip`, solo cuentan los fallos desde esa IP: quien falla se bloquea a sí mismo, pero no
+   * deja fuera al dueño de la cuenta, que entra desde otro sitio. (El freno general por cuenta
+   * del throttler sigue limitando los intentos repartidos entre muchas IP.)
    */
-  async recentPasswordFailures(tenantId: string, email: string, windowMs: number) {
+  async recentPasswordFailures(tenantId: string, email: string, windowMs: number, ip?: string | null) {
     const since = new Date(Date.now() - windowMs);
     const lastSuccess = await this.prisma.loginEvent.findFirst({
       where: { tenantId, email, success: true, createdAt: { gte: since } },
@@ -78,6 +82,7 @@ export class LoginEventsService {
       email,
       success: false,
       reason: { in: PASSWORD_FAILURES },
+      ...(ip ? { ip } : {}),
       createdAt: lastSuccess ? { gt: lastSuccess.createdAt } : { gte: since },
     };
     const [count, oldest] = await this.prisma.$transaction([

@@ -26,6 +26,7 @@ const OK_MESSAGES: Record<string, string> = {
   password: "Contraseña guardada. Ya puedes iniciar sesión.",
   "password-changed": "Contraseña cambiada. Por seguridad cerramos tus sesiones: entra con la nueva.",
   "signed-out": "Has cerrado la sesión.",
+  verified: "Email confirmado. Tu cuenta ya está activa: inicia sesión.",
 };
 
 type Field = "tenantSlug" | "email" | "password";

@@ -18,6 +18,8 @@ export type LoginOutcome =
   | { kind: "invalid"; remaining?: number }
   | { kind: "locked"; retryAfterSeconds?: number }
   | { kind: "unavailable" }
+  /** Contraseña correcta, pero quien registró la firma aún no confirmó su email */
+  | { kind: "unverified"; emailHint?: string }
   /** Contraseña correcta: falta el código que se envió por email */
   | { kind: "two_factor"; challenge: LoginChallenge }
   | { kind: "bad_code"; message: string; remaining?: number }
@@ -69,6 +71,8 @@ export function loginOutcomeMessage(outcome: LoginOutcome): string {
         : "Demasiados intentos con esta cuenta. Espera 15 minutos e inténtalo de nuevo.";
     case "unavailable":
       return "No pudimos conectar con el servidor. Comprueba tu conexión o inténtalo en unos minutos.";
+    case "unverified":
+      return `Falta confirmar tu email. Te enviamos un enlace${outcome.emailHint ? ` a ${outcome.emailHint}` : ""}: ábrelo y vuelve a entrar. Revisa también el correo no deseado.`;
     case "two_factor":
       return "";
     case "bad_code":

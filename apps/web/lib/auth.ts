@@ -59,6 +59,18 @@ export const authOptions: NextAuthOptions = {
   // El límite real lo pone el token de la API: 12 h, o 30 días con «mantener la sesión iniciada»
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 30 },
   pages: { signIn: "/login" },
+  events: {
+    // Cerrar sesión también invalida el token en la API: si alguien lo copió, deja de servir.
+    // Si la API no responde, la sesión de la web se cierra igual.
+    async signOut({ token }) {
+      if (!token?.accessToken) return;
+      await fetch(`${NEST_API_URL}/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token.accessToken}` },
+        cache: "no-store",
+      }).catch(() => undefined);
+    },
+  },
   providers: [
     CredentialsProvider({
       name: "Credenciales",
@@ -115,6 +127,11 @@ export const authOptions: NextAuthOptions = {
           const body = (await res.json().catch(() => ({}))) as { details?: { retryAfterSeconds?: number } };
           const retry = body.details?.retryAfterSeconds ?? Number(res.headers.get("retry-after-login"));
           stop({ kind: "locked", retryAfterSeconds: Number.isFinite(retry) && retry > 0 ? retry : undefined });
+        }
+        if (!codeStep && res.status === 403) {
+          // Contraseña correcta, pero falta confirmar el email (alta de una firma): la API ya reenvió el enlace
+          const body = (await res.json().catch(() => ({}))) as { details?: { code?: string; emailHint?: string } };
+          if (body.details?.code === "EMAIL_NOT_VERIFIED") stop({ kind: "unverified", emailHint: body.details.emailHint });
         }
         if (codeStep && (res.status === 400 || res.status === 401)) await codeStepFailure(res);
         // 400 (datos mal formados) y 401 (credenciales): un único mensaje, con los intentos que quedan

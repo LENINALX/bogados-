@@ -21,6 +21,7 @@ import {
   ListLoginEventsQueryDto,
   ResendLoginCodeDto,
   UpdateTwoFactorDto,
+  VerifyEmailDto,
   VerifyLoginDto,
 } from './dto/login-security.dto';
 
@@ -135,6 +136,26 @@ export class AuthController {
   @ApiOperation({ summary: 'Define la contraseña con un enlace de invitación o recuperación' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.tokens.setPassword(dto.token, dto.password);
+  }
+
+  @Post('verify-email')
+  @HttpCode(200)
+  @UseGuards(IpRateLimit(30, 60_000))
+  @ApiOperation({ summary: 'Confirma el email de quien registró una firma (enlace del correo)' })
+  async verifyEmail(@Body() dto: VerifyEmailDto) {
+    const verified = await this.tokens.verifyEmail(dto.token);
+    // La bienvenida con los primeros pasos, ya con el email confirmado (no retrasa la respuesta)
+    void this.firmSignup.sendWelcome(verified);
+    return { email: verified.email, tenantSlug: verified.tenantSlug, tenantName: verified.tenantName };
+  }
+
+  @Post('logout')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cierra esta sesión: su token deja de valer aunque no haya caducado' })
+  logout(@CurrentUser() user: JwtPayloadUser) {
+    return this.auth.logout(user);
   }
 
   @Get('me')

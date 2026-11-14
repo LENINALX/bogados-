@@ -10,6 +10,7 @@ import { Prisma, Role, UserTokenType } from '@prisma/client';
 import { AccountTokensService, unusablePasswordHash } from '../auth/account-tokens.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { recordActivity } from '../activity/activity.service';
+import { assertInvitationQuota } from '../auth/invitation-quota';
 import { CreateUserDto, ListUsersQueryDto, UpdateUserDto } from './dto/user.dto';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import {
@@ -94,6 +95,7 @@ export class UsersService {
       },
     });
     if (exists) throw new ConflictException('Email ya registrado en el tenant');
+    await assertInvitationQuota(this.prisma, actor.tenantId);
 
     // Sin contraseña: se invita por email y el usuario la define al activar la cuenta
     const passwordHash = dto.password
@@ -132,6 +134,7 @@ export class UsersService {
   async invite(id: string, actor: JwtPayloadUser) {
     const user = await this.findOne(id, actor);
     if (!user.active) throw new BadRequestException('El usuario está desactivado');
+    await assertInvitationQuota(this.prisma, actor.tenantId);
     const invitationSent = await this.tokens.send(user.id, UserTokenType.INVITE, actor.name);
     if (!invitationSent) {
       throw new ServiceUnavailableException('No se pudo enviar el email de invitación');

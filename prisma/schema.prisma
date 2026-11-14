@@ -85,6 +85,8 @@ model User {
   passwordChangedAt DateTime?
   /// Al entrar, además de la contraseña, se pide un código enviado por email
   twoFactorEnabled  Boolean   @default(false)
+  /// false solo en quien registra una firma hasta que confirma su email: no puede entrar antes
+  emailVerified     Boolean   @default(true)
   lastLoginAt       DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -101,7 +103,8 @@ model User {
   tokens               UserToken[]
   loginEvents          LoginEvent[]
   loginChallenges      LoginChallenge[]
-  availability         Availability[]
+  revokedTokens        RevokedToken[]
+  availability        Availability[]
   appointmentsAsLawyer Appointment[]    @relation("AppointmentLawyer")
   appointmentsAsClient Appointment[]    @relation("AppointmentClient")
 
@@ -296,6 +299,21 @@ model Appointment {
 enum UserTokenType {
   INVITE
   RESET
+  /// Confirmar el email de quien registra una firma
+  VERIFY
+}
+
+/// Sesiones cerradas a mano: su token (por su `jti`) deja de valer aunque no haya caducado.
+/// Las filas se borran cuando el token habría caducado de todos modos.
+model RevokedToken {
+  jti       String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
 }
 
 /// Enlaces de un solo uso (invitación / recuperar contraseña). Solo se guarda el hash.

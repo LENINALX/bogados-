@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -8,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import { Role, Tenant, User, UserTokenType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
@@ -23,8 +25,9 @@ import { AccountTokensService, unusablePasswordHash } from './account-tokens.ser
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import { ClientMeta } from './client-meta';
 import { LoginEventsService, LoginReason } from './login-events.service';
-import { requiresTwoFactor, TwoFactorService } from './two-factor.service';
+import { maskEmail, requiresTwoFactor, TwoFactorService } from './two-factor.service';
 import { LoginAlertService } from './login-alert.service';
+import { assertInvitationQuota } from './invitation-quota';
 
 /**
  * Bloqueo de la cuenta por contraseñas fallidas: se cuentan solo los fallos (no los accesos
@@ -91,8 +94,9 @@ export class AuthService {
       },
     });
 
-    // Bloqueada también con la contraseña correcta: si no, el bloqueo no frenaría nada
-    const failures = await this.loginEvents.recentPasswordFailures(tenant.id, email, ACCOUNT_LOCKOUT.windowMs);
+    // Bloqueada también con la contraseña correcta: si no, el bloqueo no frenaría nada.
+    // Por IP: quien falla no deja fuera al dueño de la cuenta, que entra desde otro sitio.
+    const failures = await this.loginEvents.recentPasswordFailures(tenant.id, email, ACCOUNT_LOCKOUT.windowMs, meta.ip);
     if (failures.count >= ACCOUNT_LOCKOUT.maxFailures) {
       const releaseAt = (failures.oldest?.getTime() ?? Date.now()) + ACCOUNT_LOCKOUT.windowMs;
       throw new HttpException(
@@ -127,6 +131,16 @@ export class AuthService {
     if (!user) return fail('unknown_user');
     if (!ok) return fail('bad_password');
     if (!user.active) return fail('inactive');
+
+    // Quien registró una firma no entra hasta confirmar su email (se reenvía el enlace si hace falta).
+    // Solo se dice con la contraseña correcta: no revela nada a quien no la tiene.
+    if (!user.emailVerified) {
+      await this.tokens.resendVerification(user.id);
+      throw new ForbiddenException({
+        message: `Confirma tu email para entrar: te enviamos un enlace a ${maskEmail(user.email)}.`,
+        error: { code: 'EMAIL_NOT_VERIFIED', emailHint: maskEmail(user.email) },
+      });
+    }
 
     const remember = dto.remember ?? false;
     if (requiresTwoFactor(user, tenant)) {
@@ -186,6 +200,8 @@ export class AuthService {
     };
     const accessToken = await this.jwt.signAsync(payload, {
       expiresIn: opts.remember ? SESSION_TTL.remember : SESSION_TTL.default,
+      // Identificador de esta sesión: al cerrarla se revoca solo este token
+      jwtid: randomUUID(),
     });
 
     return {
@@ -201,6 +217,25 @@ export class AuthService {
       /** El acceso anterior a este: la web lo muestra para detectar accesos ajenos */
       previousLoginAt: user.lastLoginAt?.toISOString() ?? null,
     };
+  }
+
+  /**
+   * Cerrar sesión: el token deja de valer aunque no haya caducado (antes seguía sirviendo hasta
+   * 30 días si alguien lo había copiado). Solo esta sesión; las de otros dispositivos siguen.
+   */
+  async logout(actor: JwtPayloadUser) {
+    if (!actor.jti || !actor.tokenExp) return { ok: true };
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.revokedToken.upsert({
+        where: { jti: actor.jti },
+        create: { jti: actor.jti, userId: actor.id, expiresAt: new Date(actor.tokenExp * 1000) },
+        update: {},
+      }),
+      // Limpieza: un token ya caducado no necesita seguir en la lista
+      this.prisma.revokedToken.deleteMany({ where: { expiresAt: { lt: now } } }),
+    ]);
+    return { ok: true };
   }
 
   /** Estado de seguridad de la propia cuenta: dos pasos y últimos accesos. */
@@ -278,6 +313,7 @@ export class AuthService {
       },
     });
     if (exists) throw new ConflictException('Email ya registrado en el tenant');
+    await assertInvitationQuota(this.prisma, actor.tenantId);
 
     if (dto.caseId) {
       const c = await this.prisma.case.findFirst({

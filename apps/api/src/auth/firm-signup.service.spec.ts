@@ -19,7 +19,9 @@ describe('FirmSignupService', () => {
   let mail: { send: jest.Mock };
   let terms: { loadNationalHolidays: jest.Mock };
   const config = (enabled = true) => ({ get: (k: string, d: unknown) => (k === 'signup.enabled' ? enabled : d) });
-  const make = (enabled = true) => new FirmSignupService(prisma as never, mail as never, terms as never, config(enabled) as never);
+  let tokens: { send: jest.Mock };
+  const make = (enabled = true) =>
+    new FirmSignupService(prisma as never, mail as never, terms as never, tokens as never, config(enabled) as never);
 
   beforeEach(() => {
     prisma = {
@@ -27,10 +29,11 @@ describe('FirmSignupService', () => {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn(async ({ data }) => ({ id: 't9', ...data })),
       },
-      user: { create: jest.fn() },
+      user: { create: jest.fn().mockResolvedValue({ id: 'u9' }) },
       $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
     };
     mail = { send: jest.fn() };
+    tokens = { send: jest.fn().mockResolvedValue(true) };
     terms = { loadNationalHolidays: jest.fn().mockResolvedValue({ created: 11, skipped: 0 }) };
   });
 
@@ -38,10 +41,13 @@ describe('FirmSignupService', () => {
     await expect(make().register(dto)).resolves.toEqual({
       firm: { name: 'Estudio Jurídico Mejía', slug: 'estudio-mejia' },
       email: 'paola@estudiomejia.ec',
+      verificationRequired: true,
+      verificationSent: true,
     });
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     const user = prisma.user.create.mock.calls[0][0].data;
-    expect(user).toMatchObject({ tenantId: 't9', email: dto.email, role: Role.ADMIN, active: true });
+    // Sin verificar: no puede entrar hasta confirmar su email
+    expect(user).toMatchObject({ tenantId: 't9', email: dto.email, role: Role.ADMIN, active: true, emailVerified: false });
     expect(user.passwordHash).not.toBe(dto.password);
     expect(await bcrypt.compare(dto.password, user.passwordHash)).toBe(true);
   });
@@ -53,8 +59,14 @@ describe('FirmSignupService', () => {
     expect(years[1] - years[0]).toBe(1);
   });
 
-  it('envía la bienvenida con el código de firma y el enlace para entrar', async () => {
+  it('al registrarse solo se envía el enlace de confirmación, no la bienvenida', async () => {
     await make().register(dto);
+    expect(tokens.send).toHaveBeenCalledWith('u9', 'VERIFY');
+    expect(mail.send).not.toHaveBeenCalled();
+  });
+
+  it('confirmado el email, llega la bienvenida con el código de firma y el enlace para entrar', async () => {
+    await make().sendWelcome({ name: dto.name, email: dto.email, tenantName: dto.firmName, tenantSlug: dto.slug });
     const sent = mail.send.mock.calls[0][0];
     expect(sent.to).toBe(dto.email);
     expect(sent.text).toContain('Código de firma: estudio-mejia');
@@ -65,8 +77,8 @@ describe('FirmSignupService', () => {
     const svc = make();
     jest.spyOn(svc['logger'], 'error').mockImplementation(() => undefined);
     terms.loadNationalHolidays.mockRejectedValue(new Error('db'));
-    mail.send.mockRejectedValue(new Error('smtp'));
-    await expect(svc.register(dto)).resolves.toMatchObject({ firm: { slug: 'estudio-mejia' } });
+    tokens.send.mockResolvedValue(false);
+    await expect(svc.register(dto)).resolves.toMatchObject({ firm: { slug: 'estudio-mejia' }, verificationSent: false });
   });
 
   it('código ocupado: 409 con una alternativa libre', async () => {

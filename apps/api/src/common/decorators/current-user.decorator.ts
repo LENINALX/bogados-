@@ -7,6 +7,10 @@ export type JwtPayloadUser = {
   role: Role;
   tenantId: string;
   name: string;
+  /** Identificador del token de esta sesión (para revocarlo al cerrar sesión) */
+  jti?: string;
+  /** Caducidad del token, en segundos */
+  tokenExp?: number;
 };
 
 export const CurrentUser = createParamDecorator(

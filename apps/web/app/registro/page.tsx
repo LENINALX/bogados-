@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+
+
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, MailCheck } from "lucide-react";
 import { AuthShell } from "@/components/AuthShell";
 import { AuthField } from "@/components/auth/AuthField";
 import { FormMessage, Spinner } from "@/components/ui";
-import { clearNestToken, NEST_API_BASE } from "@/lib/nest-api";
+import { NEST_API_BASE } from "@/lib/nest-api";
 import { rememberFirm } from "@/lib/firm-memory";
 import { FIRM_SLUG, passwordStrength, slugifyFirm } from "@/lib/signup";
 import { rules } from "@/lib/validation";
@@ -51,7 +51,6 @@ function useSlugCheck(slug: string): SlugCheck {
 const STRENGTH_COLORS = ["bg-red-500", "bg-red-500", "bg-amber-500", "bg-emerald-500", "bg-emerald-600"];
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [firmName, setFirmName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
@@ -62,6 +61,8 @@ export default function RegisterPage() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  /** Firma ya creada, a la espera de que se confirme el email */
+  const [created, setCreated] = useState<{ firm: { name: string; slug: string }; email: string } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const check = useSlugCheck(slug);
   const strength = passwordStrength(password);
@@ -138,21 +139,9 @@ export default function RegisterPage() {
 
       const firm = (json.data ?? json).firm as { name: string; slug: string };
       rememberFirm(firm);
-      // Entrar directamente con la cuenta recién creada
-      const login = await signIn("credentials", {
-        email: email.trim(),
-        password,
-        tenantSlug: firm.slug,
-        remember: "false",
-        redirect: false,
-      }).catch(() => null);
-      clearNestToken();
-      if (login && !login.error) {
-        router.replace("/dashboard");
-        router.refresh();
-      } else {
-        router.replace(`/login?${new URLSearchParams({ firma: firm.slug, email: email.trim() })}`);
-      }
+      // No se entra aún: primero hay que confirmar el email con el enlace que acabamos de enviar
+      setLoading(false);
+      setCreated({ firm, email: email.trim() });
     } catch {
       setLoading(false);
       shake();
@@ -172,6 +161,32 @@ export default function RegisterPage() {
     ) : (
       "Tu equipo lo usará para entrar."
     );
+
+  if (created) {
+    const loginHref = `/login?${new URLSearchParams({ firma: created.firm.slug, email: created.email })}`;
+    return (
+      <AuthShell title="Revisa tu correo" subtitle={`${created.firm.name} ya está creada. Solo falta confirmar tu email.`}>
+        <div className="flex items-start gap-3 rounded-[0.625rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          <MailCheck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+          <p>
+            Te enviamos un enlace a <strong className="break-all font-semibold">{created.email}</strong>. Ábrelo para
+            activar tu cuenta; caduca en 24 horas.
+          </p>
+        </div>
+        <dl className="mt-5 rounded-[0.625rem] border border-slate-900/[0.12] bg-surface px-4 py-3 text-sm">
+          <dt className="text-xs text-slate-500">Código de firma (lo necesitaréis tú y tu equipo para entrar)</dt>
+          <dd className="mt-0.5 font-mono text-base font-semibold text-slate-900">{created.firm.slug}</dd>
+        </dl>
+        <p className="mt-5 text-sm text-slate-600">
+          ¿No llega? Revisa el correo no deseado. Si intentas iniciar sesión antes de confirmarlo, te enviaremos el
+          enlace otra vez.
+        </p>
+        <Link href={loginHref} className="btn-secondary mt-6 w-full">
+          Ir a iniciar sesión
+        </Link>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell

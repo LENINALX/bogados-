@@ -55,6 +55,7 @@ describe('TwoFactorService', () => {
   let prisma: {
     loginChallenge: {
       deleteMany: jest.Mock;
+      count: jest.Mock;
       create: jest.Mock;
       delete: jest.Mock;
       findUnique: jest.Mock;
@@ -88,6 +89,7 @@ describe('TwoFactorService', () => {
     prisma = {
       loginChallenge: {
         deleteMany: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
         create: jest.fn(async ({ data }) => ({ ...data, lastSentAt: new Date() })),
         delete: jest.fn().mockResolvedValue({}),
         findUnique: jest.fn(),
@@ -103,13 +105,25 @@ describe('TwoFactorService', () => {
   describe('start', () => {
     it('crea un desafío nuevo (anula los anteriores), guarda solo el hash y envía el código', async () => {
       const res = await service.start(user as never, user.tenant as never, { remember: true, ip: '1.1.1.1', userAgent: 'Firefox/1' });
-      expect(prisma.loginChallenge.deleteMany).toHaveBeenCalledWith({ where: { userId: 'u1', consumedAt: null } });
+      // Los anteriores se cierran (no se borran: cuentan para el tope por hora)
+      expect(prisma.loginChallenge.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'u1', consumedAt: null },
+        data: { consumedAt: expect.any(Date) },
+      });
       const data = prisma.loginChallenge.create.mock.calls[0][0].data;
       expect(data.codeHash).toBe(hashCode(data.id, sentCode()));
       expect(JSON.stringify(data)).not.toContain(sentCode());
       expect(data.remember).toBe(true);
       expect(mail.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'ana@demo.bogados' }));
       expect(res).toMatchObject({ twoFactorRequired: true, challengeId: data.id, emailHint: 'an•••@demo.bogados' });
+    });
+
+    it('tope de desafíos por hora: no se pueden pedir códigos sin parar hasta acertar', async () => {
+      prisma.loginChallenge.count.mockResolvedValue(LOGIN_CODE.maxChallengesPerHour);
+      const err: HttpException = await service.start(user as never, user.tenant as never, { remember: false }).catch((e) => e);
+      expect(err.getStatus()).toBe(429);
+      expect(prisma.loginChallenge.create).not.toHaveBeenCalled();
+      expect(mail.send).not.toHaveBeenCalled();
     });
 
     it('si el correo falla, borra el desafío y responde 503', async () => {

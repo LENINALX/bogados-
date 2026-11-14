@@ -13,6 +13,9 @@ type JwtPayload = {
   name: string;
   /** Emisión, en segundos (lo añade jsonwebtoken) */
   iat?: number;
+  exp?: number;
+  /** Identificador del token; los emitidos antes de que existiera no lo llevan */
+  jti?: string;
 };
 
 /**
@@ -39,10 +42,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<JwtPayloadUser> {
-    const user = await this.prisma.user.findFirst({
-      where: { id: payload.sub, active: true },
-    });
-    if (!user || issuedBeforePasswordChange(payload.iat, user.passwordChangedAt)) {
+    const [user, revoked] = await Promise.all([
+      this.prisma.user.findFirst({ where: { id: payload.sub, active: true } }),
+      // Sesión cerrada a mano: el token ya no vale aunque no haya caducado
+      payload.jti
+        ? this.prisma.revokedToken.findUnique({ where: { jti: payload.jti }, select: { jti: true } })
+        : null,
+    ]);
+    if (!user || revoked || issuedBeforePasswordChange(payload.iat, user.passwordChangedAt)) {
       throw new UnauthorizedException('Token inválido');
     }
     return {
@@ -51,6 +58,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       role: user.role,
       tenantId: user.tenantId,
       name: user.name,
+      jti: payload.jti,
+      tokenExp: payload.exp,
     };
   }
 }

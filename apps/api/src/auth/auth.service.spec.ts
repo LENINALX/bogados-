@@ -27,6 +27,7 @@ describe('AuthService.login', () => {
     tenantId: 't1',
     active: true,
     twoFactorEnabled: false,
+    emailVerified: true,
     lastLoginAt: new Date('2026-10-18T13:00:00Z'),
     passwordHash,
   });
@@ -75,7 +76,7 @@ describe('AuthService.login', () => {
     expect(result.accessToken).toBe('fake.jwt.token');
     expect(result.user.email).toBe('admin@demo.bogados');
     expect(result.previousLoginAt).toBe('2026-10-18T13:00:00.000Z');
-    expect(jwt.signAsync).toHaveBeenCalledWith(expect.objectContaining({ sub: 'u1' }), { expiresIn: '12h' });
+    expect(jwt.signAsync).toHaveBeenCalledWith(expect.objectContaining({ sub: 'u1' }), { expiresIn: '12h', jwtid: expect.any(String) });
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: 'u1' },
       data: { lastLoginAt: expect.any(Date) },
@@ -109,7 +110,7 @@ describe('AuthService.login', () => {
   it('«mantener la sesión iniciada» emite un token de 30 días', async () => {
     prisma.user.findUnique.mockResolvedValue(activeAdmin());
     await login({ remember: true });
-    expect(jwt.signAsync).toHaveBeenCalledWith(expect.anything(), { expiresIn: '30d' });
+    expect(jwt.signAsync).toHaveBeenCalledWith(expect.anything(), { expiresIn: '30d', jwtid: expect.any(String) });
   });
 
   it('busca al usuario dentro del tenant indicado', async () => {
@@ -151,7 +152,7 @@ describe('AuthService.login', () => {
       message: 'Credenciales inválidas',
       error: { code: 'INVALID_CREDENTIALS', remainingAttempts: ACCOUNT_LOCKOUT.maxFailures - 3 },
     });
-    expect(loginEvents.recentPasswordFailures).toHaveBeenCalledWith('t1', 'admin@demo.bogados', ACCOUNT_LOCKOUT.windowMs);
+    expect(loginEvents.recentPasswordFailures).toHaveBeenCalledWith('t1', 'admin@demo.bogados', ACCOUNT_LOCKOUT.windowMs, meta.ip);
   });
 
   it('cuenta bloqueada: 429 con el tiempo de espera, aunque la contraseña sea correcta', async () => {
@@ -201,7 +202,7 @@ describe('AuthService.login', () => {
     });
     await service.verifyLogin({ challengeId: 'ch1', code: '123456' });
     expect(twoFactor.verify).toHaveBeenCalledWith('ch1', '123456');
-    expect(jwt.signAsync).toHaveBeenCalledWith(expect.anything(), { expiresIn: '30d' });
+    expect(jwt.signAsync).toHaveBeenCalledWith(expect.anything(), { expiresIn: '30d', jwtid: expect.any(String) });
     expect(loginEvents.record).toHaveBeenCalledWith(
       expect.objectContaining({ success: true, reason: 'two_factor', ip: '10.0.0.9', userAgent: 'Safari' }),
       prisma,

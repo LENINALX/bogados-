@@ -60,3 +60,11 @@ export class ListLoginEventsQueryDto extends PaginationQueryDto {
   @IsId('La persona')
   userId?: string;
 }
+
+export class VerifyEmailDto {
+  @ApiProperty({ description: 'Token del enlace de confirmación recibido por email' })
+  @IsString({ message: 'El enlace no es válido' })
+  @MinLength(20, { message: 'El enlace no es válido' })
+  @MaxLength(200, { message: 'El enlace no es válido' })
+  token!: string;
+}
