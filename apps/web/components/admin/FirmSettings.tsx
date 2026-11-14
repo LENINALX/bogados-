@@ -17,6 +17,7 @@ import {
   websiteProblem,
 } from "@/lib/firm-branding";
 import { FirmMark } from "@/components/FirmMark";
+import { applyFilter, filters, type InputFilter } from "@/lib/input-filters";
 import { FieldError, INVALID_INPUT, fieldA11y } from "@/components/form/FieldError";
 import { useFieldErrors } from "@/components/form/useFieldErrors";
 import { FormMessage, Spinner, errorMessage } from "@/components/ui";
@@ -47,7 +48,8 @@ const schema: Schema<Field> = {
   contactEmail: [rules.email()],
   contactPhone: [phoneProblem, rules.maxLength(25)],
   address: [rules.maxLength(ADDRESS_MAX)],
-  website: [(v) => websiteProblem(normalizeWebsite(v)), rules.maxLength(200)],
+  // Se mide ya con el https:// que se añade al guardar: así la API no la rechaza por larga
+  website: [(v) => websiteProblem(normalizeWebsite(v)), (v) => rules.maxLength(200)(normalizeWebsite(v))],
 };
 
 const idOf = (f: Field) => `firm-${f}`;
@@ -85,10 +87,10 @@ export function FirmSettings({ initial }: { initial: FirmSettingsValues }) {
     setMessage(null);
   }
 
-  const bind = (field: Field) => ({
+  const bind = (field: Field, filter?: InputFilter) => ({
     id: idOf(field),
     value: values[field],
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => set(field, e.target.value),
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => set(field, filter ? applyFilter(e.target, filter) : e.target.value),
     onBlur: () => fieldErrors.blur(field, values[field]),
     ...fieldA11y(idOf(field), errors[field], `${idOf(field)}-hint`),
     className: `input ${errors[field] ? INVALID_INPUT : ""}`,
@@ -292,7 +294,16 @@ export function FirmSettings({ initial }: { initial: FirmSettingsValues }) {
               <label htmlFor={idOf("contactEmail")} className="label">
                 Email de contacto
               </label>
-              <input {...bind("contactEmail")} type="email" inputMode="email" autoComplete="email" placeholder="despacho@mifirma.ec" />
+              <input
+                {...bind("contactEmail", filters.email)}
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                maxLength={LIMITS.email}
+                placeholder="despacho@mifirma.ec"
+              />
               <p id={`${idOf("contactEmail")}-hint`} className="mt-1.5 text-xs text-slate-500">
                 Si un cliente responde a un email de la plataforma, la respuesta llega aquí.
               </p>
@@ -302,7 +313,7 @@ export function FirmSettings({ initial }: { initial: FirmSettingsValues }) {
               <label htmlFor={idOf("contactPhone")} className="label">
                 Teléfono
               </label>
-              <input {...bind("contactPhone")} type="tel" inputMode="tel" autoComplete="tel" placeholder="+593 2 123 4567" maxLength={25} />
+              <input {...bind("contactPhone", filters.phone)} type="tel" inputMode="tel" autoComplete="tel" placeholder="+593 2 123 4567" maxLength={25} />
               <span id={`${idOf("contactPhone")}-hint`} hidden />
               <FieldError id={idOf("contactPhone")} error={errors.contactPhone} />
             </div>

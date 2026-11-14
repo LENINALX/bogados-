@@ -1,3 +1,5 @@
+import { IsId } from '../../common/validation/validators';
+import { ToBoolean } from '../../common/decorators/to-boolean.decorator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsIn, IsOptional, IsString, IsUUID, Matches, MaxLength, MinLength } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
@@ -21,7 +23,8 @@ export class ResendLoginCodeDto {
 
 export class UpdateTwoFactorDto {
   @ApiProperty()
-  @IsBoolean()
+  @ToBoolean()
+  @IsBoolean({ message: 'Indica si se activa (true) o se desactiva (false)' })
   enabled!: boolean;
 
   @ApiProperty({ description: 'Contraseña actual: confirma que quien lo cambia es el titular' })
@@ -54,7 +57,6 @@ export class ListLoginEventsQueryDto extends PaginationQueryDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsString()
-  @MaxLength(64)
+  @IsId('La persona')
   userId?: string;
 }

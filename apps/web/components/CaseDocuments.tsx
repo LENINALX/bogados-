@@ -28,10 +28,13 @@ export function CaseDocuments({
   caseId,
   initial,
   canMarkInternal,
+  timeZone = "America/Guayaquil",
 }: {
   caseId: string;
   initial: Doc[];
   canMarkInternal: boolean;
+  /** Zona horaria de la firma: el servidor y el navegador pintan la misma fecha */
+  timeZone?: string;
 }) {
   const [docs, setDocs] = useState(initial);
   const [shared, setShared] = useState(true);
@@ -148,7 +151,7 @@ export function CaseDocuments({
                   />
                 </button>
                 <div className="mt-0.5 text-xs tabular-nums text-slate-500">
-                  {d.uploadedBy.name} · {formatSize(d.sizeBytes)} · {new Date(d.createdAt).toLocaleDateString("es-EC")}
+                  {d.uploadedBy.name} · {formatSize(d.sizeBytes)} · {new Date(d.createdAt).toLocaleDateString("es-EC", { timeZone })}
                 </div>
               </div>
               {canMarkInternal && (

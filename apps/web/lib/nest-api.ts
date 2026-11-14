@@ -104,16 +104,29 @@ export async function nestFetch<T = unknown>(
   return res as unknown as T;
 }
 
-export async function nestDownloadBlob(documentId: string, fileName: string) {
-  const res = await authorizedFetch(`/documents/${documentId}/download`);
-  if (!res.ok) throw new NestApiError("No se pudo descargar", res.status);
-  const blob = await res.blob();
+function saveBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = fileName;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export async function nestDownloadBlob(documentId: string, fileName: string) {
+  const res = await authorizedFetch(`/documents/${documentId}/download`);
+  if (!res.ok) throw new NestApiError("No se pudo descargar", res.status);
+  saveBlob(await res.blob(), fileName);
+}
+
+/** Descarga un archivo que genera la API (exportaciones) y lo guarda con ese nombre. */
+export async function nestDownloadFile(path: string, fileName: string) {
+  const res = await authorizedFetch(path);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new NestApiError(err.error || `Error API ${res.status}`, res.status);
+  }
+  saveBlob(await res.blob(), fileName);
 }
 
 export { API_BASE as NEST_API_BASE };

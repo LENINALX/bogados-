@@ -8,6 +8,20 @@ const nextConfig = {
   // Solo en la imagen Docker (NEXT_OUTPUT=standalone): servidor autocontenido
   // que incluye únicamente las dependencias que usa. En local no cambia nada.
   ...(standalone && { output: "standalone" }),
+  // Cabeceras de seguridad en todas las páginas: no se pueden incrustar en un iframe (clickjacking)
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+    ];
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb",

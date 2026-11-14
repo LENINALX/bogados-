@@ -4,13 +4,13 @@ import { ToBoolean } from '../../common/decorators/to-boolean.decorator';
 import { Role } from '@prisma/client';
 import { PASSWORD_MAX, PASSWORD_MIN } from '../../auth/dto/password.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
-import { EmailField, TextField } from '../../common/validation/validators';
+import { EmailField, TextField, OptionalNotNull } from '../../common/validation/validators';
 
 export const USER_NAME_MIN = 2;
 export const USER_NAME_MAX = 120;
 export const USER_SEARCH_MAX = 200;
 
-const roleMessage = `role debe ser uno de: ${Object.values(Role).join(', ')}`;
+const roleMessage = 'El rol debe ser Admin, Abogado o Cliente';
 const passwordMinMessage = `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres`;
 const passwordMaxMessage = `La contraseña admite como máximo ${PASSWORD_MAX} caracteres`;
 
@@ -47,29 +47,29 @@ export class CreateUserDto {
 
 export class UpdateUserDto {
   @ApiPropertyOptional({ maxLength: 254 })
-  @IsOptional()
+  @OptionalNotNull('El email')
   @EmailField()
   email?: string;
 
   @ApiPropertyOptional({ minLength: USER_NAME_MIN, maxLength: USER_NAME_MAX })
-  @IsOptional()
+  @OptionalNotNull('El nombre')
   @TextField({ label: 'Nombre', min: USER_NAME_MIN, max: USER_NAME_MAX })
   name?: string;
 
   @ApiPropertyOptional({ enum: Role })
-  @IsOptional()
+  @OptionalNotNull('El rol')
   @IsEnum(Role, { message: roleMessage })
   role?: Role;
 
   @ApiPropertyOptional({ minLength: PASSWORD_MIN, maxLength: PASSWORD_MAX })
-  @IsOptional()
+  @OptionalNotNull('La contraseña')
   @IsString({ message: 'La contraseña debe ser texto' })
   @MinLength(PASSWORD_MIN, { message: passwordMinMessage })
   @MaxLength(PASSWORD_MAX, { message: passwordMaxMessage })
   password?: string;
 
   @ApiPropertyOptional()
-  @IsOptional()
+  @OptionalNotNull('El estado de la cuenta')
   @ToBoolean()
   @IsBoolean({ message: 'active debe ser true o false' })
   active?: boolean;

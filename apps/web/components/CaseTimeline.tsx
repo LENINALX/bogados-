@@ -86,12 +86,15 @@ export function CaseTimeline({
   items,
   showFilters = true,
   audience = "staff",
+  timeZone = "America/Guayaquil",
 }: {
   title?: string;
   items: TimelineItem[];
   showFilters?: boolean;
   /** En el portal no se muestra la etiqueta de visibilidad (todas son públicas). */
   audience?: "staff" | "client";
+  /** Zona horaria de la firma: el servidor y el navegador pintan la misma fecha */
+  timeZone?: string;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -160,7 +163,7 @@ export function CaseTimeline({
             {/* Línea vertical que une los marcadores */}
             <span className="absolute bottom-3 left-[13.5px] top-3 -z-20 w-px bg-slate-900/[0.1]" aria-hidden />
             {sorted.map((item) => {
-              const date = new Date(item.createdAt).toLocaleString("es-EC", DATE_FORMAT);
+              const date = new Date(item.createdAt).toLocaleString("es-EC", { ...DATE_FORMAT, timeZone });
               if (item.kind === "note") {
                 return (
                   <li key={`n-${item.id}`} className="relative pb-6 pl-11 last:pb-0">

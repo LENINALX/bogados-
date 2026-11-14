@@ -25,10 +25,13 @@ export class DashboardService {
             })
           ).map((c) => c.id);
 
-    const docWhere =
-      caseIds === null
-        ? { tenantId }
-        : { tenantId, caseId: { in: caseIds } };
+    const isClient = user.role === Role.CLIENTE;
+    // El cliente solo cuenta lo que puede ver: documentos compartidos con él
+    const docWhere = {
+      tenantId,
+      ...(caseIds === null ? {} : { caseId: { in: caseIds } }),
+      ...(isClient ? { sharedWithClient: true } : {}),
+    };
     const msgWhere =
       caseIds === null
         ? { tenantId }
@@ -43,9 +46,10 @@ export class DashboardService {
       overdueTasks,
       unreadNotifications,
     ] = await Promise.all([
+      // Las solicitudes del portal sin aceptar no son casos (se cuentan aparte, como solicitudes)
       this.prisma.case.groupBy({
         by: ['status'],
-        where: caseWhere,
+        where: { ...caseWhere, OR: [{ requestState: null }, { requestState: 'aceptada' }] },
         _count: { _all: true },
       }),
       this.prisma.document.count({ where: docWhere }),
@@ -103,7 +107,8 @@ export class DashboardService {
       documents: documentsCount,
       messages: messagesCount,
       users: user.role === Role.ADMIN ? { byRole: roleCounts } : undefined,
-      tasks: { open: openTasks, overdue: overdueTasks },
+      // Las tareas son internas del despacho: el cliente no las ve ni cuenta
+      tasks: isClient ? undefined : { open: openTasks, overdue: overdueTasks },
       notifications: { unread: unreadNotifications },
     };
   }

@@ -6,6 +6,7 @@ import { CreateMessageDto, ListMessagesQueryDto } from '../../messages/dto/messa
 import { CreateNoteDto } from '../../notes/dto/note.dto';
 import { CreateTaskDto, ListTasksQueryDto, UpdateTaskDto } from '../../tasks/dto/task.dto';
 import { UpdateTenantDto } from '../../tenants/dto/tenant.dto';
+import { LoginDto } from '../../auth/dto/login.dto';
 import { CreateHolidayDto, TermDeadlineQueryDto } from '../../terms/dto/terms.dto';
 import { CreateUserDto, ListUsersQueryDto, UpdateUserDto } from '../../users/dto/user.dto';
 import {
@@ -17,7 +18,8 @@ import { PaginationQueryDto } from '../dto/pagination.dto';
 
 /** Igual que el ValidationPipe global de main.ts. */
 async function run<T extends object>(cls: ClassConstructor<T>, plain: Record<string, unknown>) {
-  const dto = plainToInstance(cls, plain, { enableImplicitConversion: true });
+  // Igual que el ValidationPipe de main.ts: sin conversión implícita
+  const dto = plainToInstance(cls, plain, { enableImplicitConversion: false });
   const errors = await validate(dto, { whitelist: true, forbidNonWhitelisted: true });
   return { dto, errors, fields: errors.map((e) => e.property) };
 }
@@ -156,11 +158,34 @@ describe('Usuarios y firma', () => {
     expect(dto.email).toBe('ana@firma.ec');
   });
 
-  it('el código de firma sigue las reglas del registro', async () => {
-    expect((await run(UpdateTenantDto, { slug: ' Estudio-Mejia ' })).dto.slug).toBe('estudio-mejia');
-    for (const slug of ['-mal', 'mal-', 'ab', 'con espacio', 'x'.repeat(41)]) {
-      expect((await run(UpdateTenantDto, { slug })).fields).toContain('slug');
+  it('el código de firma no se cambia por PATCH (está en invitaciones y enlaces de acceso)', async () => {
+    expect((await run(UpdateTenantDto, { slug: 'otra-firma' })).fields).toContain('slug');
+  });
+
+  it('un objeto no pasa como texto ni «false» como verdadero', async () => {
+    expect((await run(UpdateCaseDto, { title: { a: 1 } })).fields).toContain('title');
+    expect((await run(UpdateCaseDto, { title: ['Demanda'] })).fields).toContain('title');
+    const { dto, errors } = await run(LoginDto, { tenantSlug: 'firma-demo', email: 'a@b.ec', password: 'x', remember: 'false' });
+    expect(errors).toHaveLength(0);
+    expect(dto.remember).toBe(false);
+  });
+
+  it('null en un campo que no admite vacío: 400 claro, no un 500', async () => {
+    for (const [cls, body, field] of [
+      [UpdateTenantDto, { name: null }, 'name'],
+      [UpdateTenantDto, { requireTwoFactor: null }, 'requireTwoFactor'],
+      [UpdateCaseDto, { title: null }, 'title'],
+      [UpdateCaseDto, { status: null }, 'status'],
+      [UpdateTaskDto, { dueAt: null }, 'dueAt'],
+      [UpdateTaskDto, { done: null }, 'done'],
+      [UpdateUserDto, { active: null }, 'active'],
+    ] as const) {
+      const { errors } = await run(cls as never, body);
+      const err = errors.find((e) => e.property === field);
+      expect(err?.constraints?.notNull).toMatch(/no puede quedar sin valor/);
     }
+    // Omitirlo sigue siendo válido
+    expect((await run(UpdateTaskDto, {})).errors).toHaveLength(0);
   });
 
   it('requireTwoFactor solo booleano', async () => {

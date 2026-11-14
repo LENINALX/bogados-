@@ -20,10 +20,13 @@ export function CaseMessages({
   caseId,
   initial,
   currentUserId,
+  timeZone = "America/Guayaquil",
 }: {
   caseId: string;
   initial: Msg[];
   currentUserId: string;
+  /** Zona horaria de la firma: el servidor y el navegador pintan la misma fecha */
+  timeZone?: string;
 }) {
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
@@ -106,7 +109,7 @@ export function CaseMessages({
                 <div className="mb-1 flex gap-2 px-1 text-[11px] text-slate-500">
                   <span className="font-medium text-slate-700">{mine ? "Tú" : m.sender.name}</span>
                   <time dateTime={m.createdAt} className="tabular-nums">
-                    {new Date(m.createdAt).toLocaleString("es-EC", { dateStyle: "short", timeStyle: "short" })}
+                    {new Date(m.createdAt).toLocaleString("es-EC", { dateStyle: "short", timeStyle: "short", timeZone })}
                   </time>
                 </div>
                 <p

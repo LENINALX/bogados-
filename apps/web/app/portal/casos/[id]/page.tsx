@@ -183,7 +183,7 @@ export default async function PortalCasePage({ params }: Props) {
 
         <div className={`space-y-6 ${sections.length > 1 ? "mt-4" : "mt-8"}`}>
           <div id="avances" className="scroll-mt-20">
-            <CaseTimeline title="Avances del caso" items={timeline} audience="client" />
+            <CaseTimeline title="Avances del caso" items={timeline} audience="client" timeZone={timeZone} />
           </div>
 
           {/* Mensajes y documentos, cuando el despacho acepta la solicitud (antes no hay abogado) */}
@@ -192,6 +192,7 @@ export default async function PortalCasePage({ params }: Props) {
               <div id="mensajes" className="scroll-mt-20">
                 <CaseMessages
                   caseId={c.id}
+                  timeZone={timeZone}
                   currentUserId={session.user.id}
                   initial={c.messages.map((m) => ({
                     ...m,
@@ -203,6 +204,7 @@ export default async function PortalCasePage({ params }: Props) {
               <div id="documentos" className="scroll-mt-20">
                 <CaseDocuments
                   caseId={c.id}
+                  timeZone={timeZone}
                   canMarkInternal={false}
                   initial={c.documents.map((d) => ({
                     ...d,

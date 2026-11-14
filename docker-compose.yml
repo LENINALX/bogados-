@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: bogados
       POSTGRES_DB: bogados
     ports:
-      - "15432:5432"
+      # Solo desde esta máquina: nunca exponer la base de datos a la red
+      - "127.0.0.1:15432:5432"
     volumes:
       - bogados_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -24,8 +25,9 @@ services:
     container_name: bogados-mailpit
     restart: unless-stopped
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      # Solo desde esta máquina: en la bandeja están los enlaces de acceso y los códigos de verificación
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
 
   api:
     build:

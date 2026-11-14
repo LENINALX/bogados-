@@ -4,7 +4,7 @@ import { IsBoolean, IsInt, IsOptional, Max, Min, ValidateIf } from 'class-valida
 import { MAX_TERM_DAYS } from '../../terms/business-days';
 import { ToBoolean } from '../../common/decorators/to-boolean.decorator';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
-import { EmptyToNull, IsId, IsIsoDateTime, IsYmd, TextField } from '../../common/validation/validators';
+import { EmptyToNull, IsId, IsIsoDateTime, IsYmd, TextField, OptionalNotNull } from '../../common/validation/validators';
 
 export const TASK_TITLE_MIN = 2;
 export const TASK_TITLE_MAX = 200;
@@ -19,7 +19,7 @@ export class CreateTaskDto {
     description: 'Obligatorio salvo que se indique un término (termDays + notifiedOn)',
   })
   @ValidateIf((o: CreateTaskDto) => o.termDays === undefined)
-  @IsIsoDateTime('dueAt')
+  @IsIsoDateTime('La fecha límite')
   dueAt?: string;
 
   @ApiPropertyOptional({ example: 3, description: 'Término en días hábiles: el vencimiento lo calcula el servidor' })
@@ -49,17 +49,17 @@ export class CreateTaskDto {
 
 export class UpdateTaskDto {
   @ApiPropertyOptional({ minLength: TASK_TITLE_MIN, maxLength: TASK_TITLE_MAX })
-  @IsOptional()
+  @OptionalNotNull('El título')
   @TextField({ label: 'Título', min: TASK_TITLE_MIN, max: TASK_TITLE_MAX })
   title?: string;
 
   @ApiPropertyOptional()
-  @IsOptional()
-  @IsIsoDateTime('dueAt')
+  @OptionalNotNull('La fecha límite')
+  @IsIsoDateTime('La fecha límite')
   dueAt?: string;
 
   @ApiPropertyOptional()
-  @IsOptional()
+  @OptionalNotNull('El estado de la tarea')
   @ToBoolean()
   @IsBoolean({ message: 'done debe ser true o false' })
   done?: boolean;

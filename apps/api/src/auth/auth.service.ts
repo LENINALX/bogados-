@@ -68,7 +68,9 @@ export class AuthService {
           where: { tenantId_email: { tenantId: tenant.id, email: dto.email.toLowerCase().trim() } },
         })
       : null;
-    if (user?.active) await this.tokens.send(user.id, UserTokenType.RESET);
+    // Sin esperar al envío: si no, la respuesta tarda más cuando la cuenta existe y eso la delata.
+    // tokens.send no lanza (registra el fallo y devuelve false).
+    if (user?.active) void this.tokens.send(user.id, UserTokenType.RESET);
     return { ok: true };
   }
 

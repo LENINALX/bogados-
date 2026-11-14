@@ -75,6 +75,9 @@ export function phoneProblem(value: string): string | null {
 
 /** Web pública: solo http(s), con dominio de verdad, sin usuario ni contraseña en la URL. */
 export function websiteProblem(value: string): string | null {
+  // new URL() descarta saltos de línea y tabuladores: se rechazan antes (la web acaba en el pie de los emails)
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f\s]/.test(value)) return 'La web no puede llevar espacios ni saltos de línea';
   let url: URL;
   try {
     url = new URL(value);

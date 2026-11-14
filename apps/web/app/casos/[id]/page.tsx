@@ -26,6 +26,10 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
   const session = await requireRole("ADMIN", "ABOGADO");
   const { tenantId, role, id: userId } = session.user;
 
+  // Las fechas se pintan en la hora de la firma, no en la del servidor
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { timezone: true } });
+  const timeZone = tenant?.timezone ?? "America/Guayaquil";
+
   const c = await prisma.case.findFirst({
     where: {
       id: params.id,
@@ -124,7 +128,7 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
                 )}
               </div>
             </div>
-            {!openRequest && <CaseStatusForm caseId={c.id} status={c.status} clientName={c.client?.name ?? null} />}
+            {!openRequest && c.requestState !== "rechazada" && <CaseStatusForm caseId={c.id} status={c.status} clientName={c.client?.name ?? null} />}
           </div>
 
           <dl className="grid grid-cols-2 border-t border-slate-900/[0.06] sm:grid-cols-3">
@@ -164,11 +168,12 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
         <div className="grid items-start gap-6 lg:grid-cols-2">
           <div className="space-y-6">
             <CaseNoteForm caseId={c.id} clientName={c.client?.name ?? null} />
-            <CaseTimeline title="Notas y actividad" items={timeline} />
+            <CaseTimeline title="Notas y actividad" items={timeline} timeZone={timeZone} />
           </div>
           <div className="space-y-6">
             <CaseTasks
               caseId={c.id}
+              timeZone={timeZone}
               currentUserId={userId}
               staff={staff}
               canManageHolidays={role === "ADMIN"}
@@ -184,6 +189,7 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
             />
             <CaseMessages
               caseId={c.id}
+              timeZone={timeZone}
               currentUserId={session.user.id}
               initial={c.messages.map((m) => ({
                 ...m,
@@ -192,6 +198,7 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
             />
             <CaseDocuments
               caseId={c.id}
+              timeZone={timeZone}
               canMarkInternal
               initial={c.documents.map((d) => ({
                 ...d,

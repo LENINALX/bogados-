@@ -1,3 +1,4 @@
+import { ToBoolean } from '../../common/decorators/to-boolean.decorator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { EmailField, TenantSlugField } from './auth-fields';
@@ -31,6 +32,7 @@ export class LoginDto {
     description: 'Mantener la sesión iniciada: el token dura 30 días en vez de 12 horas',
   })
   @IsOptional()
-  @IsBoolean()
+  @ToBoolean()
+  @IsBoolean({ message: 'Mantener la sesión debe ser verdadero o falso' })
   remember?: boolean;
 }

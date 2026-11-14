@@ -68,6 +68,7 @@ function setup() {
       findMany: jest.fn().mockResolvedValue([]),
     },
     case: { findFirst: jest.fn() },
+    holiday: { findMany: jest.fn().mockResolvedValue([]) },
     activityEvent: { create: jest.fn() },
     $transaction: jest.fn(async (arg: unknown) =>
       typeof arg === 'function' ? (arg as (tx: unknown) => unknown)(prisma) : Promise.all(arg as unknown[]),
@@ -167,6 +168,13 @@ describe('AppointmentsService', () => {
         NOW,
       );
       expect(appt.endsAt.getTime() - appt.startsAt.getTime()).toBe(60 * 60_000);
+    });
+
+    it('no se puede reservar en un feriado de la firma', async () => {
+      t.prisma.holiday.findMany.mockResolvedValue([{ date: new Date(`${MONDAY_9.slice(0, 10)}T00:00:00.000Z`) }]);
+      await expect(t.service.create({ lawyerId: 'law1', startsAt: MONDAY_9 }, client, NOW)).rejects.toThrow(
+        'disponibilidad',
+      );
     });
 
     it(`máximo ${MAX_ACTIVE_PER_CLIENT} citas activas a la vez`, async () => {

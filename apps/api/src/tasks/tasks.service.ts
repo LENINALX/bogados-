@@ -114,7 +114,9 @@ export class TasksService {
   }
 
   async update(id: string, dto: UpdateTaskDto, user: JwtPayloadUser) {
-    const task = await this.findAccessibleTask(id, user);
+    // Solo marcar hecha/pendiente: le basta con ser el responsable de la tarea
+    const onlyDone = dto.done !== undefined && Object.keys(dto).every((k) => k === 'done' || (dto as Record<string, unknown>)[k] === undefined);
+    const task = await this.findAccessibleTask(id, user, onlyDone);
     const data: Prisma.CaseTaskUpdateInput = {};
     if (dto.title !== undefined) data.title = dto.title;
     if (dto.dueAt !== undefined) {
@@ -154,11 +156,16 @@ export class TasksService {
     return { ok: true };
   }
 
-  private async findAccessibleTask(id: string, user: JwtPayloadUser) {
+  /**
+   * Acceso a una tarea: el del caso. Además, quien la tiene asignada (aunque el caso lo lleve otro
+   * abogado) la ve en su lista y puede completarla (`asAssignee`), pero no editarla ni borrarla.
+   */
+  private async findAccessibleTask(id: string, user: JwtPayloadUser, asAssignee = false) {
     const task = await this.prisma.caseTask.findFirst({
       where: { id, tenantId: user.tenantId },
     });
     if (!task) throw new NotFoundException('Tarea no encontrada');
+    if (asAssignee && user.role !== Role.CLIENTE && task.assigneeId === user.id) return task;
     await getAccessibleCase(this.prisma, task.caseId, user);
     return task;
   }

@@ -275,6 +275,7 @@ function Sidebar({
                 name="q"
                 type="search"
                 placeholder="Buscar casos"
+                maxLength={200}
                 className="shell-inset w-full rounded-xl py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
               />
             </form>

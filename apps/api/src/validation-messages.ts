@@ -52,6 +52,7 @@ const DEFAULTS: Array<[RegExp, (prop: string, ...m: string[]) => string]> = [
   [/must be an array$/, (p) => `${capital(field(p))} debe ser una lista`],
   [/must contain no more than (\d+) elements$/, (p, n) => `${capital(field(p))} admite como máximo ${n} elementos`],
   [/must be an object$/, (p) => `${capital(field(p))} no tiene el formato correcto`],
+  [/must be either object or array$/, (p) => `${capital(field(p))} no tiene el formato correcto`],
 ];
 
 export function translateValidationMessage(property: string, message: string): string {
@@ -66,7 +67,10 @@ export function translateValidationMessage(property: string, message: string): s
 export function flattenValidationErrors(errors: ValidationError[], parent = ''): string[] {
   return errors.flatMap((e) => {
     const path = parent ? `${parent}.${e.property}` : e.property;
-    const own = Object.values(e.constraints ?? {}).map((msg) => translateValidationMessage(e.property, msg));
+    const constraints = e.constraints ?? {};
+    // Un null donde no se admite: basta con ese mensaje (el resto de reglas también fallarían)
+    const raw = constraints.notNull ? [constraints.notNull] : Object.values(constraints);
+    const own = raw.map((msg) => translateValidationMessage(e.property, msg));
     return [...own, ...flattenValidationErrors(e.children ?? [], path)];
   });
 }

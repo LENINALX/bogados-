@@ -45,7 +45,8 @@ export default async function TasksPage({
     completadas: { done: true },
   };
 
-  const [tasks, overdueCount, soonCount] = await Promise.all([
+  const [tenant, tasks, overdueCount, soonCount] = await Promise.all([
+    prisma.tenant.findUnique({ where: { id: tenantId }, select: { timezone: true } }),
     prisma.caseTask.findMany({
       where: { ...base, ...filterWhere[filter] },
       include: {
@@ -58,6 +59,8 @@ export default async function TasksPage({
     prisma.caseTask.count({ where: { ...base, ...filterWhere.vencidas } }),
     prisma.caseTask.count({ where: { ...base, ...filterWhere.proximas } }),
   ]);
+  // Vencimientos en la hora de la firma: el servidor puede estar en otra zona
+  const timeZone = tenant?.timezone ?? "America/Guayaquil";
 
   const qs = (f: Filter, scope = scopeAll) =>
     `/tareas?f=${f}${scope ? "&scope=firma" : ""}`;
@@ -149,7 +152,7 @@ export default async function TasksPage({
                         </Link>
                         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                           <span className={`tabular-nums ${state === "overdue" ? "font-medium text-red-700" : ""}`}>
-                            {formatDue(t.dueAt)}
+                            {formatDue(t.dueAt, timeZone)}
                           </span>
                           <span aria-hidden className="text-slate-300">·</span>
                           <span>{t.assignee?.name ?? "Sin asignar"}</span>
@@ -197,7 +200,7 @@ export default async function TasksPage({
                               state === "overdue" ? "font-medium text-red-700" : "text-slate-600"
                             }`}
                           >
-                            {formatDue(t.dueAt)}
+                            {formatDue(t.dueAt, timeZone)}
                           </td>
                           <td className="px-4 py-3 text-slate-600 sm:px-5">{t.assignee?.name ?? "—"}</td>
                           <td className="px-4 py-3 sm:px-5">

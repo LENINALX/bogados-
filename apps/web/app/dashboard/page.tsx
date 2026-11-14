@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { oneOf, pageParam, textParam } from "@/lib/search-params";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
@@ -28,6 +29,7 @@ import {
 import { recentMonths } from "@/lib/stats";
 import { CASES_LIST_ID } from "@/lib/nav";
 import { ScrollToHash } from "@/components/ScrollToHash";
+import { ExportButtons } from "@/components/ExportButtons";
 import { CASE_STATUSES, CASE_STATUS_LABELS, CaseStatus, OPEN_CASE_REQUEST_STATES } from "@bogados/shared";
 
 const ACTIVE_STATUSES = ["intake", "abierto", "en_pausa"] as const satisfies readonly CaseStatus[];
@@ -38,18 +40,23 @@ const PAGE_SIZE = 20;
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { status?: string; q?: string; page?: string };
+  searchParams: { status?: string | string[]; q?: string | string[]; page?: string | string[] };
 }) {
   const session = await requireRole("ADMIN", "ABOGADO");
   const { tenantId, role, id: userId } = session.user;
   const isAdmin = role === "ADMIN";
 
-  const status = searchParams.status as CaseStatus | undefined;
-  const validStatus = status && CASE_STATUSES.includes(status) ? status : undefined;
-  const q = searchParams.q?.trim();
-  const page = Math.max(1, Number.parseInt(searchParams.page ?? "", 10) || 1);
+  // Nunca se fían de la URL: ?q repetido o ?page gigante no deben romper la página
+  const validStatus = oneOf(searchParams.status, CASE_STATUSES);
+  const q = textParam(searchParams.q);
+  const page = pageParam(searchParams.page);
 
-  const scope: Prisma.CaseWhereInput = isAdmin ? { tenantId } : { tenantId, lawyerId: userId };
+  // Como en el portal: una solicitud sin aceptar no es un caso (las abiertas tienen su propia sección).
+  // En AND para no chocar con el OR de la búsqueda.
+  const casesOnly: Prisma.CaseWhereInput = { OR: [{ requestState: null }, { requestState: "aceptada" }] };
+  const scope: Prisma.CaseWhereInput = isAdmin
+    ? { tenantId, AND: [casesOnly] }
+    : { tenantId, lawyerId: userId, AND: [casesOnly] };
   const where: Prisma.CaseWhereInput = { ...scope };
   if (validStatus) where.status = validStatus;
   if (q) {
@@ -295,7 +302,7 @@ export default async function DashboardPage({
           <div>
             <h1 className="page-title">{isAdmin ? "Panel de la firma" : "Mis expedientes"}</h1>
             <p className="page-subtitle">
-              {isAdmin ? "Toda la firma" : "Casos asignados a ti"} · datos al {now.toLocaleDateString("es-EC")}
+              {isAdmin ? "Toda la firma" : "Casos asignados a ti"} · datos al {now.toLocaleDateString("es-EC", { timeZone })}
             </p>
           </div>
           <Link href="/casos/nuevo" className="btn-primary">
@@ -335,7 +342,7 @@ export default async function DashboardPage({
                     <div className="min-w-0">
                       <div className="truncate font-medium text-slate-900 group-hover:text-brand-700">{r.title}</div>
                       <div className="text-xs tabular-nums text-slate-500">
-                        {r.client?.name ?? "—"} · enviada el {r.createdAt.toLocaleDateString("es-EC")}
+                        {r.client?.name ?? "—"} · enviada el {r.createdAt.toLocaleDateString("es-EC", { timeZone })}
                       </div>
                     </div>
                     <span className="flex shrink-0 items-center gap-2">
@@ -394,11 +401,21 @@ export default async function DashboardPage({
                 {q && <> · “{q}”</>}
               </span>
             </SectionTitle>
-            {filtered && (
-              <Link href={href({})} className="text-[13px] font-medium text-brand-700 underline-offset-4 hover:underline">
-                Quitar filtros
-              </Link>
-            )}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              {filtered && (
+                <Link href={href({})} className="text-[13px] font-medium text-brand-700 underline-offset-4 hover:underline">
+                  Quitar filtros
+                </Link>
+              )}
+              {/* Exporta lo mismo que se lista: mismos filtros y, en la API, el mismo alcance por rol */}
+              {casesTotal > 0 && (
+                <ExportButtons
+                  resource="cases"
+                  label={filtered ? "Exportar los casos filtrados" : "Exportar casos"}
+                  filters={{ status: validStatus, q }}
+                />
+              )}
+            </div>
           </div>
 
           <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -433,6 +450,7 @@ export default async function DashboardPage({
                   name="q"
                   type="search"
                   defaultValue={q}
+                  maxLength={200}
                   placeholder="Buscar por título o descripción…"
                   className="input pl-9"
                 />
@@ -482,7 +500,7 @@ export default async function DashboardPage({
                           {isAdmin && <> · {c.lawyer?.name ?? "Sin abogado"}</>}
                         </div>
                         <div className="mt-0.5 text-xs tabular-nums text-slate-400">
-                          Actualizado el {c.updatedAt.toLocaleDateString("es-EC")}
+                          Actualizado el {c.updatedAt.toLocaleDateString("es-EC", { timeZone })}
                         </div>
                       </Link>
                     </li>
@@ -519,7 +537,7 @@ export default async function DashboardPage({
                             <StatusBadge status={c.status} />
                           </td>
                           <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-slate-500 sm:px-5">
-                            {c.updatedAt.toLocaleDateString("es-EC")}
+                            {c.updatedAt.toLocaleDateString("es-EC", { timeZone })}
                           </td>
                         </tr>
                       ))}

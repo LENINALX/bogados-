@@ -164,6 +164,6 @@ describe('Fechas', () => {
   it('los decoradores dan un mensaje en español', async () => {
     const { messages } = await check({ date: '2026-02-30', at: '9999-01-01T00:00:00Z' });
     expect(messages.join(' ')).toMatch(/date debe ser una fecha válida con formato AAAA-MM-DD/);
-    expect(messages.join(' ')).toMatch(/at debe ser una fecha ISO válida/);
+    expect(messages.join(' ')).toMatch(/at no es una fecha y hora válida \(debe estar entre 2000 y 2100\)/);
   });
 });

@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { CaseStatus, Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import { getAccessibleCase } from '../common/utils/case-access';
 import { isStaff } from '../common/utils/permissions';
-import { ActivityService } from '../activity/activity.service';
+import { ActivityService, recordActivity } from '../activity/activity.service';
+import { StorageService } from '../storage/storage.service';
 import { OPEN_REQUEST_STATES } from './case-requests.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ClientUpdatesService } from '../notifications/client-updates.service';
@@ -36,7 +37,10 @@ export class CasesService {
     private activity: ActivityService,
     private notifications: NotificationsService,
     private clientUpdates: ClientUpdatesService,
+    private storage: StorageService,
   ) {}
+
+  private readonly logger = new Logger('Cases');
 
   async findAll(user: JwtPayloadUser, filters: ListCasesQueryDto) {
     const { page, pageSize, skip, take } = paginateParams(filters);
@@ -141,6 +145,11 @@ export class CasesService {
     ) {
       throw new BadRequestException('Primero acepta, aplaza o rechaza la solicitud del cliente');
     }
+    // Una solicitud rechazada no se reabre cambiando el estado: quedaría «abierta» pero el portal
+    // seguiría diciendo «No aceptada» y sin abogado. Que el cliente envíe una solicitud nueva.
+    if (data.status && data.status !== existing.status && existing.requestState === 'rechazada') {
+      throw new BadRequestException('Esta solicitud fue rechazada: no se puede cambiar su estado');
+    }
     // null desasigna; un id debe ser un usuario activo del tenant con el rol adecuado
     if (data.lawyerId) await this.assertValidLawyer(data.lawyerId, user.tenantId);
     if (data.clientId) await this.assertValidClient(data.clientId, user.tenantId);
@@ -155,12 +164,8 @@ export class CasesService {
         where: { id: existing.id },
         data: {
           ...data,
-          closedAt:
-            data.status === CaseStatus.cerrado
-              ? new Date()
-              : data.status
-                ? null
-                : undefined,
+          // Solo si el estado cambia de verdad: volver a guardar «cerrado» no mueve la fecha de cierre
+          closedAt: !statusChanged ? undefined : data.status === CaseStatus.cerrado ? new Date() : null,
         },
         include: caseInclude,
       });
@@ -276,9 +281,31 @@ export class CasesService {
     });
   }
 
+  /**
+   * Borra el caso y todo lo suyo (cascada). Los archivos de sus documentos se borran del disco
+   * después de confirmar, y el borrado queda en la actividad de la firma (sin caso al que apuntar).
+   */
   async remove(id: string, user: JwtPayloadUser) {
     const existing = await getAccessibleCase(this.prisma, id, user);
-    await this.prisma.case.delete({ where: { id: existing.id } });
+    const files = await this.prisma.document.findMany({
+      where: { caseId: existing.id, tenantId: user.tenantId },
+      select: { storagePath: true },
+    });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.case.delete({ where: { id: existing.id } });
+      await recordActivity(tx, {
+        tenantId: user.tenantId,
+        actorId: user.id,
+        type: 'CASE_DELETED',
+        summary: `Caso eliminado: ${existing.title}${files.length ? ` (con ${files.length} ${files.length === 1 ? 'documento' : 'documentos'})` : ''}`,
+        meta: { caseId: existing.id },
+      });
+    });
+    for (const f of files) {
+      await this.storage.remove(f.storagePath).catch((err) =>
+        this.logger.warn(`No se pudo borrar ${f.storagePath}: ${err instanceof Error ? err.message : String(err)}`),
+      );
+    }
     return { ok: true };
   }
 

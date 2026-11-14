@@ -30,9 +30,11 @@ export const DUE_STYLES: Record<DueState, { label: string; badge: string; row: s
   },
 };
 
-export function formatDue(dueAt: string | Date) {
+/** En la hora de la firma: un término que vence a las 23:59 de Guayaquil no debe verse al día siguiente. */
+export function formatDue(dueAt: string | Date, timeZone: string) {
   return new Date(dueAt).toLocaleString("es-EC", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone,
   });
 }

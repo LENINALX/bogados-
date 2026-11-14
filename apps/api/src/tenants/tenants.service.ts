@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Tenant } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
@@ -103,12 +103,7 @@ export class TenantsService {
 
   async update(id: string, dto: UpdateTenantDto, actor: JwtPayloadUser) {
     const before = await this.get(id, actor);
-    if (dto.slug) {
-      const exists = await this.prisma.tenant.findFirst({
-        where: { slug: dto.slug, NOT: { id } },
-      });
-      if (exists) throw new ConflictException('Slug ya en uso');
-    }
+    // El código de firma no se cambia: está en las invitaciones, los enlaces de acceso y la memoria del navegador
     const updated = await this.prisma.$transaction(async (tx) => {
       const row = await tx.tenant.update({ where: { id }, data: dto });
       const changes = describeTenantChanges(before, row);

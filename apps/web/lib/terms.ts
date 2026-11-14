@@ -7,6 +7,8 @@ export type TermDeadline = {
   counted: string[];
   skipped: { date: string; reason: string }[];
   timeZone: string;
+  /** Años sin feriados cargados en la firma: el cálculo usó los nacionales de Ecuador */
+  assumedNationalYears?: number[];
 };
 
 export const MAX_TERM_DAYS = 90;

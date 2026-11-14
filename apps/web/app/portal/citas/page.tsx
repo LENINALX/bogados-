@@ -10,7 +10,8 @@ export default async function PortalAppointmentsPage() {
   const [tenant, cases] = await Promise.all([
     prisma.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { timezone: true } }),
     prisma.case.findMany({
-      where: { tenantId, clientId: userId, status: { not: "cerrado" } },
+      // Solo asuntos aceptados: una solicitud aún sin decidir no tiene abogado con quien citarse
+      where: { tenantId, clientId: userId, status: { not: "cerrado" }, OR: [{ requestState: null }, { requestState: "aceptada" }] },
       select: { id: true, title: true },
       orderBy: { updatedAt: "desc" },
     }),

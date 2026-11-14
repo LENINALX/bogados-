@@ -48,6 +48,12 @@ export function emailProblem(value: string): string | null {
   if (/[^\x00-\x7F]/.test(value)) return "El email no puede llevar tildes, ñ ni otros caracteres especiales.";
   if (/[,;]/.test(value)) return "El email no puede llevar comas ni punto y coma.";
   if (/\s/.test(value)) return "El email no puede llevar espacios.";
+  const [local, domain = ""] = value.split("@");
+  // Como la API (IsEmail): sin puntos seguidos ni al principio o al final de la parte local
+  if (local.includes("..") || domain.includes("..")) return "El email no puede llevar dos puntos seguidos.";
+  if (local.startsWith(".") || local.endsWith(".")) return "La parte antes de la @ no puede empezar ni terminar en punto.";
+  if (local.length > 64) return "La parte antes de la @ admite como máximo 64 caracteres.";
+  if (domain.split(".").some((label) => label.length > 63)) return "El dominio del email no es válido.";
   return null;
 }
 export const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -147,6 +153,8 @@ export const rules = {
 export function isRealYmd(value: string): boolean {
   if (!YMD_RE.test(value)) return false;
   const [y, m, d] = value.split("-").map(Number);
+  // Mismo rango de años que la API (2000–2100)
+  if (y < 2000 || y > 2100) return false;
   const date = new Date(Date.UTC(y, m - 1, d));
   return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
 }
@@ -180,8 +188,9 @@ export function firstError<K extends string>(errors: Errors<K>, order: readonly 
 
 /** Quita espacios sobrantes y caracteres de control invisibles que llegan al pegar texto. */
 export function clean(value: string): string {
+  // Tambi\u00E9n los de cambio de direcci\u00F3n del texto (U+202A\u2013202E, U+2066\u20132069), que la API rechaza
   // eslint-disable-next-line no-control-regex
-  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B-\u200D\uFEFF]/g, "").trim();
+  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B-\u200D\u202A-\u202E\u2066-\u2069\uFEFF]/g, "").trim();
 }
 
 function formatBytes(bytes: number): string {

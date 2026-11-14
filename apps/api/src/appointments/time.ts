@@ -108,11 +108,14 @@ export function computeSlots(params: {
   timeZone: string;
   slotMinutes: number;
   now: Date;
+  /** Días sin atención (feriados de la firma), AAAA-MM-DD */
+  closedDays?: ReadonlySet<string>;
 }): Interval[] {
-  const { blocks, busy, fromYmd, days, timeZone, slotMinutes, now } = params;
+  const { blocks, busy, fromYmd, days, timeZone, slotMinutes, now, closedDays } = params;
   const slots: Interval[] = [];
   for (let i = 0; i < days; i++) {
     const ymd = addDaysYmd(fromYmd, i);
+    if (closedDays?.has(ymd)) continue;
     const weekday = weekdayOfYmd(ymd);
     const dayBlocks = blocks
       .filter((b) => b.weekday === weekday)

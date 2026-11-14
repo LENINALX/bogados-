@@ -57,6 +57,7 @@ export function CaseTasks({
   staff,
   currentUserId,
   canManageHolidays = false,
+  timeZone = "America/Guayaquil",
 }: {
   caseId: string;
   initial: TaskItem[];
@@ -64,6 +65,8 @@ export function CaseTasks({
   currentUserId: string;
   /** Admin: enlaza al calendario de feriados desde la vista previa del término */
   canManageHolidays?: boolean;
+  /** Zona horaria de la firma: el servidor y el navegador pintan la misma fecha */
+  timeZone?: string;
 }) {
   const [tasks, setTasks] = useState(() => sortTasks(initial));
   const [title, setTitle] = useState("");
@@ -220,7 +223,7 @@ export function CaseTasks({
                   <div className={t.done ? "text-slate-500 line-through" : "font-medium text-slate-900"}>{t.title}</div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                     <span className={`tabular-nums ${state === "overdue" ? "font-medium text-red-700" : ""}`}>
-                      {formatDue(t.dueAt)}
+                      {formatDue(t.dueAt, timeZone)}
                     </span>
                     <span aria-hidden className="text-slate-300">·</span>
                     <span>{t.assignee?.name ?? "Sin asignar"}</span>
@@ -438,6 +441,12 @@ function TermPreview({ state, canManageHolidays }: { state: PreviewState; canMan
         {d.days} {d.days === 1 ? "día hábil" : "días hábiles"} desde el día siguiente a la notificación.{" "}
         {summarizeSkipped(d.skipped)}
       </p>
+      {d.assumedNationalYears && d.assumedNationalYears.length > 0 && (
+        <p className="mt-1.5 rounded-md bg-amber-50 px-2 py-1 text-[11px] text-amber-900">
+          La firma no tiene feriados cargados para {d.assumedNationalYears.join(" y ")}: se usaron los nacionales de
+          Ecuador. Si hay feriados locales o traslados, cárgalos en Feriados.
+        </p>
+      )}
       {d.skipped.some((s) => s.reason !== "Sábado" && s.reason !== "Domingo") && (
         <ul className="mt-1.5 flex flex-wrap gap-1.5">
           {d.skipped

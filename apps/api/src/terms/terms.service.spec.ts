@@ -37,7 +37,9 @@ describe('TermsService.deadline', () => {
     await service.deadline('t1', '2026-10-08', 3);
     const where = prisma.holiday.findMany.mock.calls[0][0].where;
     expect(where.tenantId).toBe('t1');
-    expect(where.date.gte.toISOString().slice(0, 10)).toBe('2026-10-09');
+    // Años enteros: así se sabe si la firma cargó los feriados del año
+    expect(where.date.gte.toISOString().slice(0, 10)).toBe('2026-01-01');
+    expect(where.date.lte.toISOString().slice(0, 10)).toBe('2026-12-31');
   });
 
   it('un término no válido es un 400', async () => {

@@ -16,7 +16,12 @@ const END_OF_DAY_MINUTES = 23 * 60 + 59;
 const ymdOf = (d: Date) => d.toISOString().slice(0, 10);
 const dateOf = (ymd: string) => new Date(`${ymd}T00:00:00.000Z`);
 
-export type TermDeadline = TermBreakdown & { dueAt: string; timeZone: string };
+export type TermDeadline = TermBreakdown & {
+  dueAt: string;
+  timeZone: string;
+  /** Años del cálculo sin feriados cargados en la firma: se usaron los nacionales de Ecuador */
+  assumedNationalYears: number[];
+};
 
 @Injectable()
 export class TermsService {
@@ -25,16 +30,28 @@ export class TermsService {
   /** Vencimiento de un término con el desglose de días contados y saltados. */
   async deadline(tenantId: string, notifiedOn: string, days: number): Promise<TermDeadline> {
     const { from, to } = termSearchWindow(notifiedOn, days);
+    const firstYear = Number(from.slice(0, 4));
+    const lastYear = Number(to.slice(0, 4));
+    // Años enteros: así se sabe si la firma cargó los feriados de cada año que toca el término
     const [tenant, holidays] = await Promise.all([
       this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { timezone: true } }),
       this.prisma.holiday.findMany({
-        where: { tenantId, date: { gte: dateOf(from), lte: dateOf(to) } },
+        where: { tenantId, date: { gte: dateOf(`${firstYear}-01-01`), lte: dateOf(`${lastYear}-12-31`) } },
         select: { date: true, name: true },
       }),
     ]);
+    const map = new Map(holidays.map((h) => [ymdOf(h.date), h.name]));
+    const loadedYears = new Set(holidays.map((h) => h.date.getUTCFullYear()));
+    const assumedNationalYears: number[] = [];
+    for (let y = firstYear; y <= lastYear; y++) {
+      if (loadedYears.has(y)) continue;
+      // Sin feriados del año, contar Año Nuevo o Navidad como hábiles adelantaría el vencimiento
+      assumedNationalYears.push(y);
+      for (const h of ecuadorNationalHolidays(y)) map.set(h.date, h.name);
+    }
     let breakdown: TermBreakdown;
     try {
-      breakdown = computeTermDeadline(notifiedOn, days, new Map(holidays.map((h) => [ymdOf(h.date), h.name])));
+      breakdown = computeTermDeadline(notifiedOn, days, map);
     } catch (e) {
       throw new BadRequestException((e as Error).message);
     }
@@ -42,6 +59,7 @@ export class TermsService {
       ...breakdown,
       dueAt: zonedToUtc(breakdown.dueOn, END_OF_DAY_MINUTES, tenant.timezone).toISOString(),
       timeZone: tenant.timezone,
+      assumedNationalYears,
     };
   }
 

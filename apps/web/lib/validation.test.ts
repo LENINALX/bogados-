@@ -146,3 +146,25 @@ describe("checkTimeBlocks", () => {
     expect(d).toBeTruthy();
   });
 });
+
+describe("auditoría: email, fechas y limpieza alineados con la API", () => {
+  it("emails que la API rechaza también fallan en la web", async () => {
+    const { emailProblem } = await import("./validation");
+    expect(emailProblem("a..b@firma.ec")).toMatch(/dos puntos/);
+    expect(emailProblem(".a@firma.ec")).toMatch(/empezar ni terminar/);
+    expect(emailProblem(`${"a".repeat(65)}@firma.ec`)).toMatch(/64/);
+    expect(emailProblem("nombre.apellido@firma.ec")).toBeNull();
+  });
+
+  it("fechas fuera de 2000–2100 no valen", async () => {
+    const { isRealYmd } = await import("./validation");
+    expect(isRealYmd("1999-12-31")).toBe(false);
+    expect(isRealYmd("2101-01-01")).toBe(false);
+    expect(isRealYmd("2026-11-12")).toBe(true);
+  });
+
+  it("clean quita los caracteres de cambio de dirección", async () => {
+    const { clean } = await import("./validation");
+    expect(clean("contrato‮fdp.exe")).toBe("contratofdp.exe");
+  });
+});

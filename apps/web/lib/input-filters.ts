@@ -20,6 +20,8 @@ export const filters = {
   processNumber: ((v) => stripAccents(v).toUpperCase().replace(/[^0-9A-Z-]/g, "")) as InputFilter,
   /** Solo dígitos (días hábiles, código de verificación) */
   digits: ((v) => v.replace(/\D/g, "")) as InputFilter,
+  /** Teléfono: dígitos, espacios, guiones, paréntesis y el + del prefijo */
+  phone: ((v) => v.replace(/[^0-9 ()+-]/g, "")) as InputFilter,
 };
 
 /**

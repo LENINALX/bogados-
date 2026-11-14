@@ -32,7 +32,12 @@ export async function getShellData(user: ShellUser): Promise<ShellData> {
 async function staffData({ id, role, tenantId }: ShellUser): Promise<ShellData> {
   const isAdmin = role === "ADMIN";
   const now = new Date();
-  const scope: Prisma.CaseWhereInput = isAdmin ? { tenantId } : { tenantId, lawyerId: id };
+  // Igual que el panel y el portal: una solicitud sin aceptar no es un caso (va en «Solicitudes por decidir»)
+  const scope: Prisma.CaseWhereInput = {
+    tenantId,
+    ...(isAdmin ? {} : { lawyerId: id }),
+    OR: [{ requestState: null }, { requestState: "aceptada" }],
+  };
   const taskScope: Prisma.CaseTaskWhereInput = isAdmin
     ? { tenantId }
     : { tenantId, OR: [{ assigneeId: id }, { case: { lawyerId: id } }] };

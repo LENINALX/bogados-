@@ -85,7 +85,7 @@ export class CreateAppointmentDto {
   caseId?: string;
 
   @ApiProperty({ example: '2026-10-05T14:00:00.000Z' })
-  @IsIsoDateTime('startsAt')
+  @IsIsoDateTime('La fecha de la cita')
   startsAt!: string;
 
   @ApiPropertyOptional({ description: 'Solo staff. Por defecto, la duración configurada en la firma.' })
@@ -105,12 +105,12 @@ export class CreateAppointmentDto {
 export class ListAppointmentsQueryDto {
   @ApiPropertyOptional({ description: 'Desde (ISO). Por defecto, ahora.' })
   @IsOptional()
-  @IsIsoDateTime('from')
+  @IsIsoDateTime('La fecha de inicio')
   from?: string;
 
   @ApiPropertyOptional({ description: 'Hasta (ISO). Debe ser posterior a «from».' })
   @IsOptional()
-  @IsIsoDateTime('to')
+  @IsIsoDateTime('La fecha de fin')
   to?: string;
 
   @ApiPropertyOptional({ enum: AppointmentStatus })

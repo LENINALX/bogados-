@@ -11,7 +11,7 @@ import { ToBoolean } from '../../common/decorators/to-boolean.decorator';
 import { Transform } from 'class-transformer';
 import { CaseStatus } from '@prisma/client';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
-import { EmptyToNull, IsId, TextField } from '../../common/validation/validators';
+import { EmptyToNull, IsId, TextField, OptionalNotNull } from '../../common/validation/validators';
 
 /** Número de proceso del SATJE: judicatura (5 dígitos) - año (4) - secuencial (5), con una letra final opcional */
 export const PROCESS_NUMBER = /^\d{5}-\d{4}-\d{5}[A-Z]?$/;
@@ -31,7 +31,7 @@ export function normalizeProcessNumber(value: unknown): unknown {
   return clean === '' ? null : clean;
 }
 
-const statusMessage = `status debe ser uno de: ${Object.values(CaseStatus).join(', ')}`;
+const statusMessage = 'El estado debe ser Ingreso, Abierto, En pausa o Cerrado';
 
 export class CreateCaseDto {
   @ApiProperty({ minLength: CASE_TITLE_MIN, maxLength: CASE_TITLE_MAX })
@@ -78,7 +78,7 @@ export class CreateCaseDto {
 
 export class UpdateCaseDto {
   @ApiPropertyOptional({ minLength: CASE_TITLE_MIN, maxLength: CASE_TITLE_MAX })
-  @IsOptional()
+  @OptionalNotNull('El título')
   @TextField({ label: 'Título', min: CASE_TITLE_MIN, max: CASE_TITLE_MAX })
   title?: string;
 
@@ -93,7 +93,7 @@ export class UpdateCaseDto {
   matterType?: string | null;
 
   @ApiPropertyOptional({ enum: CaseStatus })
-  @IsOptional()
+  @OptionalNotNull('El estado')
   @IsEnum(CaseStatus, { message: statusMessage })
   status?: CaseStatus;
 

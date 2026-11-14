@@ -35,7 +35,8 @@ export class AuthController {
   ) {}
 
   @Post('register-firm')
-  @UseGuards(LoginThrottlerGuard)
+  // Por IP además de por email: sin esto, cambiando el email se crean firmas sin límite
+  @UseGuards(IpRateLimit(5, 3_600_000), LoginThrottlerGuard)
   @ApiOperation({ summary: 'Alta de una firma nueva con su administrador (pública; SIGNUP_ENABLED=false la cierra)' })
   registerFirm(@Body() dto: RegisterFirmDto) {
     return this.firmSignup.register(dto);

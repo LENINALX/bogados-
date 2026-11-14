@@ -74,7 +74,10 @@ export const authOptions: NextAuthOptions = {
       // sesión de NextAuth (cookie cifrada) para que sirva en cualquier pestaña.
       async authorize(credentials, req) {
         // Origen real del intento (el navegador), para el registro de accesos de la firma
-        const forwarded = headerValue(req?.headers, "x-forwarded-for")?.split(",")[0]?.trim();
+        // De x-forwarded-for vale solo el ÚLTIMO salto (el que añade el proxy más cercano): los primeros
+        // los escribe el propio navegador y se pueden inventar. Requiere un proxy delante (nginx, etc.)
+        // que añada la IP real; sin proxy, este dato es solo orientativo.
+        const forwarded = headerValue(req?.headers, "x-forwarded-for")?.split(",").pop()?.trim();
         const clientHeaders: Record<string, string> = { "Content-Type": "application/json" };
         if (forwarded) clientHeaders["x-client-ip"] = forwarded;
         const userAgent = headerValue(req?.headers, "user-agent");

@@ -7,6 +7,7 @@ import {
   MaxLength,
   MinLength,
   ValidateBy,
+  ValidateIf,
   ValidationOptions,
   isISO8601,
 } from 'class-validator';
@@ -15,6 +16,25 @@ import {
  * Validaciones reutilizables de la API. Todas devuelven mensajes en español
  * (los muestra la web tal cual) y no dejan llegar a Prisma valores absurdos.
  */
+
+// ─── Opcional, pero no nulo ─────────────────────────────────────────────────
+
+/**
+ * Para los PATCH: el campo se puede omitir, pero no enviar como null (`@IsOptional` deja
+ * pasar null y Prisma fallaría con un 500, o guardaría 1970-01-01 en una fecha).
+ */
+export function OptionalNotNull(label: string): PropertyDecorator {
+  return applyDecorators(
+    ValidateIf((_, value) => value !== undefined),
+    ValidateBy({
+      name: 'notNull',
+      validator: {
+        validate: (value: unknown) => value !== null,
+        defaultMessage: () => `${label} no puede quedar sin valor`,
+      },
+    }),
+  );
+}
 
 // ─── Identificadores ────────────────────────────────────────────────────────
 
@@ -124,7 +144,8 @@ export const EMAIL_MAX_LENGTH = 254;
  * servidores no las entregan: se exige ASCII.
  */
 export function emailCharsetProblem(value: string): string | null {
-  if (/[^\x00-\x7F]/.test(value)) return 'El email no puede llevar tildes, ñ ni otros caracteres especiales';
+  // Cualquier carácter fuera de ASCII (escrito sin el rango \x00-\x7F, que el lint rechaza por incluir caracteres de control)
+  if (/[\u0080-￿]/.test(value)) return 'El email no puede llevar tildes, ñ ni otros caracteres especiales';
   if (/[,;]/.test(value)) return 'El email no puede llevar comas ni punto y coma';
   if (/\s/.test(value)) return 'El email no puede llevar espacios';
   if (/[<>()[\]\\:"]/.test(value)) return 'El email lleva caracteres que no son válidos';
@@ -200,7 +221,7 @@ export function IsIsoDateTime(label: string, options?: ValidationOptions): Prope
       validator: {
         validate: (value: unknown) => isValidIsoDateTime(value),
         defaultMessage: () =>
-          `${label} debe ser una fecha ISO válida (p. ej. 2026-10-15T18:00:00.000Z) entre ${DATE_YEAR_MIN} y ${DATE_YEAR_MAX}`,
+          `${label} no es una fecha y hora válida (debe estar entre ${DATE_YEAR_MIN} y ${DATE_YEAR_MAX})`,
       },
     },
     options,

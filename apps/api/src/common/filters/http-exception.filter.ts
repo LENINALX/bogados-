@@ -38,7 +38,7 @@ export function mapRequestParsingError(exception: unknown): { status: HttpStatus
       typeof res === 'string' ? res : (res as { message?: unknown } | null)?.message;
     if (typeof message !== 'string') return null;
     if (JSON_PARSE_TEXT.test(message)) return { status: HttpStatus.BAD_REQUEST, message: INVALID_JSON_MESSAGE };
-    if (message === 'URI malformed') return { status: HttpStatus.BAD_REQUEST, message: INVALID_URL_MESSAGE };
+    if (message === 'URI malformed' || message.startsWith('Failed to decode param')) return { status: HttpStatus.BAD_REQUEST, message: INVALID_URL_MESSAGE };
     return null;
   }
   const type = (exception as { type?: unknown } | null)?.type;
@@ -85,6 +85,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
     ) {
       ({ status, message } = PRISMA_ERRORS[exception.code]);
       details = exception.code;
+    } else if (exception instanceof Prisma.PrismaClientValidationError) {
+      // Un dato con forma imposible que se coló hasta la consulta: es culpa de la petición.
+      // Se registra igualmente para corregir la validación que faltó.
+      this.logger.warn(`Validación de Prisma: ${exception.message.trim().split(/\r?\n/).slice(-1)[0]}`);
+      status = HttpStatus.BAD_REQUEST;
+      message = 'Algún dato enviado no es válido';
     }
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {

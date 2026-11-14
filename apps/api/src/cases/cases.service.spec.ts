@@ -45,6 +45,7 @@ describe('CasesService.findAll (guards por rol)', () => {
       { log: jest.fn() } as never,
       { notifyMany: jest.fn(), create: jest.fn() } as never,
       { email: jest.fn() } as never,
+      { remove: jest.fn() } as never,
     );
   });
 
@@ -171,6 +172,7 @@ describe('CasesService.update (validación de lawyerId/clientId)', () => {
       activity as never,
       notifications as never,
       clientUpdates as never,
+      { remove: jest.fn() } as never,
     );
   });
 

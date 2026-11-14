@@ -32,7 +32,9 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: { enableImplicitConversion: true },
+      // Sin conversión implícita: un objeto no pasa como texto ni «false» como true.
+      // Los números llevan @Type(() => Number) y los booleanos @ToBoolean().
+      transformOptions: { enableImplicitConversion: false },
       // Los mensajes por defecto de class-validator, en español (los propios ya lo están)
       exceptionFactory: validationExceptionFactory,
     }),

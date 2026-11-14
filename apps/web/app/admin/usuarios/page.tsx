@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { oneOf, pageParam, textParam } from "@/lib/search-params";
+import { ExportButtons } from "@/components/ExportButtons";
 import { Prisma, Role } from "@prisma/client";
 import { ROLE_LABELS, USER_ROLES } from "@bogados/shared";
 import { requireRole } from "@/lib/session";
@@ -10,14 +12,15 @@ import { InviteUserForm, UserRowControls } from "@/components/UserAdmin";
 export default async function UsersAdminPage({
   searchParams,
 }: {
-  searchParams: { role?: string; q?: string; estado?: string };
+  searchParams: { role?: string | string[]; q?: string | string[]; estado?: string | string[] };
 }) {
   const session = await requireRole("ADMIN");
   const { tenantId, id: userId } = session.user;
 
-  const role = USER_ROLES.includes(searchParams.role as Role) ? (searchParams.role as Role) : undefined;
-  const q = searchParams.q?.trim();
-  const estado = searchParams.estado === "inactivos" ? false : searchParams.estado === "activos" ? true : undefined;
+  const role = oneOf(searchParams.role, USER_ROLES) as Role | undefined;
+  const q = textParam(searchParams.q);
+  const estadoParam = oneOf(searchParams.estado, ["activos", "inactivos"] as const);
+  const estado = estadoParam === "inactivos" ? false : estadoParam === "activos" ? true : undefined;
 
   const where: Prisma.UserWhereInput = { tenantId };
   if (role) where.role = role;
@@ -29,7 +32,8 @@ export default async function UsersAdminPage({
     ];
   }
 
-  const [users, counts] = await Promise.all([
+  const [tenant, users, counts] = await Promise.all([
+    prisma.tenant.findUnique({ where: { id: tenantId }, select: { timezone: true } }),
     prisma.user.findMany({
       where,
       select: {
@@ -49,7 +53,7 @@ export default async function UsersAdminPage({
   const countFor = (r: Role) => counts.find((c) => c.role === r)?._count ?? 0;
   const href = (params: Record<string, string | undefined>) => {
     const sp = new URLSearchParams();
-    const merged = { role, q, estado: searchParams.estado, ...params };
+    const merged = { role, q, estado: estadoParam, ...params };
     for (const [k, v] of Object.entries(merged)) if (v) sp.set(k, v);
     const s = sp.toString();
     return `/admin/usuarios${s ? `?${s}` : ""}`;
@@ -65,7 +69,10 @@ export default async function UsersAdminPage({
               {USER_ROLES.map((r) => `${countFor(r)} ${ROLE_LABELS[r].toLowerCase()}${countFor(r) === 1 ? "" : "s"}`).join(" · ")}
             </p>
           </div>
-          <InviteUserForm />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {countFor("CLIENTE") > 0 && <ExportButtons resource="clients" label={q ? "Exportar los clientes de la búsqueda" : "Exportar clientes"} filters={{ q }} />}
+            <InviteUserForm />
+          </div>
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -91,18 +98,19 @@ export default async function UsersAdminPage({
           ].map(([v, label]) => (
             <Link
               key={v}
-              href={href({ estado: searchParams.estado === v ? undefined : v })}
-              className={`rounded-full border px-3 py-1 text-xs font-medium ${searchParams.estado === v ? "border-brand-600 bg-brand-600 text-white" : "border-slate-200 bg-surface text-slate-700 hover:border-brand-500"}`}
+              href={href({ estado: estadoParam === v ? undefined : v })}
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${estadoParam === v ? "border-brand-600 bg-brand-600 text-white" : "border-slate-200 bg-surface text-slate-700 hover:border-brand-500"}`}
             >
               {label}
             </Link>
           ))}
           <form className="ml-auto">
             {role && <input type="hidden" name="role" value={role} />}
-            {searchParams.estado && <input type="hidden" name="estado" value={searchParams.estado} />}
+            {estadoParam && <input type="hidden" name="estado" value={estadoParam} />}
             <input
               name="q"
               defaultValue={q}
+              maxLength={200}
               placeholder="Buscar nombre o email…"
               className="w-64 max-w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
             />
@@ -151,7 +159,7 @@ export default async function UsersAdminPage({
                       {u.active ? "Activo" : "Inactivo"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-500">{u.createdAt.toLocaleDateString("es-EC")}</td>
+                  <td className="px-4 py-3 text-slate-500">{u.createdAt.toLocaleDateString("es-EC", { timeZone: tenant?.timezone ?? "America/Guayaquil" })}</td>
                   <td className="px-4 py-3">
                     <UserRowControls userId={u.id} role={u.role} active={u.active} isSelf={u.id === userId} />
                   </td>

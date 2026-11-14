@@ -142,9 +142,10 @@ export class AppointmentsService {
 
     const rangeStart = zonedToUtc(fromYmd, 0, tenant.timezone);
     const rangeEnd = zonedToUtc(addDaysYmd(fromYmd, days), 0, tenant.timezone);
-    const [blocks, busy] = await Promise.all([
+    const [blocks, busy, closedDays] = await Promise.all([
       this.prisma.availability.findMany({ where: { tenantId: actor.tenantId, lawyerId: query.lawyerId } }),
       this.busy(query.lawyerId, rangeStart, rangeEnd),
+      this.holidays(actor.tenantId, fromYmd, addDaysYmd(fromYmd, days)),
     ]);
 
     const slots = computeSlots({
@@ -155,6 +156,7 @@ export class AppointmentsService {
       timeZone: tenant.timezone,
       slotMinutes: tenant.appointmentMinutes,
       now,
+      closedDays,
     });
     return {
       timeZone: tenant.timezone,
@@ -193,14 +195,6 @@ export class AppointmentsService {
 
     if (byClient) {
       await this.assertOfferedSlot(lawyerId, startsAt, tenant, actor.tenantId, now);
-      const active = await this.prisma.appointment.count({
-        where: { clientId: client.id, status: { in: ACTIVE_STATUSES }, startsAt: { gt: now } },
-      });
-      if (active >= MAX_ACTIVE_PER_CLIENT) {
-        throw new BadRequestException(
-          `Ya tienes ${MAX_ACTIVE_PER_CLIENT} citas pendientes o confirmadas. Cancela alguna para pedir otra.`,
-        );
-      }
     }
 
     // Comprobar y reservar en la misma transacción serializable: si dos personas
@@ -210,6 +204,17 @@ export class AppointmentsService {
     try {
       appointment = await this.prisma.$transaction(
         async (tx) => {
+          // Dentro de la transacción serializable: dos reservas a la vez no superan el tope
+          if (byClient) {
+            const active = await tx.appointment.count({
+              where: { clientId: client.id, status: { in: ACTIVE_STATUSES }, startsAt: { gt: now } },
+            });
+            if (active >= MAX_ACTIVE_PER_CLIENT) {
+              throw new BadRequestException(
+                `Ya tienes ${MAX_ACTIVE_PER_CLIENT} citas pendientes o confirmadas. Cancela alguna para pedir otra.`,
+              );
+            }
+          }
           const clash = await tx.appointment.count({
             where: {
               lawyerId,
@@ -469,19 +474,33 @@ export class AppointmentsService {
     tenantId: string,
     now: Date,
   ) {
-    const blocks = await this.prisma.availability.findMany({ where: { tenantId, lawyerId } });
+    const ymd = localYmd(startsAt, tenant.timezone);
+    const [blocks, closedDays] = await Promise.all([
+      this.prisma.availability.findMany({ where: { tenantId, lawyerId } }),
+      this.holidays(tenantId, ymd, addDaysYmd(ymd, 1)),
+    ]);
     const offered = computeSlots({
       blocks,
       busy: [],
-      fromYmd: localYmd(startsAt, tenant.timezone),
+      fromYmd: ymd,
       days: 1,
       timeZone: tenant.timezone,
       slotMinutes: tenant.appointmentMinutes,
       now,
+      closedDays,
     });
     if (!offered.some((s) => s.startsAt.getTime() === startsAt.getTime())) {
       throw new BadRequestException('Ese horario no está dentro de la disponibilidad del abogado');
     }
+  }
+
+  /** Feriados de la firma entre dos días (el segundo excluido). Se guardan como medianoche UTC. */
+  private async holidays(tenantId: string, fromYmd: string, toYmd: string): Promise<Set<string>> {
+    const rows = await this.prisma.holiday.findMany({
+      where: { tenantId, date: { gte: new Date(`${fromYmd}T00:00:00.000Z`), lt: new Date(`${toYmd}T00:00:00.000Z`) } },
+      select: { date: true },
+    });
+    return new Set(rows.map((h) => h.date.toISOString().slice(0, 10)));
   }
 
   private busy(lawyerId: string, from: Date, to: Date) {

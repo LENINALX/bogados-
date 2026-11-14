@@ -1,19 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
 import { IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { EmailField } from './auth-fields';
+import { IsId, TextField } from '../../common/validation/validators';
 import { PASSWORD_MAX, PASSWORD_MIN } from './password.dto';
 
 export class RegisterClientDto {
-  @ApiProperty({ example: 'nuevo.cliente@ejemplo.com' })
+  @ApiProperty({ example: 'nombre@correo.ec' })
   @EmailField()
   email!: string;
 
-  @ApiProperty({ example: 'Nuevo Cliente' })
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  @IsString()
-  @MinLength(2, { message: 'Escribe el nombre del cliente' })
-  @MaxLength(120)
+  @ApiProperty({ example: 'Nombre' })
+  @TextField({ label: 'Nombre del cliente', min: 2, max: 120, minMessage: 'Escribe el nombre del cliente' })
   name!: string;
 
   @ApiPropertyOptional({
@@ -30,7 +27,6 @@ export class RegisterClientDto {
 
   @ApiPropertyOptional({ description: 'Caso al que vincular el cliente (opcional)' })
   @IsOptional()
-  @IsString()
-  @MaxLength(64)
+  @IsId('El caso')
   caseId?: string;
 }
