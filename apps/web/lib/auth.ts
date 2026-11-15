@@ -47,17 +47,18 @@ async function codeStepFailure(res: Response): Promise<never> {
 }
 
 /** Emisión y expiración (en segundos) leídas del propio JWT de Nest. */
-function jwtTimes(token: string): { iat: number; exp: number } {
+function jwtTimes(token: string): { iat: number; exp: number; jti?: string } {
   const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
   return {
     iat: typeof payload.iat === "number" ? payload.iat : 0,
     exp: typeof payload.exp === "number" ? payload.exp : 0,
+    jti: typeof payload.jti === "string" ? payload.jti : undefined,
   };
 }
 
 export const authOptions: NextAuthOptions = {
-  // El límite real lo pone el token de la API: 12 h, o 30 días con «mantener la sesión iniciada»
-  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 30 },
+  // El límite real lo pone el token de la API: 12 h, o 7 días con «mantener la sesión iniciada»
+  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 7 },
   pages: { signIn: "/login" },
   events: {
     // Cerrar sesión también invalida el token en la API: si alguien lo copió, deja de servir.
@@ -86,10 +87,14 @@ export const authOptions: NextAuthOptions = {
       // sesión de NextAuth (cookie cifrada) para que sirva en cualquier pestaña.
       async authorize(credentials, req) {
         // Origen real del intento (el navegador), para el registro de accesos de la firma
-        // De x-forwarded-for vale solo el ÚLTIMO salto (el que añade el proxy más cercano): los primeros
-        // los escribe el propio navegador y se pueden inventar. Requiere un proxy delante (nginx, etc.)
-        // que añada la IP real; sin proxy, este dato es solo orientativo.
-        const forwarded = headerValue(req?.headers, "x-forwarded-for")?.split(",").pop()?.trim();
+        // Solo con un proxy de confianza delante (TRUSTED_PROXY=true): ese proxy añade la IP real
+        // como ÚLTIMO salto de x-forwarded-for. Sin proxy, toda la cabecera la escribe el navegador
+        // y se podría inventar una IP en cada intento para saltarse el bloqueo; entonces no se reenvía
+        // y la API usa la de la conexión.
+        const forwarded =
+          process.env.TRUSTED_PROXY === "true"
+            ? headerValue(req?.headers, "x-forwarded-for")?.split(",").pop()?.trim()
+            : undefined;
         const clientHeaders: Record<string, string> = { "Content-Type": "application/json" };
         if (forwarded) clientHeaders["x-client-ip"] = forwarded;
         const userAgent = headerValue(req?.headers, "user-agent");
@@ -148,12 +153,13 @@ export const authOptions: NextAuthOptions = {
           stop({ kind: "two_factor", challenge: { challengeId, emailHint, expiresAt, resendAvailableAt } });
         }
         const { accessToken, user } = data;
-        const { iat, exp } = jwtTimes(accessToken);
+        const { iat, exp, jti } = jwtTimes(accessToken);
         return {
           ...user,
           accessToken,
           accessTokenIssuedAt: iat,
           accessTokenExpires: exp * 1000,
+          accessTokenId: jti,
         };
       },
     }),
@@ -167,18 +173,25 @@ export const authOptions: NextAuthOptions = {
         token.accessToken = user.accessToken;
         token.accessTokenIssuedAt = user.accessTokenIssuedAt;
         token.accessTokenExpires = user.accessTokenExpires;
+        token.accessTokenId = user.accessTokenId;
       }
 
       // Se revalida en cada lectura de sesión: un usuario desactivado pierde el
-      // acceso al instante y un cambio de rol se aplica sin volver a entrar.
-      const current = token.id
-        ? await prisma.user.findUnique({
-            where: { id: token.id },
-            select: { active: true, role: true, name: true, passwordChangedAt: true },
-          })
-        : null;
+      // acceso al instante, un cambio de rol se aplica sin volver a entrar y una
+      // sesión cerrada (su token revocado) deja de valer aunque alguien copiara la cookie.
+      const [current, revoked] = token.id
+        ? await Promise.all([
+            prisma.user.findUnique({
+              where: { id: token.id },
+              select: { active: true, role: true, name: true, passwordChangedAt: true, tenantId: true },
+            }),
+            token.accessTokenId
+              ? prisma.revokedToken.findUnique({ where: { jti: token.accessTokenId }, select: { jti: true } })
+              : null,
+          ])
+        : [null, null];
 
-      const error = sessionError(current, token);
+      const error = sessionError(current, token, Date.now(), Boolean(revoked));
       if (error || !current) {
         token.error = error ?? "revoked";
       } else {

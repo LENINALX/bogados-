@@ -48,3 +48,6 @@ dist/
 
 # nest
 apps/api/dist/
+
+# Herramientas locales
+.qodo/

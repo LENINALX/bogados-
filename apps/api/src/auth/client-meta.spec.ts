@@ -1,37 +1,55 @@
-import { describeUserAgent, readClientMeta } from './client-meta';
+import { asIp, describeUserAgent, readClientMeta } from './client-meta';
 
 describe('readClientMeta', () => {
-  it('usa la IP y el navegador que reenvía la web (el login llega desde el servidor de Next)', () => {
-    const meta = readClientMeta({
-      ip: '::ffff:127.0.0.1',
-      headers: { 'x-client-ip': '190.1.2.3', 'x-client-user-agent': 'Firefox/130', 'user-agent': 'node' },
-    });
+  const env = { NODE_ENV: 'production', CLIENT_FORWARD_SECRET: 's3cr3t-compartido' };
+
+  it('con el secreto de la web: usa la IP y el navegador que reenvía (el login llega desde el servidor de Next)', () => {
+    const meta = readClientMeta(
+      {
+        ip: '::ffff:127.0.0.1',
+        headers: {
+          'x-client-ip': '190.1.2.3',
+          'x-client-user-agent': 'Firefox/130',
+          'x-client-forward-secret': 's3cr3t-compartido',
+          'user-agent': 'node',
+        },
+      },
+      env,
+    );
     expect(meta).toEqual({ ip: '190.1.2.3', userAgent: 'Firefox/130' });
   });
 
-  it('sin cabeceras de la web: primera IP de x-forwarded-for o la de la conexión', () => {
-    expect(readClientMeta({ headers: { 'x-forwarded-for': '10.0.0.1, 10.0.0.2' } }).ip).toBe('10.0.0.1');
-    expect(readClientMeta({ ip: '::ffff:192.168.1.5', headers: {} }).ip).toBe('192.168.1.5');
-  });
-
-  describe('en producción solo se cree al servidor de Next', () => {
+  describe('solo se cree al servidor de Next', () => {
     const forged = {
       ip: '::ffff:203.0.113.7',
       headers: { 'x-client-ip': '1.2.3.4', 'x-forwarded-for': '5.6.7.8', 'x-client-user-agent': 'Falso/1', 'user-agent': 'curl/8' },
     };
 
-    it('sin secreto configurado: ignora las cabeceras reenviadas y usa la conexión', () => {
+    it('sin secreto configurado no se fía de nada, tampoco en desarrollo: usa la conexión', () => {
       expect(readClientMeta(forged, { NODE_ENV: 'production' })).toEqual({ ip: '203.0.113.7', userAgent: 'curl/8' });
+      expect(readClientMeta(forged, { NODE_ENV: 'development' })).toEqual({ ip: '203.0.113.7', userAgent: 'curl/8' });
     });
 
     it('con secreto: solo si la petición trae el mismo', () => {
-      const env = { NODE_ENV: 'production', CLIENT_FORWARD_SECRET: 's3cr3t-compartido' };
       expect(readClientMeta({ ...forged, headers: { ...forged.headers, 'x-client-forward-secret': 'otro' } }, env).ip).toBe('203.0.113.7');
       expect(readClientMeta({ ...forged, headers: { ...forged.headers, 'x-client-forward-secret': 's3cr3t-compartido' } }, env)).toEqual({
         ip: '1.2.3.4',
         userAgent: 'Falso/1',
       });
     });
+
+    it('x-forwarded-for ya no se lee nunca en la API', () => {
+      const headers = { 'x-forwarded-for': '5.6.7.8', 'x-client-forward-secret': 's3cr3t-compartido' };
+      expect(readClientMeta({ ip: '10.0.0.9', headers }, env).ip).toBe('10.0.0.9');
+    });
+  });
+
+  it('una «IP» que no es IP no se guarda (no acaba en el registro ni en los emails)', () => {
+    const headers = { 'x-client-ip': 'llama-al-0999999999-soporte', 'x-client-forward-secret': 's3cr3t-compartido' };
+    expect(readClientMeta({ ip: '::ffff:192.168.1.5', headers }, env).ip).toBe('192.168.1.5');
+    expect(asIp('2001:db8::1')).toBe('2001:db8::1');
+    expect(asIp('999.1.1.1')).toBeNull();
+    expect(asIp(undefined)).toBeNull();
   });
 
   it('recorta un user-agent desmesurado', () => {

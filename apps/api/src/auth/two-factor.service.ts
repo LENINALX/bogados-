@@ -13,6 +13,7 @@ import { MailService } from '../mail/mail.service';
 import { escapeHtml } from '../common/utils/html';
 import { ClientMeta, describeUserAgent } from './client-meta';
 import { LoginEventsService } from './login-events.service';
+import { logEmail } from '../common/utils/log-safe';
 
 export const LOGIN_CODE = {
   ttlMs: 10 * 60_000,
@@ -154,7 +155,7 @@ export class TwoFactorService {
       await this.sendCode(user, tenant.name, code, opts);
     } catch (err) {
       await this.prisma.loginChallenge.delete({ where: { id } }).catch(() => undefined);
-      this.logger.error(`No se pudo enviar el código de acceso a ${user.email}`, err instanceof Error ? err.stack : String(err));
+      this.logger.error(`No se pudo enviar el código de acceso a ${logEmail(user.email)}`, err instanceof Error ? err.stack : String(err));
       throw new ServiceUnavailableException('No pudimos enviarte el código de acceso. Inténtalo de nuevo en unos minutos.');
     }
     return this.describe(challenge.id, user.email, challenge.expiresAt, challenge.lastSentAt);

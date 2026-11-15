@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { escapeHtml } from '../common/utils/html';
 import { ClientMeta, describeUserAgent } from './client-meta';
+import { logEmail } from '../common/utils/log-safe';
 
 export const LOGIN_ALERT = {
   /** Un navegador usado en este periodo se da por conocido */
@@ -100,7 +101,7 @@ export class LoginAlertService {
       });
       await this.mail.send({ to: user.email, ...email, tenantId: tenant.id });
     } catch (err) {
-      this.logger.warn(`No se pudo enviar el aviso de inicio de sesión a ${user.email}: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.warn(`No se pudo enviar el aviso de inicio de sesión a ${logEmail(user.email)}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 }

@@ -38,7 +38,16 @@ describe('brandEmail', () => {
 });
 
 describe('MailService.send con firma', () => {
-  const config = { get: (k: string, d: unknown) => (k === 'appUrl' ? 'https://app.test' : d) };
+  const config = { get: (k: string, d: unknown) => (k === 'appUrl' ? 'https://app.test' : k === 'devMode' ? true : d) };
+
+  it('sin SMTP y sin NODE_ENV de desarrollo explícito: no envía y no escribe el correo en el log', async () => {
+    const prod = { get: (_k: string, d: unknown) => d };
+    const service = new MailService(prod as never, { tenant: { findUnique: jest.fn() } } as never);
+    jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
+    const log = jest.spyOn(service['logger'], 'log').mockImplementation(() => undefined);
+    await expect(service.send({ to: 'a@b.ec', subject: 'S', text: 'enlace secreto', html: '<p>x</p>' })).rejects.toThrow(/no está configurado/);
+    expect(log).not.toHaveBeenCalled();
+  });
 
   it('sin SMTP en desarrollo: escribe en el log el texto ya con la identidad de la firma', async () => {
     const prisma = {

@@ -11,6 +11,7 @@ import {
   HEX_COLOR,
   brandColorProblem,
   contrastWithWhite,
+  firmTextProblem,
   logoFileProblem,
   normalizeWebsite,
   phoneProblem,
@@ -43,11 +44,12 @@ const schema: Schema<Field> = {
     rules.required("Escribe el nombre de la firma."),
     rules.minLength(LIMITS.firmName.min, `El nombre lleva al menos ${LIMITS.firmName.min} caracteres.`),
     rules.maxLength(LIMITS.firmName.max),
+    firmTextProblem,
   ],
   brandColor: [brandColorProblem],
   contactEmail: [rules.email()],
   contactPhone: [phoneProblem, rules.maxLength(25)],
-  address: [rules.maxLength(ADDRESS_MAX)],
+  address: [rules.maxLength(ADDRESS_MAX), firmTextProblem],
   // Se mide ya con el https:// que se añade al guardar: así la API no la rechaza por larga
   website: [(v) => websiteProblem(normalizeWebsite(v)), (v) => rules.maxLength(200)(normalizeWebsite(v))],
 };

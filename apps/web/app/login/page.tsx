@@ -302,7 +302,7 @@ function LoginForm() {
           }
         />
 
-        <label className="flex cursor-pointer items-center gap-2.5 pt-1" title="30 días en este dispositivo. No lo marques en un ordenador compartido.">
+        <label className="flex cursor-pointer items-center gap-2.5 pt-1" title="7 días en este dispositivo. No lo marques en un ordenador compartido.">
           <input
             type="checkbox"
             checked={remember}
@@ -311,7 +311,7 @@ function LoginForm() {
             className="h-4 w-4 rounded border-slate-300 accent-[rgb(var(--brand-600))]"
           />
           <span className="text-sm text-slate-700">Mantener la sesión iniciada</span>
-          <span id="remember-hint" className="text-xs text-slate-400">· 30 días</span>
+          <span id="remember-hint" className="text-xs text-slate-400">· 7 días</span>
         </label>
 
         <button type="submit" ref={submitRef} disabled={loading} className="btn-primary mt-2 w-full">

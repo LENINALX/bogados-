@@ -133,6 +133,30 @@ export function TextField({ label, max, min = 0, multiline = false, minMessage }
   return applyDecorators(...decorators);
 }
 
+/**
+ * Para textos que salen en los emails de la plataforma con la identidad de una firma (su nombre,
+ * su dirección): sin direcciones de correo, enlaces ni signos de remitente. Así no se pueden usar
+ * para hacerse pasar por otra entidad («seguridad@banco.com <…>», «verifique en https://…»).
+ */
+export function firmTextProblem(value: string): string | null {
+  if (/[@<>"]/.test(value)) return 'no puede llevar @, <, > ni comillas';
+  if (/(https?:\/\/|www\.)/i.test(value)) return 'no puede llevar enlaces';
+  if (/\b[a-z0-9-]+\.(com|net|org|ec|io|app|info|co|biz|online|site|xyz)(\/|\b)/i.test(value)) {
+    return 'no puede llevar direcciones web';
+  }
+  return null;
+}
+
+export function FirmText(label: string): PropertyDecorator {
+  return ValidateBy({
+    name: 'firmText',
+    validator: {
+      validate: (value: unknown) => typeof value !== 'string' || firmTextProblem(value) === null,
+      defaultMessage: (args) => `${label}: ${firmTextProblem(String(args?.value ?? '')) ?? 'no es válido'}`,
+    },
+  });
+}
+
 // ─── Email ──────────────────────────────────────────────────────────────────
 
 /** RFC 5321: una dirección no pasa de 254 caracteres. */

@@ -9,6 +9,15 @@ export function resolveJwtSecret(env: NodeJS.ProcessEnv = process.env): string {
   return DEV_JWT_SECRET;
 }
 
+/**
+ * Las comodidades de desarrollo (Swagger, correos escritos en el log) solo con NODE_ENV=development
+ * o test dichos de forma explícita: si en un servidor se olvida NODE_ENV, la API se comporta como
+ * en producción en vez de abrir esas puertas.
+ */
+export function isDevMode(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.NODE_ENV === 'development' || env.NODE_ENV === 'test';
+}
+
 export default () => ({
   port: parseInt(process.env.PORT || '3001', 10),
   databaseUrl: process.env.DATABASE_URL,
@@ -30,10 +39,11 @@ export default () => ({
     enabled: process.env.REMINDERS_ENABLED !== 'false' && process.env.NODE_ENV !== 'test',
   },
   /** Documentación interactiva en /api/docs: en producción, solo si se pide (enseña el mapa de la API). */
-  swagger: process.env.SWAGGER_ENABLED === 'true' || process.env.NODE_ENV !== 'production',
+  swagger: process.env.SWAGGER_ENABLED === 'true' || isDevMode(),
   signup: {
     /** Alta pública de nuevas firmas en /registro. SIGNUP_ENABLED=false la cierra (p. ej. durante el piloto). */
     enabled: process.env.SIGNUP_ENABLED !== 'false',
   },
-  nodeEnv: process.env.NODE_ENV || 'development',
+  nodeEnv: process.env.NODE_ENV || '',
+  devMode: isDevMode(),
 });

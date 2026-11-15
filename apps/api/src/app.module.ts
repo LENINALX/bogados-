@@ -20,6 +20,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { TermsModule } from './terms/terms.module';
 import { ExportsModule } from './exports/exports.module';
+import { RetentionModule } from './retention/retention.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -48,6 +49,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     AppointmentsModule,
     TermsModule,
     ExportsModule,
+    RetentionModule,
     ScheduleModule.forRoot(),
   ],
 })

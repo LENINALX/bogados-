@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { EmailField } from './auth-fields';
-import { TextField } from '../../common/validation/validators';
+import { FirmText, TextField } from '../../common/validation/validators';
 import { PASSWORD_MAX, PASSWORD_MIN } from './password.dto';
 
 const lower = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().toLowerCase() : value);
@@ -14,6 +14,7 @@ export class RegisterFirmDto {
   // TextField: además rechaza saltos de línea y caracteres de control (el nombre va en asuntos de email)
   @ApiProperty({ example: 'Nombre de la firma' })
   @TextField({ label: 'Nombre de la firma', min: 2, max: 120, minMessage: 'Escribe el nombre de la firma' })
+  @FirmText('Nombre de la firma')
   firmName!: string;
 
   @ApiProperty({ example: 'nombre-de-la-firma', description: 'Con este código entra el equipo de la firma' })

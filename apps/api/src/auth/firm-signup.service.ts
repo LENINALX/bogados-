@@ -8,11 +8,14 @@ import { MailService } from '../mail/mail.service';
 import { TermsService } from '../terms/terms.service';
 import { escapeHtml } from '../common/utils/html';
 import { FIRM_SLUG, RegisterFirmDto } from './dto/register-firm.dto';
+import { logEmail } from '../common/utils/log-safe';
 
 /** Códigos que podrían confundirse con rutas o con la propia plataforma. */
 export const RESERVED_SLUGS = new Set([
   'admin', 'administrador', 'api', 'app', 'www', 'web', 'mail', 'login', 'registro', 'portal', 'cuenta',
   'soporte', 'ayuda', 'help', 'support', 'bogados', 'sistema', 'root', 'test', 'demo',
+  // La firma de demostración: el seed la borra y la vuelve a crear
+  'firma-demo',
 ]);
 
 export function buildWelcomeEmail(d: { name: string; firmName: string; slug: string; loginUrl: string }) {
@@ -139,7 +142,7 @@ export class FirmSignupService {
         ...buildWelcomeEmail({ name: d.name, firmName: d.tenantName, slug: d.tenantSlug, loginUrl }),
       });
     } catch (err) {
-      this.logger.error(`No se envió la bienvenida a ${d.email}`, err instanceof Error ? err.stack : String(err));
+      this.logger.error(`No se envió la bienvenida a ${logEmail(d.email)}`, err instanceof Error ? err.stack : String(err));
     }
   }
 

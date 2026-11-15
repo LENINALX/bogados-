@@ -28,3 +28,13 @@ describe("safeCallbackPath", () => {
     expect(safeCallbackPath(null, ORIGIN)).toBe("/");
   });
 });
+
+describe("auditoría: rutas que se normalizan a otro dominio", () => {
+  it("«/.//evil.com» y variantes no salen del sitio", async () => {
+    const { safeCallbackPath } = await import("./safe-redirect");
+    for (const raw of ["/.//evil.com", "/..//evil.com", "/a/..//evil.com"]) {
+      expect(safeCallbackPath(raw, "http://localhost:3000")).toBe("/");
+    }
+    expect(safeCallbackPath("/casos/abc?x=1", "http://localhost:3000")).toBe("/casos/abc?x=1");
+  });
+});

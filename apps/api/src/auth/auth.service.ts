@@ -28,6 +28,7 @@ import { LoginEventsService, LoginReason } from './login-events.service';
 import { maskEmail, requiresTwoFactor, TwoFactorService } from './two-factor.service';
 import { LoginAlertService } from './login-alert.service';
 import { assertInvitationQuota } from './invitation-quota';
+import { recordActivity } from '../activity/activity.service';
 
 /**
  * Bloqueo de la cuenta por contraseñas fallidas: se cuentan solo los fallos (no los accesos
@@ -37,7 +38,8 @@ import { assertInvitationQuota } from './invitation-quota';
 export const ACCOUNT_LOCKOUT = { maxFailures: 5, windowMs: 15 * 60_000 } as const;
 
 /** Duración del token según «Mantener la sesión iniciada». */
-export const SESSION_TTL = { default: '12h', remember: '30d' } as const;
+/** Con «mantener la sesión» el token vive 7 días: si se filtra, sirve menos tiempo (antes 30). */
+export const SESSION_TTL = { default: '12h', remember: '7d' } as const;
 
 /**
  * Hash de una contraseña que nadie conoce: con un email inexistente también se
@@ -323,38 +325,57 @@ export class AuthService {
       if (actor.role === Role.ABOGADO && c.lawyerId !== actor.id) {
         throw new BadRequestException('Sin acceso a ese caso');
       }
+      // Solo se vincula a un caso sin cliente: cambiar el cliente de un caso es cosa del admin
+      // (si no, el cliente real perdería el acceso y la cuenta nueva vería todo su historial)
+      if (c.clientId) {
+        throw new BadRequestException('Ese caso ya tiene cliente. Solo el admin puede cambiar el cliente de un caso.');
+      }
     }
 
     // Sin contraseña: se invita por email y el cliente la define al activar la cuenta
     const passwordHash = dto.password
       ? await bcrypt.hash(dto.password, 10)
       : await unusablePasswordHash();
-    const client = await this.prisma.user.create({
-      data: {
-        tenantId: actor.tenantId,
-        email,
-        name: dto.name,
-        role: Role.CLIENTE,
-        passwordHash,
-        active: true,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        tenantId: true,
-        active: true,
-        createdAt: true,
-      },
-    });
-
-    if (dto.caseId) {
-      await this.prisma.case.update({
-        where: { id: dto.caseId },
-        data: { clientId: client.id },
+    const client = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          tenantId: actor.tenantId,
+          email,
+          name: dto.name,
+          role: Role.CLIENTE,
+          passwordHash,
+          active: true,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          tenantId: true,
+          active: true,
+          createdAt: true,
+        },
       });
-    }
+      if (dto.caseId) {
+        // Condicional: si entre medias otro le puso cliente, no se pisa
+        const { count } = await tx.case.updateMany({
+          where: { id: dto.caseId, tenantId: actor.tenantId, clientId: null },
+          data: { clientId: created.id },
+        });
+        if (count === 0) {
+          throw new BadRequestException('Ese caso ya tiene cliente. Solo el admin puede cambiar el cliente de un caso.');
+        }
+      }
+      // Queda en Admin › Actividad, como cualquier alta de usuario
+      await recordActivity(tx, {
+        tenantId: actor.tenantId,
+        actorId: actor.id,
+        type: 'USER_CREATED',
+        summary: `Cliente creado: ${created.name}${dto.caseId ? ' (vinculado a un caso)' : ''}`,
+        meta: { userId: created.id, caseId: dto.caseId ?? null },
+      });
+      return created;
+    });
 
     const invitationSent = dto.password
       ? false

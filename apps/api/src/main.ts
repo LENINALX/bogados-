@@ -12,6 +12,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
+  // Parámetros de la URL planos: «?page[toString]=1» no se convierte en un objeto (daba 500)
+  app.getHttpAdapter().getInstance().set('query parser', 'simple');
+
   app.use(
     helmet({
       contentSecurityPolicy: false,

@@ -1,0 +1,20 @@
+# Avisos semanales de dependencias con parches de seguridad (npm, Docker y acciones del CI).
+# Las actualizaciones grandes (NestJS 11, Next 15) se agrupan aparte para revisarlas con calma.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      parches:
+        update-types: [patch, minor]
+  - package-ecosystem: docker
+    directories: [/apps/api, /apps/web]
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

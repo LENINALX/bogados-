@@ -14,6 +14,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import { CreateCaseRequestDto, DecideCaseRequestDto } from './dto/case-request.dto';
 import { buildCaseRequestEmail, CaseRequestEmailKind } from './case-request-emails';
+import { logEmail } from '../common/utils/log-safe';
 
 /** Solicitudes que aún esperan decisión */
 export const OPEN_REQUEST_STATES: CaseRequestState[] = [
@@ -234,7 +235,7 @@ export class CaseRequestsService {
       await this.mail.send({ to: recipient.email, ...email, tenantId: tenant.id });
     } catch (err) {
       this.logger.error(
-        `No se pudo enviar el email "${kind}" a ${recipient.email}`,
+        `No se pudo enviar el email "${kind}" a ${logEmail(recipient.email)}`,
         err instanceof Error ? err.stack : String(err),
       );
     }

@@ -48,11 +48,6 @@ export function brandEmail(msg: { text: string; html: string }, firm: FirmBrandi
   return { text, html };
 }
 
-/** «Bogados <no-reply@x>» → no-reply@x */
-function addressOf(from: string): string {
-  return /<([^>]+)>/.exec(from)?.[1] ?? from;
-}
-
 /**
  * Envío de correo por SMTP (SMTP_URL). Sin SMTP_URL:
  * - en desarrollo el mensaje se escribe en el log (con el enlace), para probar sin servidor;
@@ -63,7 +58,8 @@ export class MailService {
   private readonly logger = new Logger('MailService');
   private readonly transporter: Transporter | null;
   private readonly from: string;
-  private readonly production: boolean;
+  /** Solo en desarrollo (NODE_ENV explícito) se escribe el correo en el log en vez de enviarlo */
+  private readonly devMode: boolean;
   private readonly appUrl: string;
 
   constructor(
@@ -72,10 +68,10 @@ export class MailService {
   ) {
     const smtpUrl = config.get<string>('mail.smtpUrl', '');
     this.from = config.get<string>('mail.from', 'Bogados <no-reply@bogados.local>');
-    this.production = config.get<string>('nodeEnv') === 'production';
+    this.devMode = config.get<boolean>('devMode', false);
     this.appUrl = config.get<string>('appUrl', 'http://localhost:3000');
     this.transporter = smtpUrl ? createTransport(smtpUrl) : null;
-    if (!this.transporter && this.production) {
+    if (!this.transporter && !this.devMode) {
       this.logger.warn('SMTP_URL no configurado: no se enviarán invitaciones ni recuperaciones de contraseña');
     }
   }
@@ -84,15 +80,18 @@ export class MailService {
     const { tenantId, ...base } = message;
     const firm = tenantId ? await this.branding(tenantId) : null;
     const body = firm ? brandEmail(base, firm, this.appUrl) : base;
-    // El remitente sigue siendo el de la plataforma (SPF/DKIM); el nombre y las respuestas, de la firma
-    const from = firm ? { name: `${firm.name} vía Bogados`, address: addressOf(this.from) } : this.from;
+    // El remitente es siempre la plataforma: el nombre de una firma en el «From» permitía hacerse pasar
+    // por otra entidad desde nuestro dominio. La firma se identifica en el cuerpo (logo, pie) y las
+    // respuestas van a su email de contacto.
+    const from = this.from;
     const replyTo = firm?.contactEmail ?? undefined;
 
     if (this.transporter) {
       await this.transporter.sendMail({ from, replyTo, to: base.to, subject: base.subject, text: body.text, html: body.html });
       return;
     }
-    if (this.production) {
+    // Fuera de desarrollo nunca se escriben en el log enlaces de acceso ni códigos
+    if (!this.devMode) {
       throw new ServiceUnavailableException('El envío de correo no está configurado');
     }
     this.logger.log(`[sin SMTP_URL, no enviado] Para: ${base.to} · Asunto: ${base.subject}\n${body.text}`);

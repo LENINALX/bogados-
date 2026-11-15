@@ -29,6 +29,8 @@ declare module "next-auth" {
     /** `iat` del JWT de Nest, en segundos */
     accessTokenIssuedAt: number;
     accessTokenExpires: number;
+    /** `jti` del JWT de Nest: si se revoca (cerrar sesión), la sesión web también cae */
+    accessTokenId?: string;
   }
 }
 
@@ -40,6 +42,7 @@ declare module "next-auth/jwt" {
     accessToken?: string;
     accessTokenIssuedAt?: number;
     accessTokenExpires?: number;
+    accessTokenId?: string;
     error?: SessionError;
   }
 }

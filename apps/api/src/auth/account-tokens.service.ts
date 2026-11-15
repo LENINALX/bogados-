@@ -6,6 +6,7 @@ import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { escapeHtml } from '../common/utils/html';
+import { logEmail } from '../common/utils/log-safe';
 
 export const TOKEN_TTL_MS: Record<UserTokenType, number> = {
   INVITE: 7 * 24 * 60 * 60 * 1000,
@@ -125,7 +126,7 @@ export class AccountTokensService {
       return true;
     } catch (err) {
       this.logger.error(
-        `No se pudo enviar ${type} a ${user.email}`,
+        `No se pudo enviar ${type} a ${logEmail(user.email)}`,
         err instanceof Error ? err.stack : String(err),
       );
       return false;

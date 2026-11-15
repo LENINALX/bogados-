@@ -30,6 +30,7 @@ import {
   zonedToUtc,
 } from './time';
 import { AppointmentEmailKind, buildAppointmentEmail } from './appointment-emails';
+import { logEmail } from '../common/utils/log-safe';
 
 /** Estados que ocupan la agenda del abogado */
 export const ACTIVE_STATUSES: AppointmentStatus[] = [
@@ -543,7 +544,7 @@ export class AppointmentsService {
       await this.mail.send({ to: recipient.email, ...email, tenantId: appt.tenantId });
     } catch (err) {
       this.logger.error(
-        `No se pudo enviar el email "${kind}" a ${recipient.email}`,
+        `No se pudo enviar el email "${kind}" a ${logEmail(recipient.email)}`,
         err instanceof Error ? err.stack : String(err),
       );
     }

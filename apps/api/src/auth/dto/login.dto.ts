@@ -29,7 +29,7 @@ export class LoginDto {
 
   @ApiPropertyOptional({
     default: false,
-    description: 'Mantener la sesión iniciada: el token dura 30 días en vez de 12 horas',
+    description: 'Mantener la sesión iniciada: el token dura 7 días en vez de 12 horas',
   })
   @IsOptional()
   @ToBoolean()

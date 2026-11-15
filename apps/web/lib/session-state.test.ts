@@ -38,3 +38,19 @@ describe("sessionError", () => {
     expect(sessionError({ active: true, passwordChangedAt: changedAt }, validToken, now)).toBeNull();
   });
 });
+
+describe("auditoría: sesión cerrada y firma de la cookie", () => {
+  const user = { active: true, passwordChangedAt: null, tenantId: "t1" };
+  const token = { accessToken: "x", accessTokenIssuedAt: 1, accessTokenExpires: Date.now() + 60_000, tenantId: "t1" };
+
+  it("token revocado (cerró sesión): la cookie copiada ya no vale", async () => {
+    const { sessionError } = await import("./session-state");
+    expect(sessionError(user, token, Date.now(), true)).toBe("revoked");
+    expect(sessionError(user, token, Date.now(), false)).toBeNull();
+  });
+
+  it("la firma de la cookie no coincide con la del usuario: revocada", async () => {
+    const { sessionError } = await import("./session-state");
+    expect(sessionError(user, { ...token, tenantId: "otra" })).toBe("revoked");
+  });
+});

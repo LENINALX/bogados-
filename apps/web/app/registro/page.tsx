@@ -12,6 +12,7 @@ import { NEST_API_BASE } from "@/lib/nest-api";
 import { rememberFirm } from "@/lib/firm-memory";
 import { FIRM_SLUG, passwordStrength, slugifyFirm } from "@/lib/signup";
 import { rules } from "@/lib/validation";
+import { firmTextProblem } from "@/lib/firm-branding";
 import { applyFilter, filters } from "@/lib/input-filters";
 
 
@@ -73,7 +74,7 @@ export default function RegisterPage() {
   }, [firmName, slugEdited]);
 
   const errors = {
-    firmName: firmName.trim().length < 2 ? "Escribe el nombre de la firma." : null,
+    firmName: firmName.trim().length < 2 ? "Escribe el nombre de la firma." : firmTextProblem(firmName),
     slug:
       check.state === "invalid"
         ? "De 3 a 40 letras minúsculas, números o guiones."

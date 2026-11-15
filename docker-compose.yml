@@ -5,7 +5,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: bogados
-      POSTGRES_PASSWORD: bogados
+      # En local vale «bogados»; en un servidor, pon POSTGRES_PASSWORD en el .env
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bogados}
       POSTGRES_DB: bogados
     ports:
       # Solo desde esta máquina: nunca exponer la base de datos a la red
@@ -21,7 +22,8 @@ services:
   # Buzón de pruebas: recibe todos los emails (invitaciones, recuperación) sin enviarlos
   # de verdad. SMTP en :1025, bandeja web en http://localhost:8025
   mailpit:
-    image: axllent/mailpit:latest
+    # Versión fija: «latest» cambia sin aviso
+    image: axllent/mailpit:v1.31.3
     container_name: bogados-mailpit
     restart: unless-stopped
     ports:
@@ -38,9 +40,10 @@ services:
     container_name: bogados-api
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      # Solo desde esta máquina: delante va un proxy con HTTPS (nginx, Caddy…)
+      - "127.0.0.1:3001:3001"
     environment:
-      DATABASE_URL: postgresql://bogados:bogados@postgres:5432/bogados?schema=public
+      DATABASE_URL: postgresql://bogados:${POSTGRES_PASSWORD:-bogados}@postgres:5432/bogados?schema=public
       # Sin valor por defecto: sale del .env (no se sube al repo). Si falta, la API no arranca en producción
       JWT_SECRET: ${JWT_SECRET}
       # El servidor de Next demuestra con este secreto que la IP y el navegador que reenvía son reales
@@ -73,9 +76,10 @@ services:
     container_name: bogados-web
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      # Solo desde esta máquina: delante va un proxy con HTTPS (nginx, Caddy…)
+      - "127.0.0.1:3000:3000"
     environment:
-      DATABASE_URL: postgresql://bogados:bogados@postgres:5432/bogados?schema=public
+      DATABASE_URL: postgresql://bogados:${POSTGRES_PASSWORD:-bogados}@postgres:5432/bogados?schema=public
       # Sin valor por defecto: sale del .env. Si falta, NextAuth no arranca en producción
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       CLIENT_FORWARD_SECRET: ${CLIENT_FORWARD_SECRET:-}

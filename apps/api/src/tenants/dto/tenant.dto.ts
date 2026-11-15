@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsOptional, MaxLength, ValidateBy } from 'class-validator';
 import { ToBoolean } from '../../common/decorators/to-boolean.decorator';
-import { EmailField, EmptyToNull, TextField, Trim, TrimLower, OptionalNotNull } from '../../common/validation/validators';
+import { EmailField, EmptyToNull, FirmText, TextField, Trim, TrimLower, OptionalNotNull } from '../../common/validation/validators';
 import { brandColorProblem, phoneProblem, websiteProblem } from '../branding';
 
 export const FIRM_NAME_MIN = 2;
@@ -24,6 +24,7 @@ export class UpdateTenantDto {
   @ApiProperty({ required: false, minLength: FIRM_NAME_MIN, maxLength: FIRM_NAME_MAX })
   @OptionalNotNull('El nombre de la firma')
   @TextField({ label: 'Nombre de la firma', min: FIRM_NAME_MIN, max: FIRM_NAME_MAX })
+  @FirmText('Nombre de la firma')
   name?: string;
 
   @ApiProperty({
@@ -62,6 +63,7 @@ export class UpdateTenantDto {
   @ApiProperty({ required: false, nullable: true, maxLength: ADDRESS_MAX })
   @IsOptional()
   @TextField({ label: 'Dirección', max: ADDRESS_MAX })
+  @FirmText('Dirección')
   @EmptyToNull()
   address?: string | null;
 

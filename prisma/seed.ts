@@ -13,6 +13,10 @@ import {
 const prisma = new PrismaClient();
 
 async function main() {
+  // Crea cuentas con contraseña conocida (demo1234) y borra la firma «firma-demo»: nunca en producción
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_SEED !== "1") {
+    throw new Error("El seed crea cuentas demo con contraseña conocida: no se ejecuta con NODE_ENV=production (usa ALLOW_SEED=1 si de verdad es una instalación de demostración).");
+  }
   const passwordHash = await bcrypt.hash("demo1234", 10);
 
   // Limpieza idempotente del tenant demo

@@ -107,10 +107,10 @@ describe('AuthService.login', () => {
     expect(loginAlerts.send).not.toHaveBeenCalled();
   });
 
-  it('«mantener la sesión iniciada» emite un token de 30 días', async () => {
+  it('«mantener la sesión iniciada» emite un token de 7 días', async () => {
     prisma.user.findUnique.mockResolvedValue(activeAdmin());
     await login({ remember: true });
-    expect(jwt.signAsync).toHaveBeenCalledWith(expect.anything(), { expiresIn: '30d', jwtid: expect.any(String) });
+    expect(jwt.signAsync).toHaveBeenCalledWith(expect.anything(), { expiresIn: '7d', jwtid: expect.any(String) });
   });
 
   it('busca al usuario dentro del tenant indicado', async () => {
@@ -202,7 +202,7 @@ describe('AuthService.login', () => {
     });
     await service.verifyLogin({ challengeId: 'ch1', code: '123456' });
     expect(twoFactor.verify).toHaveBeenCalledWith('ch1', '123456');
-    expect(jwt.signAsync).toHaveBeenCalledWith(expect.anything(), { expiresIn: '30d', jwtid: expect.any(String) });
+    expect(jwt.signAsync).toHaveBeenCalledWith(expect.anything(), { expiresIn: '7d', jwtid: expect.any(String) });
     expect(loginEvents.record).toHaveBeenCalledWith(
       expect.objectContaining({ success: true, reason: 'two_factor', ip: '10.0.0.9', userAgent: 'Safari' }),
       prisma,

@@ -1,5 +1,6 @@
 # Construir desde la raíz del monorepo: docker build -f apps/api/Dockerfile .
-FROM node:20-alpine AS base
+# Node 22 LTS: Node 20 dejó de recibir parches de seguridad en abril de 2026
+FROM node:22-alpine AS base
 # Mirror alternativo de Alpine para redes que bloquean dl-cdn.alpinelinux.org
 # (p. ej. ALPINE_MIRROR=https://mirrors.edge.kernel.org/alpine). Vacío = CDN oficial.
 ARG ALPINE_MIRROR=

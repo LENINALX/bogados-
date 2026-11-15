@@ -93,3 +93,16 @@ export function firmMonogram(name: string): string {
   const words = name.split(/\s+/).filter((w) => /^[A-Za-zÁÉÍÓÚÑáéíóúñ]/.test(w) && w.length > 2);
   return ((words[0]?.[0] ?? name[0] ?? "") + (words[1]?.[0] ?? "")).toUpperCase();
 }
+
+/**
+ * Nombre y dirección de la firma salen en los emails: sin direcciones de correo, enlaces ni signos
+ * de remitente (mismas reglas que la API, `firmTextProblem`), para que nadie se haga pasar por otra entidad.
+ */
+export function firmTextProblem(value: string): string | null {
+  const v = value.trim();
+  if (!v) return null;
+  if (/[@<>"]/.test(v)) return "No puede llevar @, <, > ni comillas.";
+  if (/(https?:\/\/|www\.)/i.test(v)) return "No puede llevar enlaces.";
+  if (/\b[a-z0-9-]+\.(com|net|org|ec|io|app|info|co|biz|online|site|xyz)(\/|\b)/i.test(v)) return "No puede llevar direcciones web.";
+  return null;
+}

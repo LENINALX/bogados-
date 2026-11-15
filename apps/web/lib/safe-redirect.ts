@@ -15,8 +15,9 @@ export function safeCallbackPath(raw: string | null | undefined, origin: string,
     return fallback;
   }
   if (url.origin !== origin) return fallback;
-  // «//otro.com» y «/\otro.com» se resuelven como otro origen en algunos navegadores
-  if (/^\/[\\/]/.test(raw)) return fallback;
+  // «//otro.com» y «/\otro.com» se resuelven como otro origen en algunos navegadores.
+  // Se mira también la ruta ya normalizada: «/.//otro.com» o «/a/..//otro.com» quedan en «//otro.com».
+  if (/^\/[\\/]/.test(raw) || /^[\\/]{2}/.test(url.pathname)) return fallback;
   if (AUTH_PATHS.some((p) => url.pathname === p || url.pathname.startsWith(`${p}/`))) return fallback;
   return `${url.pathname}${url.search}${url.hash}`;
 }

@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
   StreamableFile,
@@ -177,10 +176,13 @@ export class DocumentsService {
     });
     if (!doc) throw new NotFoundException('Documento no encontrado');
 
-    await getAccessibleCase(this.prisma, doc.caseId, user);
+    // Siempre la misma respuesta: no se distingue «no existe», «es de otro caso» o «no está compartido»
+    await getAccessibleCase(this.prisma, doc.caseId, user).catch(() => {
+      throw new NotFoundException('Documento no encontrado');
+    });
 
     if (!isStaff(user.role) && !doc.sharedWithClient) {
-      throw new ForbiddenException('Sin permiso para este documento');
+      throw new NotFoundException('Documento no encontrado');
     }
 
     // Sin esta comprobación, StreamableFile responde 400 con el mensaje de ENOENT (incluye la ruta)

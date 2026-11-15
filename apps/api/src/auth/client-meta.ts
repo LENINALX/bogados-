@@ -1,5 +1,6 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { timingSafeEqual } from 'crypto';
+import { isIP } from 'net';
 
 /** Desde dónde se intenta entrar: se guarda en el registro de accesos y va en el email del código. */
 export type ClientMeta = { ip?: string | null; userAgent?: string | null };
@@ -16,11 +17,12 @@ type Env = { CLIENT_FORWARD_SECRET?: string; NODE_ENV?: string };
 
 /**
  * ¿Viene la petición del servidor de Next? Lo demuestra con CLIENT_FORWARD_SECRET. Sin el
- * secreto configurado solo se confía fuera de producción (desarrollo en local).
+ * secreto configurado no se confía nunca (tampoco en desarrollo): si no, quien llame a la API
+ * directamente podría inventar una IP en cada intento y saltarse el bloqueo por IP.
  */
 export function trustsForwardedHeaders(req: { headers?: Record<string, unknown> }, env: Env = process.env): boolean {
   const secret = env.CLIENT_FORWARD_SECRET;
-  if (!secret) return env.NODE_ENV !== 'production';
+  if (!secret) return false;
   const got = header(req, 'x-client-forward-secret');
   if (!got) return false;
   const a = Buffer.from(got);
@@ -39,14 +41,19 @@ export function readClientMeta(
   env: Env = process.env,
 ): ClientMeta {
   const trusted = trustsForwardedHeaders(req, env);
-  const forwarded = trusted
-    ? (header(req, 'x-client-ip') ?? header(req, 'x-forwarded-for')?.split(',')[0]?.trim())
-    : undefined;
+  // Solo una IP de verdad: un texto cualquiera acabaría en el registro de accesos y en los emails
+  const forwarded = trusted ? asIp(header(req, 'x-client-ip')) : null;
   const userAgent = (trusted ? header(req, 'x-client-user-agent') : undefined) ?? header(req, 'user-agent');
   return {
-    ip: (forwarded ?? req.ip ?? null)?.replace(/^::ffff:/, '').slice(0, 64) ?? null,
+    ip: forwarded ?? asIp(req.ip),
     userAgent: userAgent?.slice(0, USER_AGENT_MAX) ?? null,
   };
+}
+
+/** «::ffff:1.2.3.4» → «1.2.3.4»; lo que no sea una IPv4/IPv6 válida → null. */
+export function asIp(value: string | undefined | null): string | null {
+  const v = value?.trim().replace(/^::ffff:/, '');
+  return v && isIP(v) ? v : null;
 }
 
 export const Client = createParamDecorator((_: unknown, ctx: ExecutionContext): ClientMeta =>
