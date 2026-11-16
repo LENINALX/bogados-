@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # todo el historial, no solo el último commit
           persist-credentials: false
@@ -37,7 +37,7 @@ jobs:
       NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
       JWT_SECRET: ci-only-jwt-secret
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -76,7 +76,7 @@ jobs:
       MAILPIT_API_URL: http://localhost:8025/api/v1
       E2E_BASE_URL: http://localhost:3000
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
