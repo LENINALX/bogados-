@@ -1,5 +1,6 @@
 import {
   Controller,
+  Body,
   Get,
   Header,
   Param,
@@ -26,6 +27,7 @@ import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.d
 import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 import { PaginationQueryDto } from '../common/dto/pagination.dto';
 import { documentUploadOptions } from './upload.config';
+import { GenerateDocumentDto } from './dto/generate-document.dto';
 
 @ApiTags('documents')
 @ApiBearerAuth()
@@ -65,6 +67,16 @@ export class DocumentsController {
   ) {
     const shared = (req.body as { sharedWithClient?: string })?.sharedWithClient;
     return this.documents.upload(caseId, file, shared, user);
+  }
+
+  @Post('cases/:caseId/documents/generate')
+  @ApiOperation({ summary: 'Generar un escrito desde una plantilla y guardarlo en el caso' })
+  generate(
+    @Param('caseId', ParseIdPipe) caseId: string,
+    @Body() input: GenerateDocumentDto,
+    @CurrentUser() user: JwtPayloadUser,
+  ) {
+    return this.documents.generateFromTemplate(caseId, input, user);
   }
 
   @Get('documents/:id/download')

@@ -11,6 +11,7 @@ import { CaseRequestDecision } from "@/components/CaseRequestDecision";
 import { OPEN_CASE_REQUEST_STATES } from "@bogados/shared";
 import { CaseMessages } from "@/components/CaseMessages";
 import { CaseDocuments } from "@/components/CaseDocuments";
+import { CaseDocumentGenerator } from "@/components/CaseDocumentGenerator";
 import { CaseStatusForm } from "@/components/CaseStatusForm";
 import { CaseNoteForm } from "@/components/CaseNoteForm";
 import { CaseTasks } from "@/components/CaseTasks";
@@ -196,6 +197,7 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
                 createdAt: m.createdAt.toISOString(),
               }))}
             />
+            <CaseDocumentGenerator caseId={c.id} />
             <CaseDocuments
               caseId={c.id}
               timeZone={timeZone}

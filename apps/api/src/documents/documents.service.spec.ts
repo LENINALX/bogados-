@@ -24,7 +24,7 @@ const file = {
 
 describe('DocumentsService.upload', () => {
   let tx: { document: { create: jest.Mock } };
-  let prisma: { case: { findFirst: jest.Mock }; $transaction: jest.Mock };
+  let prisma: { case: { findFirst: jest.Mock }; user: { findUnique: jest.Mock }; $transaction: jest.Mock };
   let storage: { save: jest.Mock; remove: jest.Mock };
   let activity: { log: jest.Mock };
   let notifications: { create: jest.Mock };
@@ -46,6 +46,7 @@ describe('DocumentsService.upload', () => {
           clientId: 'cli1',
         }),
       },
+      user: { findUnique: jest.fn().mockResolvedValue({ name: 'Abogada Demo' }) },
       $transaction: jest.fn(async (fn: (t: unknown) => unknown) => fn(tx)),
     };
     storage = {
@@ -103,6 +104,29 @@ describe('DocumentsService.upload', () => {
   it('si todo va bien, no borra el archivo', async () => {
     await service.upload('c1', file, 'true', admin);
     expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  describe('generateFromTemplate', () => {
+    const input = { template: 'impulso' as const, court: 'Unidad Judicial Civil', opposingParty: 'Parte contraria' };
+
+    it.each(['docx', 'pdf'] as const)('genera %s y lo guarda como documento interno', async (format) => {
+      await service.generateFromTemplate('c1', { ...input, format }, lawyer);
+
+      const saved = storage.save.mock.calls[0];
+      expect(saved[0]).toBe('t1');
+      expect(saved[1]).toBe('c1');
+      expect(saved[2]).toMatch(new RegExp(`^escrito-impulso-\\d{4}-\\d{2}-\\d{2}\\.${format}$`));
+      expect(format === 'docx' ? saved[3].subarray(0, 2).toString() : saved[3].subarray(0, 5).toString()).toBe(
+        format === 'docx' ? 'PK' : '%PDF-',
+      );
+      expect(tx.document.create.mock.calls[0][0].data.sharedWithClient).toBe(false);
+    });
+
+    it('solo permite generar al equipo del caso', async () => {
+      await expect(service.generateFromTemplate('c1', { ...input, format: 'pdf' }, client)).rejects.toThrow(
+        'Solo el equipo puede generar escritos',
+      );
+    });
   });
 
   describe('validación del archivo', () => {
