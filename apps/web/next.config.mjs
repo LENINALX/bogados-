@@ -36,6 +36,7 @@ const csp = [
 const nextConfig = {
   // Sin «X-Powered-By: Next.js»: no hace falta anunciar la tecnología ni su versión
   poweredByHeader: false,
+  ...(standalone && { output: "standalone" }),
   // Cabeceras de seguridad en todas las páginas
   async headers() {
     return [
