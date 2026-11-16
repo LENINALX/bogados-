@@ -17,6 +17,7 @@ const columns = [
       { label: "Iniciar sesión", href: "/login" },
       { label: "Registrar mi despacho", href: "/registro" },
       { label: "Recuperar contraseña", href: "/recuperar" },
+      { label: "Política de privacidad", href: "/privacidad" },
     ],
   },
 ];

@@ -325,6 +325,13 @@ export default function RegisterPage() {
           <p className="mt-3 text-xs leading-relaxed text-slate-500">
             Serás el administrador: podrás invitar a tu equipo y a tus clientes, y activar la verificación en dos pasos.
           </p>
+          <p className="mt-3 text-xs leading-relaxed text-slate-500">
+            Consulta la{" "}
+            <Link href="/privacidad" className="font-medium text-brand-700 underline-offset-4 hover:underline">
+              política de privacidad para clientes
+            </Link>
+            {" "}de los despachos que usan Bogados.
+          </p>
         </div>
       </form>
 
