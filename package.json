@@ -23,7 +23,8 @@
     "build:api": "npm run build -w @bogados/api",
     "start:api": "npm run start:prod -w @bogados/api",
     "test:api": "npm run test -w @bogados/api",
-    "test:web": "npm run test -w @bogados/web"
+    "test:web": "npm run test -w @bogados/web",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -31,6 +32,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "dotenv": "^18.0.4",
     "prisma": "^5.22.0",
     "tsx": "^4.19.2",

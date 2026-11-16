@@ -63,3 +63,56 @@ jobs:
       # next build incluye el chequeo de tipos
       - name: Web — build
         run: npm run build -w @bogados/web
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      DATABASE_URL: postgresql://bogados:bogados@127.0.0.1:15432/bogados?schema=public
+      POSTGRES_PASSWORD: bogados
+      NEXTAUTH_SECRET: ci-e2e-nextauth-secret
+      JWT_SECRET: ci-e2e-jwt-secret
+      CLIENT_FORWARD_SECRET: ci-e2e-forward-secret
+      MAILPIT_API_URL: http://localhost:8025/api/v1
+      E2E_BASE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Levantar la app real en Docker Compose
+        run: docker compose --profile full up -d --build --wait
+
+      - name: Esperar a que API y web estén listas
+        run: |
+          for attempt in {1..60}; do
+            if curl --fail --silent http://localhost:3001/api/v1/health/ready >/dev/null \
+              && curl --fail --silent http://localhost:3000/login >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "La API o la web no estuvieron listas a tiempo."
+          exit 1
+
+      - name: Sembrar cuentas y datos de demo
+        run: npm run db:seed
+
+      - name: Playwright — flujos E2E
+        run: npm run test:e2e
+
+      - name: Logs de Docker Compose
+        if: failure()
+        run: docker compose logs --no-color api web postgres mailpit
+
+      - name: Limpiar servicios E2E
+        if: always()
+        run: docker compose down --volumes

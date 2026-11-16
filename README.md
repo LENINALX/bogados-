@@ -207,6 +207,7 @@ npm run build:api    # Compilar API
 npm run test:api     # Tests unitarios Jest de la API
 npm run lint -w @bogados/api   # ESLint de la API (lint:fix para corregir)
 npm run test:web     # Tests unitarios Vitest de la web (sesión, timeline, cliente API, plazos)
+npm run test:e2e     # Flujos Playwright contra la web/API reales (requiere Docker Compose y seed)
 npm run lint -w @bogados/web   # ESLint de la web (next lint)
 npm run db:seed      # Datos demo (incluye tareas y notificaciones)
 npm run db:fix-doc-names [-- --apply]   # Corrige nombres de documentos con tildes corrompidas (simula sin --apply)
@@ -219,6 +220,24 @@ docker compose --profile full up -d --build
 #   PowerShell: $env:ALPINE_MIRROR="https://mirrors.edge.kernel.org/alpine"   · bash: export ALPINE_MIRROR=...
 docker compose exec api sh -c "cd /app && node_modules/.bin/tsx prisma/seed.ts"   # opcional: datos demo
 ```
+
+### Tests end-to-end
+
+Los flujos Playwright recorren la aplicación real: login con y sin código de email, bloqueo tras cinco
+contraseñas fallidas, registro y verificación de una firma, reserva de cita y solicitud de caso desde
+el portal. Los códigos y enlaces se leen desde Mailpit mediante su API (`http://localhost:8025/api/v1`).
+
+En local, con Docker disponible:
+
+```bash
+docker compose --profile full up -d --build
+npm run db:seed
+npx playwright install chromium   # solo la primera vez
+npm run test:e2e
+```
+
+La suite usa la firma `firma-demo`; ejecútala solo contra una base de pruebas o desarrollo. El CI
+levanta el perfil completo de Docker Compose, carga el seed y ejecuta estos mismos tests.
 
 ## Diseño (web)
 

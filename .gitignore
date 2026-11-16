@@ -45,6 +45,8 @@ next-env.d.ts
 coverage/
 .turbo/
 dist/
+playwright-report/
+test-results/
 
 # nest
 apps/api/dist/
