@@ -30,6 +30,7 @@ import {
   zonedToUtc,
 } from './time';
 import { AppointmentEmailKind, buildAppointmentEmail } from './appointment-emails';
+import { buildAppointmentCalendar } from './appointment-calendar';
 import { logEmail } from '../common/utils/log-safe';
 
 /** Estados que ocupan la agenda del abogado */
@@ -299,6 +300,24 @@ export class AppointmentsService {
       orderBy: { startsAt: 'asc' },
       take: 200,
     });
+  }
+
+  async calendar(id: string, actor: JwtPayloadUser) {
+    const where: Prisma.AppointmentWhereInput = { id, tenantId: actor.tenantId };
+    if (actor.role === Role.CLIENTE) where.clientId = actor.id;
+    else if (actor.role === Role.ABOGADO) where.lawyerId = actor.id;
+
+    const appointment = await this.prisma.appointment.findFirst({
+      where,
+      include: appointmentInclude,
+    });
+    if (!appointment) throw new NotFoundException('Cita no encontrada');
+
+    const tenant = await this.tenantSettings(actor.tenantId);
+    return {
+      fileName: `cita-${appointment.id}.ics`,
+      buffer: buildAppointmentCalendar(appointment, tenant),
+    };
   }
 
   // ─── Cambiar estado ────────────────────────────────────────────────────────

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { APPOINTMENT_STATUS_LABELS } from "@bogados/shared";
-import { nestFetch } from "@/lib/nest-api";
-import { CalendarDays } from "lucide-react";
+import { nestDownloadFile, nestFetch } from "@/lib/nest-api";
+import { CalendarDays, CalendarPlus } from "lucide-react";
 import { Appointment, formatTime, groupByDay } from "@/lib/appointments";
 import { EmptyState, FormMessage, Spinner, errorMessage } from "./ui";
 import { useToast } from "./Toaster";
@@ -54,6 +54,7 @@ export function AppointmentList({
   const [pending, setPending] = useState<{ id: string; action: Action } | null>(null);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [downloadingCalendar, setDownloadingCalendar] = useState<string | null>(null);
   const toast = useToast();
 
   const load = useCallback(() => {
@@ -84,6 +85,17 @@ export function AppointmentList({
       setError(errorMessage(err, "No se pudo actualizar la cita."));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function addToCalendar(id: string) {
+    setDownloadingCalendar(id);
+    try {
+      await nestDownloadFile(`/appointments/${id}/calendar`, `cita-${id}.ics`);
+    } catch (err) {
+      toast("error", errorMessage(err, "No se pudo generar el archivo de calendario."));
+    } finally {
+      setDownloadingCalendar(null);
     }
   }
 
@@ -196,7 +208,7 @@ export function AppointmentList({
                           {a.reason && <p className="mt-1.5 text-xs text-slate-600">Motivo: {a.reason}</p>}
                           {a.note && <p className="mt-0.5 text-xs text-slate-600">Comentario: {a.note}</p>}
                         </div>
-                        {actions.length > 0 && pending?.id !== a.id && (
+                        {(actions.length > 0 || a.status !== "cancelada") && pending?.id !== a.id && (
                           <div className="col-span-2 flex flex-wrap gap-2 sm:col-span-1 sm:justify-end sm:self-start">
                             {actions.map((action) => (
                               <button
@@ -211,6 +223,21 @@ export function AppointmentList({
                                 {ACTION_LABEL[action]}
                               </button>
                             ))}
+                            {a.status !== "cancelada" && (
+                              <button
+                                type="button"
+                                onClick={() => addToCalendar(a.id)}
+                                disabled={downloadingCalendar !== null}
+                                className="btn-secondary btn-sm"
+                              >
+                                {downloadingCalendar === a.id ? (
+                                  <Spinner className="h-3.5 w-3.5" />
+                                ) : (
+                                  <CalendarPlus className="h-3.5 w-3.5" aria-hidden />
+                                )}
+                                Añadir a mi calendario
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

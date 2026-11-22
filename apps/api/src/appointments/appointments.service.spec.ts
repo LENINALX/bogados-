@@ -343,6 +343,38 @@ describe('AppointmentsService', () => {
     });
   });
 
+  describe('calendar', () => {
+    const appointment = {
+      id: 'a1',
+      startsAt: new Date(MONDAY_9),
+      endsAt: new Date('2026-10-05T15:00:00.000Z'),
+      status: AppointmentStatus.confirmada,
+      reason: null,
+      note: null,
+      lawyer: people.law1,
+      client: people.cli1,
+      case: null,
+    };
+
+    it('permite al cliente descargar solo sus citas', async () => {
+      t.prisma.appointment.findFirst.mockResolvedValue(appointment);
+      const file = await t.service.calendar('a1', client);
+      expect(t.prisma.appointment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'a1', tenantId: 't1', clientId: 'cli1' } }),
+      );
+      expect(file.fileName).toBe('cita-a1.ics');
+      expect(file.buffer.toString('utf8')).toContain('DTSTART;TZID=America/Guayaquil:20261005T090000');
+    });
+
+    it('no revela citas ajenas al abogado ni a otra firma', async () => {
+      t.prisma.appointment.findFirst.mockResolvedValue(null);
+      await expect(t.service.calendar('a1', lawyer)).rejects.toThrow('Cita no encontrada');
+      expect(t.prisma.appointment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'a1', tenantId: 't1', lawyerId: 'law1' } }),
+      );
+    });
+  });
+
   describe('sendReminders', () => {
     const appt = (id: string) => ({
       id,

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, Query, StreamableFile, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { AppointmentsService } from './appointments.service';
@@ -14,6 +14,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayloadUser } from '../common/decorators/current-user.decorator';
 import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
+import { attachmentDisposition } from '../common/utils/content-disposition';
 
 @ApiTags('appointments')
 @ApiBearerAuth()
@@ -55,6 +56,17 @@ export class AppointmentsController {
   @ApiOperation({ summary: 'Citas (cliente: las suyas · abogado: su agenda · admin: la firma)' })
   list(@Query() query: ListAppointmentsQueryDto, @CurrentUser() user: JwtPayloadUser) {
     return this.appointments.list(query, user);
+  }
+
+  @Get('appointments/:id/calendar')
+  @ApiOperation({ summary: 'Descargar cita como archivo iCalendar (ICS)' })
+  async calendar(@Param('id', ParseIdPipe) id: string, @CurrentUser() user: JwtPayloadUser) {
+    const file = await this.appointments.calendar(id, user);
+    return new StreamableFile(file.buffer, {
+      type: 'text/calendar; charset=utf-8',
+      disposition: attachmentDisposition(file.fileName),
+      length: file.buffer.length,
+    });
   }
 
   @Post('appointments')
