@@ -8,9 +8,9 @@ import { prisma } from "@/lib/prisma";
 import { staffLinks } from "@/lib/nav";
 import { StaffLayout } from "@/components/StaffLayout";
 import { StatusBadge } from "@/components/StatusBadge";
-import { EmptyState } from "@/components/ui";
+import { EmptyState, NoResults } from "@/components/ui";
 import { Badge, ChipCount, SectionTitle, chipClass, chipRail, th, tr } from "@/components/staff/primitives";
-import { ChevronLeft, ChevronRight, FolderOpen, Inbox, Plus, Search, SearchX } from "lucide-react";
+import { ChevronLeft, ChevronRight, FolderOpen, Inbox, Plus, Search } from "lucide-react";
 import { TodayPanel } from "@/components/TodayPanel";
 import { dayBounds } from "@/lib/today";
 import { CaseRequestBadge } from "@/components/CaseRequestBadge";
@@ -469,9 +469,9 @@ export default async function DashboardPage({
           <div className="card overflow-hidden">
             {cases.length === 0 ? (
               filtered ? (
-                <EmptyState
-                  icon={SearchX}
-                  title="Ningún caso coincide"
+                <NoResults
+                  query={q}
+                  title={q ? undefined : "Ningún caso con este estado"}
                   hint="Prueba con otra búsqueda o quita el filtro de estado."
                   action={{ href: href({}), label: "Ver todos los casos" }}
                 />
@@ -499,7 +499,7 @@ export default async function DashboardPage({
                           {c.client?.name ?? "Sin cliente"}
                           {isAdmin && <> · {c.lawyer?.name ?? "Sin abogado"}</>}
                         </div>
-                        <div className="mt-0.5 text-xs tabular-nums text-slate-400">
+                        <div className="mt-0.5 text-xs tabular-nums text-slate-500">
                           Actualizado el {c.updatedAt.toLocaleDateString("es-EC", { timeZone })}
                         </div>
                       </Link>

@@ -2,10 +2,10 @@
 
 import { useEffect, useId, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, ChevronLeft, ChevronRight, RotateCw, ShieldAlert, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, ShieldAlert, ShieldCheck, XCircle } from "lucide-react";
 import { nestFetch } from "@/lib/nest-api";
 import { formatLoginDate, loginReasonLabel, type LoginEvent } from "@/lib/login-events";
-import { EmptyState, FormMessage, Spinner, errorMessage } from "@/components/ui";
+import { EmptyState, ErrorState, NoResults, Spinner, errorMessage } from "@/components/ui";
 
 const PAGE_SIZE = 20;
 /** A partir de cuántos fallos en 24 h el resumen pasa de ámbar a rojo */
@@ -167,13 +167,7 @@ export function LoginActivity({ timeZone, users }: { timeZone: string; users: Fi
       </p>
 
       {error ? (
-        <div className="space-y-3 p-4 sm:px-5">
-          <FormMessage type="error">{error}</FormMessage>
-          <button type="button" onClick={() => setAttempt((n) => n + 1)} className="btn-secondary btn-sm">
-            <RotateCw className="h-3.5 w-3.5" aria-hidden />
-            Reintentar
-          </button>
-        </div>
+        <ErrorState message={error} onRetry={() => setAttempt((n) => n + 1)} retrying={loading} className="p-4 sm:px-5" />
       ) : !data ? (
         <RowsSkeleton />
       ) : data.items.length === 0 ? (
@@ -189,7 +183,7 @@ export function LoginActivity({ timeZone, users }: { timeZone: string; users: Fi
             </button>
           </div>
         ) : filtered ? (
-          <EmptyState
+          <NoResults
             title="No hay accesos con estos filtros"
             hint="Prueba con otro resultado u otra persona."
             action={{ href: pathname, label: "Quitar filtros" }}

@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarX, Check, Clock } from "lucide-react";
 import { nestFetch } from "@/lib/nest-api";
 import { SlotsResponse, formatDay, formatTime, groupByDay } from "@/lib/appointments";
-import { EmptyState, FormMessage, errorMessage } from "./ui";
+import { EmptyState, ErrorState, errorMessage } from "./ui";
+import { onRadioGroupKeyDown, rovingTabIndex } from "@/lib/roving";
 
 const DAYS_AHEAD = 21;
 
@@ -31,6 +32,7 @@ export function SlotPicker({
   const [data, setData] = useState<SlotsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [day, setDay] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,12 +51,12 @@ export function SlotPicker({
     };
     // onChange se omite a propósito: solo se limpia al cambiar de abogado o recargar
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lawyerId, reloadKey]);
+  }, [lawyerId, reloadKey, attempt]);
 
   const groups = useMemo(() => (data ? groupByDay(data.slots, data.timeZone) : []), [data]);
   const selected = groups.find((g) => g.day === day);
 
-  if (error) return <FormMessage type="error">{error}</FormMessage>;
+  if (error) return <ErrorState message={error} onRetry={() => setAttempt((n) => n + 1)} />;
   if (!data) {
     return (
       <div aria-busy="true">
@@ -91,18 +93,20 @@ export function SlotPicker({
       {/* Desplazamiento horizontal en móvil; el margen negativo deja ver que hay más días */}
       <div
         className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1.5 pt-0.5 [scrollbar-width:thin]"
-        role="tablist"
+        role="radiogroup"
         aria-label="Día"
+        onKeyDown={onRadioGroupKeyDown}
       >
-        {groups.map((g) => {
+        {groups.map((g, gi) => {
           const active = g.day === day;
           const p = dayParts(g.items[0].startsAt, data.timeZone);
           return (
             <button
               key={g.day}
               type="button"
-              role="tab"
-              aria-selected={active}
+              role="radio"
+              aria-checked={active}
+              tabIndex={rovingTabIndex(active, gi, !!day)}
               aria-label={`${g.label}, ${g.items.length} ${g.items.length === 1 ? "horario libre" : "horarios libres"}`}
               onClick={() => setDay(g.day)}
               className={`flex w-[60px] shrink-0 snap-start flex-col items-center rounded-[10px] border py-2 transition-[background-color,border-color,color] duration-150 ease-[var(--ease-premium)] active:scale-[0.97] ${
@@ -119,15 +123,22 @@ export function SlotPicker({
         })}
       </div>
       {selected && (
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" role="radiogroup" aria-label={`Hora del ${selected.label}`}>
-          {selected.items.map((s) => {
+        <div
+          className="grid grid-cols-3 gap-2 sm:grid-cols-4"
+          role="radiogroup"
+          aria-label={`Hora del ${selected.label}`}
+          onKeyDown={onRadioGroupKeyDown}
+        >
+          {selected.items.map((s, si) => {
             const checked = value === s.startsAt;
+            const anyChecked = selected.items.some((x) => x.startsAt === value);
             return (
               <button
                 key={s.startsAt}
                 type="button"
                 role="radio"
                 aria-checked={checked}
+                tabIndex={rovingTabIndex(checked, si, anyChecked)}
                 onClick={() => onChange(s.startsAt)}
                 className={`relative h-10 rounded-lg border text-sm font-medium tabular-nums transition-[background-color,border-color,color,box-shadow] duration-150 ease-[var(--ease-premium)] active:scale-[0.97] ${
                   checked

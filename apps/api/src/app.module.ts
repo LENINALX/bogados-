@@ -21,6 +21,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
 import { TermsModule } from './terms/terms.module';
 import { ExportsModule } from './exports/exports.module';
 import { RetentionModule } from './retention/retention.module';
+import { SearchModule } from './search/search.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -49,6 +50,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     AppointmentsModule,
     TermsModule,
     ExportsModule,
+    SearchModule,
     RetentionModule,
     ScheduleModule.forRoot(),
   ],

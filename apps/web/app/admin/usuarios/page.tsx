@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { staffLinks } from "@/lib/nav";
 import { StaffLayout } from "@/components/StaffLayout";
 import { InviteUserForm, UserRowControls } from "@/components/UserAdmin";
+import { EmptyState, NoResults } from "@/components/ui";
+import { Users } from "lucide-react";
 
 export default async function UsersAdminPage({
   searchParams,
@@ -75,9 +77,10 @@ export default async function UsersAdminPage({
           </div>
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar usuarios">
           <Link
             href={href({ role: undefined })}
+            aria-current={!role ? "true" : undefined}
             className={`rounded-full border px-3 py-1 text-xs font-medium ${!role ? "border-brand-600 bg-brand-600 text-white" : "border-slate-200 bg-surface text-slate-700"}`}
           >
             Todos
@@ -86,12 +89,13 @@ export default async function UsersAdminPage({
             <Link
               key={r}
               href={href({ role: r })}
+              aria-current={role === r ? "true" : undefined}
               className={`rounded-full border px-3 py-1 text-xs font-medium ${role === r ? "border-brand-600 bg-brand-600 text-white" : "border-slate-200 bg-surface text-slate-700 hover:border-brand-500"}`}
             >
               {ROLE_LABELS[r]} ({countFor(r)})
             </Link>
           ))}
-          <span className="mx-1 h-4 w-px bg-slate-200" />
+          <span aria-hidden className="mx-1 h-4 w-px bg-slate-200" />
           {[
             ["activos", "Activos"],
             ["inactivos", "Inactivos"],
@@ -99,15 +103,21 @@ export default async function UsersAdminPage({
             <Link
               key={v}
               href={href({ estado: estadoParam === v ? undefined : v })}
+              aria-current={estadoParam === v ? "true" : undefined}
               className={`rounded-full border px-3 py-1 text-xs font-medium ${estadoParam === v ? "border-brand-600 bg-brand-600 text-white" : "border-slate-200 bg-surface text-slate-700 hover:border-brand-500"}`}
             >
               {label}
             </Link>
           ))}
-          <form className="ml-auto">
+          <form className="ml-auto" role="search">
             {role && <input type="hidden" name="role" value={role} />}
             {estadoParam && <input type="hidden" name="estado" value={estadoParam} />}
+            <label htmlFor="users-q" className="sr-only">
+              Buscar usuarios por nombre o email
+            </label>
             <input
+              id="users-q"
+              type="search"
               name="q"
               defaultValue={q}
               maxLength={200}
@@ -121,28 +131,32 @@ export default async function UsersAdminPage({
           <table className="min-w-full text-left text-sm">
             <thead className="border-b bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
-                <th className="px-4 py-3">Usuario</th>
-                <th className="px-4 py-3">Rol</th>
-                <th className="px-4 py-3">Casos</th>
-                <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3">Alta</th>
-                <th className="px-4 py-3 text-right">Acciones</th>
+                <th scope="col" className="px-4 py-3">Usuario</th>
+                <th scope="col" className="px-4 py-3">Rol</th>
+                <th scope="col" className="px-4 py-3">Casos</th>
+                <th scope="col" className="px-4 py-3">Estado</th>
+                <th scope="col" className="px-4 py-3">Alta</th>
+                <th scope="col" className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
-                    No hay usuarios con estos filtros
+                  <td colSpan={6}>
+                    {q || role || estadoParam ? (
+                      <NoResults query={q} hint="Prueba con otro nombre o email, o quita los filtros." action={{ href: "/admin/usuarios", label: "Ver todos los usuarios" }} />
+                    ) : (
+                      <EmptyState icon={Users} title="Aún no hay usuarios" hint="Invita a tu equipo y a tus clientes con el botón «Invitar usuario»." />
+                    )}
                   </td>
                 </tr>
               )}
               {users.map((u) => (
-                <tr key={u.id} className={`border-b last:border-0 ${u.active ? "" : "bg-slate-50 text-slate-400"}`}>
+                <tr key={u.id} className={`border-b last:border-0 ${u.active ? "" : "bg-slate-50 text-slate-500"}`}>
                   <td className="px-4 py-3">
                     <div className={`font-medium ${u.active ? "text-slate-800" : ""}`}>
                       {u.name}
-                      {u.id === userId && <span className="ml-2 text-xs font-normal text-slate-400">(tú)</span>}
+                      {u.id === userId && <span className="ml-2 text-xs font-normal text-slate-500">(tú)</span>}
                     </div>
                     <div className="text-xs text-slate-500">{u.email}</div>
                   </td>

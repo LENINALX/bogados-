@@ -152,7 +152,7 @@ export function CaseMessages({
         </div>
         <FieldError id={inputId} error={v.errors.body} className="mt-0" />
         <div className="flex items-start justify-between gap-3">
-          <p id={`${inputId}-keys`} className="text-[11px] text-slate-400">
+          <p id={`${inputId}-keys`} className="text-[11px] text-slate-500">
             Enter para enviar · Shift + Enter para salto de línea
           </p>
           <CharCount id={inputId} length={body.length} max={LIMITS.message} className="text-[11px]" />

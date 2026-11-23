@@ -61,7 +61,7 @@ export function chipClass(active: boolean) {
 /** Contador dentro de un filtro */
 export function ChipCount({ children, active }: { children: React.ReactNode; active?: boolean }) {
   return (
-    <span className={`text-xs tabular-nums ${active ? "text-slate-500" : "text-slate-400"}`}>{children}</span>
+    <span className={`text-xs tabular-nums ${active ? "text-slate-500" : "text-slate-500"}`}>{children}</span>
   );
 }
 

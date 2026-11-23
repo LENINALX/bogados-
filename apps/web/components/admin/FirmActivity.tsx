@@ -11,7 +11,6 @@ import {
   FileText,
   History,
   MessageSquare,
-  RotateCw,
   Settings2,
   StickyNote,
   Users,
@@ -30,7 +29,7 @@ import {
   type FirmActivityItem,
   type FirmActivityResponse,
 } from "@/lib/firm-activity";
-import { EmptyState, FormMessage, Spinner, errorMessage } from "@/components/ui";
+import { EmptyState, ErrorState, NoResults, Spinner, errorMessage } from "@/components/ui";
 import type { FirmUser } from "@/components/admin/LoginActivity";
 
 const PAGE_SIZE = 25;
@@ -215,13 +214,7 @@ export function FirmActivity({ timeZone, users }: { timeZone: string; users: Fir
       </div>
 
       {error ? (
-        <div className="space-y-3 p-4 sm:px-5">
-          <FormMessage type="error">{error}</FormMessage>
-          <button type="button" onClick={() => setAttempt((n) => n + 1)} className="btn-secondary btn-sm">
-            <RotateCw className="h-3.5 w-3.5" aria-hidden />
-            Reintentar
-          </button>
-        </div>
+        <ErrorState message={error} onRetry={() => setAttempt((n) => n + 1)} retrying={loading} className="p-4 sm:px-5" />
       ) : !data ? (
         <RowsSkeleton />
       ) : data.items.length === 0 ? (
@@ -233,8 +226,7 @@ export function FirmActivity({ timeZone, users }: { timeZone: string; users: Fir
             </button>
           </div>
         ) : filtered ? (
-          <EmptyState
-            icon={History}
+          <NoResults
             title="No hay actividad con estos filtros"
             hint="Prueba con otro tipo, otra persona u otras fechas."
             action={{ href: pathname, label: "Quitar filtros" }}
@@ -315,7 +307,7 @@ function ActivityRow({ ev, timeZone }: { ev: FirmActivityItem; timeZone: string 
             {ev.actor ? (
               <>
                 {ev.actor.name}
-                <span className="text-slate-400"> · {ROLE_LABEL[ev.actor.role] ?? ev.actor.role}</span>
+                <span className="text-slate-500"> · {ROLE_LABEL[ev.actor.role] ?? ev.actor.role}</span>
               </>
             ) : (
               "Sistema"

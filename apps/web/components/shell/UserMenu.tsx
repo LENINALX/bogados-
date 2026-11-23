@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { ChevronDown, LogOut, Monitor, Moon, Settings, ShieldCheck, Sun } from "lucide-react";
@@ -51,6 +51,7 @@ export function UserMenu({
   const [theme, setTheme] = useState<ThemePreference>("system");
   const [leaving, setLeaving] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
+  const menuId = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => setOpen(false), []);
   useDismiss(open, panel, close, trigger);
@@ -64,7 +65,7 @@ export function UserMenu({
           ref={trigger}
           type="button"
           onClick={() => setOpen((o) => !o)}
-          aria-haspopup="menu"
+          aria-controls={open ? menuId : undefined}
           aria-expanded={open}
           aria-label="Ajustes de la cuenta"
           className="rail-key flex h-11 w-11 items-center justify-center rounded-2xl bg-rail text-white/80 hover:text-white active:scale-95"
@@ -76,7 +77,7 @@ export function UserMenu({
           ref={trigger}
           type="button"
           onClick={() => setOpen((o) => !o)}
-          aria-haspopup="menu"
+          aria-controls={open ? menuId : undefined}
           aria-expanded={open}
           aria-label={`Cuenta de ${user.name}`}
           className="flex w-full min-w-0 items-center gap-3 rounded-2xl p-1.5 text-left transition-[background-color,transform] duration-150 ease-out hover:bg-slate-900/[0.04] active:scale-[0.98]"
@@ -102,7 +103,7 @@ export function UserMenu({
           ref={trigger}
           type="button"
           onClick={() => setOpen((o) => !o)}
-          aria-haspopup="menu"
+          aria-controls={open ? menuId : undefined}
           aria-expanded={open}
           aria-label={`Cuenta de ${user.name}`}
           className="flex items-center gap-2.5 rounded-full p-0.5 pr-0.5 transition-transform duration-100 ease-out active:scale-95 sm:pr-3"
@@ -119,7 +120,9 @@ export function UserMenu({
 
       {open && (
         <div
-          role="menu"
+          id={menuId}
+          role="group"
+          aria-label="Menú de la cuenta"
           className={`animate-pop absolute z-50 w-64 overflow-hidden rounded-2xl border border-slate-200/80 bg-surface p-1.5 shadow-xl shadow-slate-900/10 ${PANEL_POSITION[variant]}`}
         >
           <div className="px-3 py-2.5">
@@ -129,14 +132,13 @@ export function UserMenu({
 
           <div className="mx-1.5 my-1 h-px bg-slate-100" />
 
-          <p className="px-3 pb-1.5 pt-2 text-[11px] font-medium uppercase tracking-wide text-slate-400">Apariencia</p>
-          <div className="mx-1.5 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1" role="radiogroup" aria-label="Tema">
+          <p className="px-3 pb-1.5 pt-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">Apariencia</p>
+          <div className="mx-1.5 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1" role="group" aria-label="Tema">
             {THEMES.map(({ value, label, icon: Icon }) => (
               <button
                 key={value}
                 type="button"
-                role="radio"
-                aria-checked={theme === value}
+                aria-pressed={theme === value}
                 onClick={() => {
                   setTheme(value);
                   applyThemePreference(value);
@@ -155,7 +157,6 @@ export function UserMenu({
 
           <Link
             href="/cuenta/seguridad"
-            role="menuitem"
             onClick={close}
             className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200/70"
           >
@@ -165,7 +166,6 @@ export function UserMenu({
 
           <button
             type="button"
-            role="menuitem"
             disabled={leaving}
             onClick={() => {
               setLeaving(true);

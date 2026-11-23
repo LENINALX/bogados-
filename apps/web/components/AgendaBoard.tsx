@@ -8,6 +8,17 @@ import { NewAppointmentForm } from "./NewAppointmentForm";
 
 type Option = { id: string; name: string };
 
+/** Recargar la lista y señalar la cita recién creada (destello breve en su fila). */
+function useListRefresh() {
+  const [reloadKey, setReloadKey] = useState(0);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const refresh = (createdId?: string | null) => {
+    setHighlightId(createdId ?? null);
+    setReloadKey((k) => k + 1);
+  };
+  return { reloadKey, highlightId, refresh };
+}
+
 /** Agenda del despacho: lista + programar cita + disponibilidad propia. */
 export function StaffAgenda(props: {
   timeZone: string;
@@ -16,13 +27,12 @@ export function StaffAgenda(props: {
   clients: Option[];
   cases: { id: string; title: string; clientId: string | null }[];
 }) {
-  const [reloadKey, setReloadKey] = useState(0);
-  const reload = () => setReloadKey((k) => k + 1);
+  const { reloadKey, highlightId, refresh } = useListRefresh();
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2">
-        <AppointmentList mode="staff" timeZone={props.timeZone} reloadKey={reloadKey} />
+        <AppointmentList mode="staff" timeZone={props.timeZone} reloadKey={reloadKey} highlightId={highlightId} />
       </div>
       <div className="space-y-6">
         <NewAppointmentForm
@@ -30,9 +40,9 @@ export function StaffAgenda(props: {
           lawyers={props.lawyers}
           clients={props.clients}
           cases={props.cases}
-          onCreated={reload}
+          onCreated={refresh}
         />
-        <AvailabilityEditor lawyerId={props.currentUserId} onSaved={reload} />
+        <AvailabilityEditor lawyerId={props.currentUserId} onSaved={() => refresh()} />
       </div>
     </div>
   );
@@ -46,14 +56,14 @@ export function ClientAgenda({
   timeZone: string;
   cases: { id: string; title: string }[];
 }) {
-  const [reloadKey, setReloadKey] = useState(0);
+  const { reloadKey, highlightId, refresh } = useListRefresh();
   return (
     <div className="grid gap-6 lg:grid-cols-5">
       <div className="lg:col-span-3">
-        <AppointmentList mode="client" timeZone={timeZone} reloadKey={reloadKey} />
+        <AppointmentList mode="client" timeZone={timeZone} reloadKey={reloadKey} highlightId={highlightId} />
       </div>
       <div className="lg:col-span-2">
-        <BookAppointmentForm cases={cases} onBooked={() => setReloadKey((k) => k + 1)} />
+        <BookAppointmentForm cases={cases} timeZone={timeZone} onBooked={(a) => refresh(a?.id)} />
       </div>
     </div>
   );

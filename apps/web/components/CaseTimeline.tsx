@@ -140,7 +140,7 @@ export function CaseTimeline({
                 }`}
               >
                 {label}
-                <span className="tabular-nums text-slate-400">{counts[f]}</span>
+                <span className="tabular-nums text-slate-500">{counts[f]}</span>
               </button>
             ))}
           </div>

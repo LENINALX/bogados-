@@ -159,7 +159,7 @@ export function CaseStatusForm({
           </label>
           <div>
             <label htmlFor={msgId} className="block text-xs font-medium text-slate-600">
-              Explicación para el cliente <span className="font-normal text-slate-400">(opcional)</span>
+              Explicación para el cliente <span className="font-normal text-slate-500">(opcional)</span>
             </label>
             <textarea
               id={msgId}
@@ -176,7 +176,7 @@ export function CaseStatusForm({
             />
             <FieldError id={msgId} error={v.errors.clientMessage} />
             <div className="mt-1 flex items-start justify-between gap-3">
-              <p id={`${msgId}-hint`} className="text-xs text-slate-400">
+              <p id={`${msgId}-hint`} className="text-xs text-slate-500">
                 {notifyClient ? "La verá en su portal y en el email." : "La verá en su portal."}
               </p>
               <CharCount id={msgId} length={clientMessage.length} max={MESSAGE_MAX} />

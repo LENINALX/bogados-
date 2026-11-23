@@ -418,7 +418,7 @@ export function LawyerLoadChart({
                   <span className="w-6 text-right text-sm font-medium tabular-nums text-slate-900">{total}</span>
                   <span
                     className={`flex w-24 items-center justify-end gap-1 text-xs tabular-nums ${
-                      r.overdueTasks ? "font-medium text-red-700" : "text-slate-400"
+                      r.overdueTasks ? "font-medium text-red-700" : "text-slate-500"
                     }`}
                   >
                     {r.overdueTasks ? (

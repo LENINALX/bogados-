@@ -85,7 +85,7 @@ export function TodayPanel({
               <CalendarClock className="h-4 w-4 text-slate-500" aria-hidden />
               Citas de hoy
               {appointments.length > 0 && (
-                <span className="text-[13px] font-normal tabular-nums text-slate-400">{appointments.length}</span>
+                <span className="text-[13px] font-normal tabular-nums text-slate-500">{appointments.length}</span>
               )}
             </h3>
             <HeaderLink href="/agenda">Ver agenda</HeaderLink>
@@ -160,7 +160,7 @@ export function TodayPanel({
                   <p className={`flex items-center gap-2 px-4 pb-1 pt-1.5 text-xs font-medium sm:px-5 ${g.tone}`}>
                     <span className={`h-1.5 w-1.5 rounded-full ${g.dot}`} aria-hidden />
                     {g.label}
-                    <span className="tabular-nums text-slate-400">{g.items.length}</span>
+                    <span className="tabular-nums text-slate-500">{g.items.length}</span>
                   </p>
                   <ul>
                     {g.items.map((t) => (

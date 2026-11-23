@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Clock, Plus, X } from "lucide-react";
 import { WEEKDAY_LABELS } from "@bogados/shared";
 import { nestFetch } from "@/lib/nest-api";
-import { FormMessage, Spinner, errorMessage } from "./ui";
+import { ErrorState, FormMessage, ListSkeleton, Spinner, errorMessage } from "./ui";
 import { useToast } from "./Toaster";
 import { LIMITS, checkTimeBlocks } from "@/lib/validation";
 import { FieldError, INVALID_INPUT, fieldA11y } from "./form/FieldError";
@@ -22,11 +22,15 @@ export function AvailabilityEditor({ lawyerId, onSaved }: { lawyerId: string; on
   const [checked, setChecked] = useState(false);
   const toast = useToast();
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
+    setLoadError(null);
     nestFetch<Block[]>(`/lawyers/${lawyerId}/availability`)
       .then(setBlocks)
-      .catch((err) => setMessage({ type: "error", text: errorMessage(err, "No se pudo cargar la disponibilidad.") }));
-  }, [lawyerId]);
+      .catch((err) => setLoadError(errorMessage(err, "No se pudo cargar la disponibilidad.")));
+  }, [lawyerId, attempt]);
 
   const update = (i: number, patch: Partial<Block>) =>
     setBlocks((list) => list!.map((b, j) => (j === i ? { ...b, ...patch } : b)));
@@ -82,7 +86,11 @@ export function AvailabilityEditor({ lawyerId, onSaved }: { lawyerId: string; on
           Franjas semanales en las que los clientes pueden pedirte cita (hora de la firma).
         </p>
         {!blocks ? (
-          message ? null : <Spinner className="h-4 w-4 text-slate-400" />
+          loadError ? (
+            <ErrorState message={loadError} onRetry={() => setAttempt((n) => n + 1)} />
+          ) : (
+            <ListSkeleton rows={2} label="Cargando tu disponibilidad…" />
+          )
         ) : (
           <>
             {sorted!.length === 0 && (

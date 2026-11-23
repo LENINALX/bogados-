@@ -424,7 +424,7 @@ function useTermPreview(notifiedOn: string | null, days: number | null): Preview
 function TermPreview({ state, canManageHolidays }: { state: PreviewState; canManageHolidays: boolean }) {
   if (state.error) return <p className="text-xs text-red-700">{state.error}</p>;
   if (!state.data) {
-    return <p className="text-xs text-slate-400">{state.loading ? "Calculando…" : "Indica la fecha y los días."}</p>;
+    return <p className="text-xs text-slate-500">{state.loading ? "Calculando…" : "Indica la fecha y los días."}</p>;
   }
   const d = state.data;
   return (

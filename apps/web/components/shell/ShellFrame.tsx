@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useState, useSyncExternalStore } from "react";
-import { PanelLeftClose, PanelLeftOpen, Scale, Search } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Scale } from "lucide-react";
 import { CASE_STATUS_LABELS, CASE_STATUSES, CaseStatus } from "@bogados/shared";
-import { CASES_LIST_ID, NavItem, casesByStatusHref, isActiveLink } from "@/lib/nav";
+import { NavItem, casesByStatusHref, isActiveLink } from "@/lib/nav";
 import type { ShellData } from "@/lib/shell-data";
 import { STATUS_SERIES_COLOR } from "@/lib/viz";
 import { NotificationBell } from "../NotificationBell";
+import { GlobalSearchProvider, SearchButton, SearchField } from "../search/GlobalSearch";
 import { BottomNav } from "./BottomNav";
 import { BrandMark } from "./BrandMark";
 import { NavIcon } from "./NavIcon";
@@ -67,6 +68,7 @@ export function ShellFrame({
   }, []);
 
   return (
+    <GlobalSearchProvider role={user.role}>
     <div data-collapsed={collapsed} className="app-shell min-h-dvh bg-shell">
       <a
         href="#contenido"
@@ -95,6 +97,7 @@ export function ShellFrame({
         <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
           <BrandMark href={home} />
           <div className="ml-auto flex items-center gap-1.5">
+            <SearchButton placement="bar" />
             {!isDesktop && <NotificationBell role={user.role} />}
             <UserMenu user={user} />
           </div>
@@ -108,6 +111,7 @@ export function ShellFrame({
 
       <BottomNav links={links} counts={data.counts} />
     </div>
+    </GlobalSearchProvider>
   );
 }
 
@@ -150,6 +154,9 @@ function Rail({
           <Scale className="h-[21px] w-[21px]" strokeWidth={1.8} aria-hidden />
         </Link>
         <span aria-hidden className="mb-1 h-px w-7 bg-white/10" />
+        <SearchButton placement="rail">
+          <RailTip>Buscar · Ctrl/⌘ K</RailTip>
+        </SearchButton>
         {links.map((l) => {
           const active = isActiveLink(l.href, pathname);
           const count = data.counts[l.href];
@@ -264,24 +271,9 @@ function Sidebar({
         )}
 
         <Group label={variant === "portal" ? "Tus casos" : "Casos recientes"}>
-          {variant === "despacho" && (
-            <form action={`/dashboard#${CASES_LIST_ID}`} role="search" className="relative mb-2">
-              <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <label htmlFor="sidebar-q" className="sr-only">
-                Buscar casos
-              </label>
-              <input
-                id="sidebar-q"
-                name="q"
-                type="search"
-                placeholder="Buscar casos"
-                maxLength={200}
-                className="shell-inset w-full rounded-xl py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-              />
-            </form>
-          )}
+          <SearchField placeholder={variant === "portal" ? "Buscar en tus casos" : "Buscar casos, clientes…"} />
           {data.recentCases.length === 0 ? (
-            <p className="px-3 py-2 text-[13px] text-slate-400">Todavía no hay casos.</p>
+            <p className="px-3 py-2 text-[13px] text-slate-500">Todavía no hay casos.</p>
           ) : (
             <ul className="shell-inset rounded-2xl p-1.5">
               {data.recentCases.map((c) => {
@@ -357,7 +349,7 @@ function StatusGroup({ byStatus, openRequests }: { byStatus: Record<CaseStatus, 
 function Group({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <section className="mt-2 border-t border-slate-900/[0.07] pt-3 first:mt-0 first:border-t-0 first:pt-1">
-      <h2 className="mb-1.5 px-3 text-[12.5px] font-medium text-slate-400">{label}</h2>
+      <h2 className="mb-1.5 px-3 text-[12.5px] font-medium text-slate-500">{label}</h2>
       <div className="space-y-0.5">{children}</div>
     </section>
   );

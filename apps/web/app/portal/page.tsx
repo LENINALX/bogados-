@@ -258,7 +258,7 @@ function SectionHeading({ id, title, count, hint }: { id: string; title: string;
     <div className="mb-3">
       <h2 id={id} className="flex items-baseline gap-2 font-display text-[1.375rem] font-medium tracking-[-0.015em] text-slate-900">
         {title}
-        <span className="font-sans text-[13px] font-normal tracking-normal tabular-nums text-slate-400">{count}</span>
+        <span className="font-sans text-[13px] font-normal tracking-normal tabular-nums text-slate-500">{count}</span>
       </h2>
       {hint && <p className="mt-0.5 text-[13px] text-slate-500">{hint}</p>}
     </div>

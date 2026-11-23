@@ -32,7 +32,8 @@ export function NewAppointmentForm({
   lawyers: Option[] | null;
   clients: Option[];
   cases: { id: string; title: string; clientId: string | null }[];
-  onCreated: () => void;
+  /** Recibe el id de la cita creada (la lista la señala con un destello) */
+  onCreated: (createdId?: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [lawyerId, setLawyerId] = useState(currentUserId);
@@ -74,7 +75,7 @@ export function NewAppointmentForm({
     if (!when) return;
     setLoading(true);
     try {
-      await nestFetch("/appointments", {
+      const created = await nestFetch<{ id?: string }>("/appointments", {
         method: "POST",
         body: JSON.stringify({
           lawyerId,
@@ -92,7 +93,7 @@ export function NewAppointmentForm({
       v.reset();
       setReloadKey((k) => k + 1);
       toast("success", "Cita programada · el cliente recibirá un email");
-      onCreated();
+      onCreated(created && typeof created === "object" ? created.id : null);
     } catch (err) {
       setReloadKey((k) => k + 1);
       const text = errorMessage(err, "No se pudo programar la cita.");
@@ -131,7 +132,7 @@ export function NewAppointmentForm({
           <X className="h-4 w-4" aria-hidden />
         </button>
       </div>
-      <form onSubmit={onSubmit} noValidate className="space-y-4 px-4 py-4 sm:px-5">
+      <form onSubmit={onSubmit} noValidate aria-busy={loading} className="space-y-4 px-4 py-4 sm:px-5">
         {lawyers && (
           <div>
             <label htmlFor="na-lawyer" className="label">Abogado</label>

@@ -106,7 +106,7 @@ export function HolidaysManager({ year, initial }: { year: number; initial: Holi
           <div className="divide-y divide-slate-100">
             {byMonth.map((m) => (
               <div key={m.label} className="px-4 py-3 sm:px-5">
-                <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">{m.label}</h3>
+                <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">{m.label}</h3>
                 <ul className="space-y-1">
                   {m.items.map((h) => (
                     <li key={h.id} className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-50">

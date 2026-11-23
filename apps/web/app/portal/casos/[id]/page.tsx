@@ -12,6 +12,7 @@ import { StateBadge } from "@/components/portal/StateBadge";
 import { clientCaseState } from "@/components/portal/case-state";
 import { toTimelineEvents, toTimelineNotes } from "@/lib/timeline";
 import { documentFields, messageFields } from "@/lib/client-fields";
+import { ScrollToHash } from "@/components/ScrollToHash";
 import type { CaseRequestState } from "@bogados/shared";
 
 type Props = { params: { id: string } };
@@ -102,6 +103,8 @@ export default async function PortalCasePage({ params }: Props) {
   return (
     <PortalLayout user={session.user}>
       <main className="page max-w-3xl">
+        {/* Desde la búsqueda global: un documento encontrado abre la ficha en su sección */}
+        <ScrollToHash id="documentos" />
         <nav aria-label="Ruta" className="mb-5">
           <Link
             href="/portal"
@@ -175,7 +178,7 @@ export default async function PortalCasePage({ params }: Props) {
               >
                 <s.icon className="h-3.5 w-3.5 text-slate-400" aria-hidden />
                 {s.label}
-                <span className="tabular-nums text-slate-400">{s.count}</span>
+                <span className="tabular-nums text-slate-500">{s.count}</span>
               </a>
             ))}
           </nav>

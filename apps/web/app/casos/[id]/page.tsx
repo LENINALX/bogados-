@@ -20,6 +20,7 @@ import { CaseTimeline } from "@/components/CaseTimeline";
 import { staffLinks } from "@/lib/nav";
 import { emailedNoteIds, toTimelineEvents, toTimelineNotes } from "@/lib/timeline";
 import { documentFields, messageFields } from "@/lib/client-fields";
+import { ScrollToHash } from "@/components/ScrollToHash";
 
 type Props = { params: { id: string }; searchParams: { aviso?: string } };
 
@@ -85,6 +86,8 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
   return (
     <StaffLayout user={session.user} links={staffLinks(role)}>
       <main className="page">
+        {/* Desde la búsqueda global: un documento encontrado abre la ficha en su sección */}
+        <ScrollToHash id="documentos" />
         <nav aria-label="Ruta" className="mb-5 flex min-w-0 items-center gap-1.5 text-[13px] text-slate-500">
           <Link href="/dashboard" className="shrink-0 underline-offset-4 hover:text-brand-700 hover:underline">
             {sectionLabel}
@@ -198,15 +201,18 @@ export default async function CaseDetailPage({ params, searchParams }: Props) {
               }))}
             />
             <CaseDocumentGenerator caseId={c.id} />
-            <CaseDocuments
-              caseId={c.id}
-              timeZone={timeZone}
-              canMarkInternal
-              initial={c.documents.map((d) => ({
-                ...d,
-                createdAt: d.createdAt.toISOString(),
-              }))}
-            />
+            {/* Ancla para la búsqueda global: un documento encontrado lleva aquí */}
+            <div id="documentos" className="scroll-mt-20">
+              <CaseDocuments
+                caseId={c.id}
+                timeZone={timeZone}
+                canMarkInternal
+                initial={c.documents.map((d) => ({
+                  ...d,
+                  createdAt: d.createdAt.toISOString(),
+                }))}
+              />
+            </div>
           </div>
         </div>
       </main>
